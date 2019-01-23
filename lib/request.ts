@@ -1,6 +1,6 @@
 import * as TVDB from 'node-tvdb';
 
-import {Episode, Media, Movie, Show} from './media';
+import {createEpisode, createMovie, createShow, Media} from './media';
 import {MediaQuery} from './Swiper';
 
 let tvdb = new TVDB(process.env.TVDB_ID);
@@ -56,7 +56,7 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
     return { err: `I can't identify that` };
   } else if (omdb.Type === 'movie') {
     // Movie
-    return { data: new Movie(omdb.Title, omdb.Year) };
+    return { data: createMovie(omdb.Title, omdb.Year) };
   } else {
     // TV Show
     try {
@@ -65,11 +65,10 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
       console.error(err);
       return { err: `Can't find that show` };
     }
-    const show = new Show(omdb.Title);
     const episodes = tvdb.episodes.map(ep =>
-      new Episode(show, ep.airedSeason, ep.airedEpisodeNumber,
+      createEpisode(ep.airedSeason, ep.airedEpisodeNumber,
         ep.firstAired ? new Date(`${ep.firstAired} ${tvdb.airsTime}`) : null));
-    show.setEpisodes(episodes);
+    const show = createShow(omdb.Title, episodes);
     return { data: show };
   }
 }

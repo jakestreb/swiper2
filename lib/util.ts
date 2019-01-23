@@ -1,3 +1,8 @@
+interface Response {
+  regex: RegExp;
+  value: string;
+}
+
 export function getMorning(): Date {
   let morn = new Date();
   morn.setHours(0);
@@ -30,6 +35,26 @@ export function execCapture(str: string, regex: RegExp) {
   return match.slice(1);
 };
 
-export function padZeros(int: number) {
-  return ('00' + int).slice(-2);
-};
+export function matchResp(input: string, responses: Response[]): string|null {
+  let matched = null;
+  responses.forEach(resp => {
+    if (input.match(resp.regex)) {
+      if (!matched) {
+        matched = resp.value;
+      } else {
+        return null;
+      }
+    }
+  });
+  return matched;
+}
+
+export function matchYesNo(input: string): string {
+  return matchResp(input, [{
+    value: 'yes',
+    regex: /\b(y)|(yes)\b/gi
+  }, {
+    value: 'no',
+    regex: /\b(n)|(no)\b/gi
+  }]);
+}

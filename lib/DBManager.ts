@@ -1,7 +1,9 @@
 import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 
-import {Media, Movie, Show} from './media';
+import {Media, Movie, Show, stringify} from './media';
+import {EpisodesDescriptor} from './Swiper';
+import {getMorning} from './util';
 
 interface AddOptions {
   monitor: boolean,
@@ -16,6 +18,8 @@ interface SearchOptions {
 export interface ResultRow {
   [column: string]: any;
 };
+
+export type MediaResultRow = Media & { id: number };
 
 export class DBManager {
   private _db: sqlite3.Database;
@@ -46,7 +50,7 @@ export class DBManager {
       addedBy INTEGER,
       seasonNum INTEGER,
       episodeNum INTEGER,
-      airDate TEXT,
+      airDate INTEGER,
       show INTEGER
     )`);
   };
@@ -57,21 +61,42 @@ export class DBManager {
     } else if (media.type === 'tv') {
       await this._addShow(media as Show, options);
     } else {
-      throw new Error(`Cannot add item ${media.toString()} to the database`);
+      throw new Error(`Cannot add item ${stringify(media)} to the database`);
     }
+  }
+
+  // Given a row representing either a row in the Movies or Shows table, delete either the
+  // movie or episodes of the given show. If all episodes of the show are removed, the show
+  // is also removed.
+  public async remove(row: MediaResultRow, episodes: EpisodesDescriptor = 'all'): Promise<void> {
+    if (row.type === 'movie') {
+      await this._removeMovie(row.id);
+    } else if (row.type === 'tv') {
+      await this._removeEpisodes(row.id, episodes);
+    } else {
+      throw new Error(`Cannot remove item ${stringify(row)} to the database`);
+    }
+  }
+
+  public async removeAllQueued(): Promise<void> {
+    await this._run(`DELETE FROM Movies WHERE isQueued=1`);
+    await this._run(`DELETE FROM Shows WHERE isQueued=1`);
+    await this._run(`DELETE FROM Episodes WHERE show NOT IN (SELECT id FROM Shows)`);
   }
 
   // Searches movie and tv tables for titles that match the given input. If the type is
   // specified in the options, only that table is searched. Returns all matches as ResultRows.
-  public async searchTitles(input: string, options: SearchOptions): Promise<ResultRow[]> {
-    let rows = [];
+  public async searchTitles(input: string, options: SearchOptions): Promise<MediaResultRow[]> {
+    let rows: MediaResultRow[] = [];
     if (options.type !== 'tv') {
       // Search Movies
-      rows.push(...await this._all(`SELECT * FROM Movies WHERE title LIKE ?`, [`%${input}%`]));
+      const results = await this._all(`SELECT * FROM Movies WHERE title LIKE ?`, [`%${input}%`]);
+      rows.push(...results as MediaResultRow[]);
     }
     if (options.type !== 'movie') {
       // Search Shows
-      rows.push(...await this._all(`SELECT * FROM Shows WHERE title LIKE ?`, [`%${input}%`]));
+      const results = await this._all(`SELECT * FROM Shows WHERE title LIKE ?`, [`%${input}%`]);
+      rows.push(...results as MediaResultRow[]);
     }
     return rows;
   }
@@ -88,20 +113,34 @@ export class DBManager {
     for (const ep of show.episodes) {
       await this._run(`INSERT INTO Episodes (seasonNum, episodeNum, airDate, show) ` +
         `VALUES (?, ?, ?, ?)`,
-        [ep.seasonNum, ep.episodeNum, ep.airDate ? ep.airDate.toISOString() : '', showId]);
+        [ep.seasonNum, ep.episodeNum, ep.airDate ? ep.airDate.getTime() : 0, showId]);
     }
   };
 
   private async _removeMovie(id: number): Promise<void> {
-
+    await this._run(`DELETE FROM Movies WHERE id=?`, [id]);
   }
 
-  private async _removeShow(id: number): Promise<void> {
-
-  }
-
-  private async _removeEpisodes(ids: number[]): Promise<void> {
-
+  private async _removeEpisodes(showId: number, episodes: EpisodesDescriptor): Promise<void> {
+    if (episodes === 'all') {
+      await this._run(`DELETE FROM Episodes WHERE show=?`, [showId]);
+    } else if (episodes === 'new') {
+      await this._run(`DELETE FROM Episodes WHERE airDate>?`, [getMorning().getTime()]);
+    } else {
+      // Remove all episodes in the SeasonEpisode object.
+      for (const seasonNumStr in episodes) {
+        const seasonNum = parseInt(seasonNumStr, 10);
+        const episodeNums = episodes[seasonNum];
+        if (episodeNums === 'all') {
+          await this._run(`DELETE FROM Episodes WHERE seasonNum=?`, [seasonNum]);
+        } else {
+          await this._run(`DELETE FROM Episodes WHERE seasonNum=? AND episodeNum IN ` +
+            `(${episodeNums.map(e => '?')})`, [seasonNum, ...episodeNums]);
+        }
+      }
+    }
+    // Remove show if all episodes were removed.
+    await this._run(`DELETE FROM Shows WHERE id NOT IN (SELECT show FROM Episodes)`);
   }
 
   private async _run(sql: string, params: any[] = []): Promise<number> {

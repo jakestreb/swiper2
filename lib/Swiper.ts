@@ -1,13 +1,18 @@
 import {Command} from './commands';
-import {DBManager, ResultRow} from './DBManager';
-import {Media, Show} from './media';
+import {DBManager, MediaResultRow} from './DBManager';
+import {filterEpisodes, Media, Show} from './media';
 import {identifyMedia} from './request';
-import {execCapture, removePrefix, splitFirst} from './util';
+import {execCapture, matchYesNo, removePrefix, splitFirst} from './util';
 
 const range = require('lodash/range');
 
-// TODO: Keep track of recently downloaded items, allow blacklisting and re-adding
-//  to monitored.
+// TODO: Complete info, status, and help.
+// TODO: Test without search/download/monitoring.
+// TODO: Add search/download.
+// TODO: Test search/download.
+// TODO: Add check/monitoring.
+// TODO: Test check/monitoring.
+
 // TODO: Figure out why there are so many listeners on client.add.
 // TODO: Create readme (heroku address, how to check ips, etc).
 
@@ -26,12 +31,14 @@ interface ConversationData {
 export interface MediaQuery {
   title: string,
   type: 'movie'|'tv'|null,
-  episodes: SeasonEpisodes|'new'|'all'|null,
+  episodes: EpisodesDescriptor|null,
   year: string|null
 }
 
 // Map from each desired season to an array of episode numbers or 'all'.
 export type SeasonEpisodes = {[season: string]: number[]|'all'};
+
+export type EpisodesDescriptor = SeasonEpisodes|'new'|'all';
 
 type Conversation = ConversationData & { id: number; }
 
@@ -109,7 +116,7 @@ export class Swiper {
         return (input?: string) => this._status(id);
       case "help":
       case "commands":
-        return (input?: string) => this._help(id);
+        return (input?: string) => this._help(id, (input || '').trim());
       case "cancel":
         return (input?: string) => this._cancel(id);
       default:
@@ -201,28 +208,45 @@ export class Swiper {
       if (rows.length === 0) {
         return `Nothing matching ${input} was found`;
       } else {
+        // Provide the confirmation question for the first task.
         convo.tasks = rows;
-        const task = rows[0];
-        return `Remove ${task.title} `
+        return getConfirmRemovalString(rows[0], mediaQuery.episodes);
       }
     }
 
     // Ask the user about a row if they are not all dealt with.
     if (convo.tasks.length > 0) {
-      const task: ResultRow = convo.tasks[0];
-      return
+      const match = matchYesNo(input);
+      if (match) {
+        // If yes or no, shift the task to 'complete' it, then remove it from the database.
+        const media: MediaResultRow = convo.tasks.shift();
+        if (match === 'yes') {
+          // Remove media
+          await this._dbManager.remove(media, mediaQuery.episodes);
+        }
+      }
+      if (!match || convo.tasks.length > 0) {
+        // If the match failed or if there are still more tasks, ask about the next one.
+        return getConfirmRemovalString(convo.tasks[0], mediaQuery.episodes);
+      }
     }
+
+    delete this._conversations[id];
+    return `Ok`;
   }
 
-  private _abort(id: number): Promise<string> {
+  private async _abort(id: number): Promise<string> {
+    // Remove all queued downloads.
+    await this._dbManager.removeAllQueued();
 
+    return `TODO: Stop all downloads`;
   }
 
   private _status(id: number): Promise<string> {
 
   }
 
-  private _help(id: number): Promise<string> {
+  private _help(id: number, input?: string): Promise<string> {
 
   }
 
@@ -255,7 +279,7 @@ export class Swiper {
     const rem = removePrefix(input, title);
     const [year] = execCapture(rem, yearFinder);
     const seasonEpisodeStr = rem.trim();
-    let episodes: MediaQuery["episodes"] = null;
+    let episodes: EpisodesDescriptor|null = null;
     if (seasonEpisodeStr.length > 0) {
       type = 'tv';
       episodes = getEpisodesIdentifier(rem);
@@ -297,7 +321,8 @@ export class Swiper {
         // Need to parse season episode string.
         const episodesIdentifier = getEpisodesIdentifier(input);
         mediaQuery.episodes = episodesIdentifier;
-        show.filterEpisodes(episodesIdentifier);
+        const filtered = filterEpisodes(show.episodes, episodesIdentifier);
+        show.episodes = filtered;
       }
     }
   };
@@ -314,13 +339,20 @@ export class Swiper {
 // Given either a Movie or Show ResultRow and an episodes identifier (which is only relevant
 // to Shows), create a string to confirm removal with the user.
 function getConfirmRemovalString(row: ResultRow, episodes: MediaQuery["episodes"]): string {
-  let episodeStr;
+  let preStr = '';
+  let postStr = '';
   if (row.type === 'tv' && (episodes === 'all' || episodes === 'new')) {
-    episodeStr =
+    preStr = `${episodes} episodes of `;
+  } else if (row.type === 'tv') {
+    postStr = ` ${episodes}`;
   }
-
+  const mediaStr = `${preStr}${row.title}${postStr}`;
   if (row.isQueued) {
-    return `Cancel downloading ${row.title}`
+    return `Cancel downloading ${mediaStr}?`;
+  } else if (row.isMonitored) {
+    return `Stop monitoring ${mediaStr}?`;
+  } else {
+    throw new Error(`getConfirmRemovalString error: ${row.title} is not queued or monitored`);
   }
 }
 
