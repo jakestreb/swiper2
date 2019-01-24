@@ -1,8 +1,10 @@
 
-export type Command = 'download'|'search'|'monitor'|'check'|'info'|'remove'|'abort'|'cancel'|
-  'status'|'help';
+interface CommandDescriptor {
+  arg: string,
+  desc: string
+}
 
-export const commands = {
+export const commands: {[command: string]: CommandDescriptor} = {
   download: {
     arg: 'content',
     desc: "Downloads the best torrent for a show or movie."

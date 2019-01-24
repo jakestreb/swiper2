@@ -1,12 +1,14 @@
 import {EpisodesDescriptor} from './Swiper';
-import {getMorning} from './util';
+import {getMorning, padZeros} from './util';
 
 export type Media = Movie | Show;
 
 export interface Movie {
   type: 'movie',
   title: string,
-  year: string
+  year: string,
+  release: Date|null,
+  dvd: Date|null
 }
 
 export interface Show {
@@ -20,26 +22,6 @@ export interface Episode {
   episodeNum: number,
   airDate: Date|null
 }
-
-export function stringify(media: Media): string {
-  if (media.type === 'movie') {
-    return `${media.title} (${media.year})`;
-  } else {
-    return media.title;
-  }
-}
-
-export function createMovie(title: string, year: string): Movie {
-  return {type: 'movie', title, year};
-}
-
-export function createShow(title: string, episodes: Episode[]): Show {
-  return {type: 'tv', title, episodes};
-};
-
-export function createEpisode(seasonNum: number, episodeNum: number, airDate: Date|null): Episode {
-  return {seasonNum, episodeNum, airDate};
-};
 
 export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor): Episode[] {
   if (filter === 'new') {
@@ -55,4 +37,75 @@ export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor):
       return season && (season === 'all' || season.includes(ep.episodeNum));
     });
   }
-}
+};
+
+export function sortEpisodes(episodes: Episode[]): Episode[] {
+  episodes.sort((a, b) => a.seasonNum < b.seasonNum ||
+    (a.seasonNum === b.seasonNum && a.episodeNum < b.episodeNum) ? -1 : 1);
+  return episodes;
+};
+
+// Returns a string of the form: "S01 - S04: 6 episodes, S05: 8 episodes"
+export function getEpisodesPerSeasonStr(episodes: Episode[]): string {
+  if (episodes.length === 0) {
+    return 'No episodes';
+  }
+  const episodeCount: {[seasonNum: string]: number} = {};
+  episodes.forEach(ep => { episodeCount[ep.seasonNum] += 1; });
+  const order = Object.keys(episodeCount).map(seasonStr => parseInt(seasonStr, 10)).sort((a, b) => a - b);
+  let streakStart: number = 0;
+  let str = '';
+  for (const s of order) {
+    if (s <= 1 || order[s] !== order[s - 1]) {
+      if (streakStart < s - 1) {
+        str += `S${padZeros(streakStart)} - S${padZeros(s - 1)}: ${episodeCount[s - 1]} episodes, `;
+      } else {
+        str += `S${padZeros(s - 1)}: ${episodeCount[s - 1]} episodes, `;
+      }
+      streakStart = s;
+    }
+  }
+  // Remove ending comma.
+  return str.slice(0, str.length - 2);
+};
+
+export function getNextToAir(episodes: Episode[]): Episode|null {
+  const morning = getMorning();
+  return episodes.find(ep => ep.airDate !== null && (ep.airDate >= morning)) || null;
+};
+
+export function getLastAired(episodes: Episode[]): Episode|null {
+  const morning = getMorning();
+  return episodes.slice().reverse().find(ep => ep.airDate !== null && (ep.airDate < morning)) || null;
+};
+
+export function getEpisodeStr(episodes: Episode[]): string {
+  let str = "";
+  let chain = 0;
+  let lastEpisode = -1;
+  let lastSeason = -1;
+  episodes.forEach((episode: Episode, i: number) => {
+    const si = episode.seasonNum;
+    const ei = episode.episodeNum;
+    if (lastSeason === -1 && lastEpisode === -1) {
+      str += `S${padZeros(si)}E${padZeros(ei)}`;
+    } else if (si > lastSeason) {
+      // New season
+      str += `-${padZeros(lastEpisode)}, S${padZeros(si)}E${padZeros(ei)}`;
+      chain = 0;
+    } else if (si === lastSeason && (ei > lastEpisode + 1)) {
+      // Same season, later episode
+      str += `${chain > 1 ?
+        `-${padZeros(lastEpisode)}` : ``} & E${padZeros(ei)}`;
+      chain = 0;
+    } else if (i === episodes.length - 1) {
+      // Last episode
+      str += `-${padZeros(ei)}`;
+    } else {
+      chain++;
+    }
+    lastSeason = si;
+    lastEpisode = ei;
+  });
+  return str;
+};

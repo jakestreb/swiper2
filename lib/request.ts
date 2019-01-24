@@ -1,7 +1,8 @@
 import * as TVDB from 'node-tvdb';
 
-import {createEpisode, createMovie, createShow, Media} from './media';
+import {Media, sortEpisodes} from './media';
 import {MediaQuery} from './Swiper';
+import {getDateFromStr} from './util';
 
 let tvdb = new TVDB(process.env.TVDB_ID);
 
@@ -17,7 +18,9 @@ interface OMDB {
   Title: string,
   Year: string,
   Type: 'movie'|'series',
-  imdbID: string
+  imdbID: string,
+  Released: string,
+  DVD: string
 }
 
 // Return type of the TVDB database, with only fields we need defined.
@@ -56,7 +59,15 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
     return { err: `I can't identify that` };
   } else if (omdb.Type === 'movie') {
     // Movie
-    return { data: createMovie(omdb.Title, omdb.Year) };
+    return {
+      data: {
+        type: 'movie',
+        title: omdb.Title,
+        year: omdb.Year,
+        release: getDateFromStr(omdb.Released),
+        dvd: getDateFromStr(omdb.DVD)
+      }
+    };
   } else {
     // TV Show
     try {
@@ -65,11 +76,18 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
       console.error(err);
       return { err: `Can't find that show` };
     }
-    const episodes = tvdb.episodes.map(ep =>
-      createEpisode(ep.airedSeason, ep.airedEpisodeNumber,
-        ep.firstAired ? new Date(`${ep.firstAired} ${tvdb.airsTime}`) : null));
-    const show = createShow(omdb.Title, episodes);
-    return { data: show };
+    const episodes = tvdb.episodes.map(ep => ({
+      seasonNum: ep.airedSeason,
+      episodeNum: ep.airedEpisodeNumber,
+      airDate: ep.firstAired ? new Date(`${ep.firstAired} ${tvdb.airsTime}`) : null
+    }));
+    return {
+      data: {
+        type: 'tv',
+        title: omdb.Title,
+        episodes: sortEpisodes(episodes);
+      }
+    };
   }
 }
 

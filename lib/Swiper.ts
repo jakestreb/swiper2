@@ -1,12 +1,12 @@
-import {Command} from './commands';
-import {DBManager, MediaResultRow} from './DBManager';
-import {filterEpisodes, Media, Show} from './media';
+import {commands} from './commands';
+import {DBManager, ResultRow} from './DBManager';
+import {filterEpisodes, getEpisodesPerSeasonStr, getEpisodeStr, getLastAired, getNextToAir} from './media';
+import {Media, Movie, Show} from './media';
 import {identifyMedia} from './request';
-import {execCapture, matchYesNo, removePrefix, splitFirst} from './util';
+import {execCapture, getAiredStr, getMorning, matchYesNo, removePrefix, splitFirst} from './util';
 
 const range = require('lodash/range');
 
-// TODO: Complete info, status, and help.
 // TODO: Test without search/download/monitoring.
 // TODO: Add search/download.
 // TODO: Test search/download.
@@ -176,8 +176,36 @@ export class Swiper {
 
   }
 
-  private _info(id: number, input?: string): Promise<string> {
+  private async _info(id: number, input?: string): Promise<string> {
+    if (!input) {
+      return `Nothing was specified`;
+    }
 
+    const convo = this._conversations[id];
+
+    // Add the media item to the conversation.
+    const resp = await this._addMediaToConversation(id, input, 'all');
+    if (resp) {
+      return resp;
+    }
+
+    const media = convo.media as Media;
+    if (media.type === 'movie') {
+      // For movies, give release and DVD release.
+      const movie = media as Movie;
+      return `${movie.title}\n` +
+        `Release: ${movie.release || 'N/A'} | DVD Release: ${movie.dvd || 'N/A'}`;
+    } else {
+      // For shows, give how many seasons and episodes per season. Also give last and next air date.
+      const show = media as Show;
+      const leastOld = getLastAired(show.episodes);
+      const leastNew = getNextToAir(show.episodes);
+      const lastAired = leastOld ? getAiredStr(leastOld.airDate!) : '';
+      const nextAirs = leastNew ? getAiredStr(leastNew.airDate!) : '';
+      return `${show.title}\n` +
+        `${getEpisodesPerSeasonStr(show.episodes)}\n` +
+        `${lastAired}${(lastAired && nextAirs) ? '|' : ''}${nextAirs}`;
+    }
   }
 
   private async _remove(id: number, input?: string): Promise<string> {
@@ -219,7 +247,7 @@ export class Swiper {
       const match = matchYesNo(input);
       if (match) {
         // If yes or no, shift the task to 'complete' it, then remove it from the database.
-        const media: MediaResultRow = convo.tasks.shift();
+        const media: ResultRow = convo.tasks.shift();
         if (match === 'yes') {
           // Remove media
           await this._dbManager.remove(media, mediaQuery.episodes);
@@ -242,12 +270,46 @@ export class Swiper {
     return `TODO: Stop all downloads`;
   }
 
-  private _status(id: number): Promise<string> {
+  private async _status(id: number): Promise<string> {
+    const status = await this._dbManager.getAll();
 
+    const monitoredStr = status.monitored.map(media => {
+      if (media.type === 'movie') {
+        const dvd = media.dvd && (media.dvd > getMorning());
+        const dvdStr = dvd ? ` (Digital: ${media.dvd!.toDateString()})` : ` ${media.year}`;
+        return `- ${media.title}${dvdStr}`;
+      } else {
+        const next = getNextToAir(media.episodes);
+        return `- ${media.title} ${getEpisodeStr(media.episodes)}` +
+          next ? ` (${getAiredStr(next!.airDate!)})` : '';
+      }
+    }).join('\n');
+    if (!monitoredStr) {
+      return "Nothing to report";
+    }
+    return (monitoredStr ? `\nMonitoring:\n${monitoredStr}\n` : '');
   }
 
-  private _help(id: number, input?: string): Promise<string> {
-
+  private _help(id: number, input?: string): string {
+    if (!input) {
+      return `Commands:\n` +
+        `${Object.keys(commands).join(', ')}\n\n` +
+        `"help <command>" for details`;
+    } else {
+      const cmdInfo = commands[input];
+      if (!cmdInfo) {
+        return `${input} isn't a command`;
+      } else {
+        const argStr = cmdInfo.arg ? ` ${cmdInfo.arg}` : ``;
+        const contentDesc = cmdInfo.arg !== '<content>' ? '' : `Where <content> is of the form:\n` +
+          `    (movie/tv) <title> (<year>) (season <num>) (episode <num>)\n` +
+          `Ex:\n` +
+          `    game of thrones\n` +
+          `    tv game of thrones 2011 s02\n` +
+          `    game of thrones s01-03, s04e05 & e08\n`;
+        return `${input}${argStr}:  ${cmdInfo.desc}\n\n${contentDesc}`;
+      }
+    }
   }
 
   private _cancel(id: number): string {
@@ -289,7 +351,11 @@ export class Swiper {
 
   // Adds a media content item to the conversation. Returns a string if Swiper requires
   // more information from the user. Returns nothing on success.
-  private async _addMediaToConversation(id: number, input: string): Promise<string|void> {
+  private async _addMediaToConversation(
+    id: number,
+    input: string,
+    episodes?: EpisodesDescriptor
+  ): Promise<string|void> {
     const convo = this._conversations[id];
 
     // If mediaQuery has not been found yet, find it.
@@ -301,6 +367,11 @@ export class Swiper {
     }
 
     const mediaQuery = convo.mediaQuery as MediaQuery;
+
+    // If episodes was added as an optional argument, prioritize it.
+    if (episodes) {
+      mediaQuery.episodes = episodes;
+    }
 
     // If media has not been found yet, find it.
     if (!convo.media) {
@@ -315,7 +386,7 @@ export class Swiper {
     if (convo.media.type === 'tv' && !mediaQuery.episodes) {
       const show = convo.media as Show;
       if (!input) {
-        return `Specify which episodes to download:\n` +
+        return `Specify episodes:\n` +
           `ex: new | all | S1 | S03E02-06 | S02-04 | S04E06 & 7, S05E02`;
       } else {
         // Need to parse season episode string.
