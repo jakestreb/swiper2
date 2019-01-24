@@ -1,7 +1,7 @@
 
 interface CommandDescriptor {
-  arg: string,
-  desc: string
+  arg?: string;
+  desc: string;
 }
 
 export const commands: {[command: string]: CommandDescriptor} = {

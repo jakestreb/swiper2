@@ -1,11 +1,10 @@
+import range = require('lodash/range');
 import {commands} from './commands';
 import {DBManager, ResultRow} from './DBManager';
 import {filterEpisodes, getEpisodesPerSeasonStr, getEpisodeStr, getLastAired, getNextToAir} from './media';
 import {Media, Movie, Show} from './media';
 import {identifyMedia} from './request';
 import {execCapture, getAiredStr, getMorning, matchYesNo, removePrefix, splitFirst} from './util';
-
-const range = require('lodash/range');
 
 // TODO: Test without search/download/monitoring.
 // TODO: Add search/download.
@@ -16,7 +15,7 @@ const range = require('lodash/range');
 // TODO: Figure out why there are so many listeners on client.add.
 // TODO: Create readme (heroku address, how to check ips, etc).
 
-type CommandFn = (input?: string) => Promise<string>|string;
+type CommandFn = (input?: string) => Promise<SwiperReply>|SwiperReply;
 
 interface ConversationData {
   commandFn?: CommandFn;
@@ -26,21 +25,29 @@ interface ConversationData {
   pageNum?: number;
 }
 
+export interface SwiperReply {
+  data?: string;
+  enhanced?: () => void; // Enhanced response for the console
+  err?: string;
+}
+
 // Info from the client to identify media
 // All null values are treated as undetermined.
 export interface MediaQuery {
-  title: string,
-  type: 'movie'|'tv'|null,
-  episodes: EpisodesDescriptor|null,
-  year: string|null
+  title: string;
+  type: 'movie'|'tv'|null;
+  episodes: EpisodesDescriptor|null;
+  year: string|null;
 }
 
 // Map from each desired season to an array of episode numbers or 'all'.
-export type SeasonEpisodes = {[season: string]: number[]|'all'};
+export interface SeasonEpisodes {
+  [season: string]: number[]|'all';
+}
 
 export type EpisodesDescriptor = SeasonEpisodes|'new'|'all';
 
-type Conversation = ConversationData & { id: number; }
+type Conversation = ConversationData & { id: number; };
 
 export class Swiper {
 
@@ -54,12 +61,12 @@ export class Swiper {
   private _upcoming = [];
 
   constructor(
-    private _sendMsg: (id: number, msg: string) => Promise<void>
+    private _sendMsg: (id: number, msg: SwiperReply) => Promise<void>
   ) {
     this._dbManager = new DBManager();
     this._dbManager.initDB()
     .catch(err => {
-      console.error(`Error initializing database: ${err}`);
+      throw new Error(`Error initializing database: ${err}`);
     });
   }
 
@@ -72,22 +79,22 @@ export class Swiper {
     const commandFn = this._getCommandFn(id, command);
 
     // Run a new command or an existing command.
-    let resp: string;
+    let reply: SwiperReply;
     if (commandFn) {
       this._conversations[id] = {id, commandFn};
-      resp = await commandFn(input);
+      reply = await commandFn(input);
     } else if (existingCommandFn) {
-      resp = await existingCommandFn(msg);
+      reply = await existingCommandFn(msg);
     } else {
-      resp = `Use 'help' to see what I can do`;
+      reply = { data: `Use 'help' to see what I can do` };
     }
 
     // Send a response to the client.
     try {
-      await this._sendMsg(id, resp);
+      await this._sendMsg(id, reply);
     } catch (err) {
       // TODO: Handle send error
-      console.error('Client reply error');
+      console.error('Client reply error'); // tslint:disable-line:no-console
     }
   }
 
@@ -124,7 +131,7 @@ export class Swiper {
     }
   }
 
-  private async _download(id: number, input?: string): Promise<string> {
+  private async _download(id: number, input?: string): Promise<SwiperReply> {
     const resp = await this._search(id, input);
     if (resp) {
       return resp;
@@ -136,9 +143,9 @@ export class Swiper {
     await this._queueDownload(id, convo.media!);
   }
 
-  private async _search(id: number, input?: string): Promise<string> {
+  private async _search(id: number, input?: string): Promise<SwiperReply> {
     if (!input) {
-      return `Nothing was specified`;
+      return { data: `Nothing was specified` };
     }
 
     // Add the media item to the conversation.
@@ -148,12 +155,12 @@ export class Swiper {
     }
 
     // Perform the search.
-    return 'TODO: Perform the search';
+    return { data: 'TODO: Perform the search' };
   }
 
-  private async _monitor(id: number, input?: string): Promise<string> {
+  private async _monitor(id: number, input?: string): Promise<SwiperReply> {
     if (!input) {
-      return `Nothing was specified`;
+      return { data: `Nothing was specified` };
     }
 
     // Add the media item to the conversation.
@@ -169,16 +176,16 @@ export class Swiper {
     await this._dbManager.add(media, {queue: false, monitor: true, addedBy: id});
 
     delete this._conversations[id];
-    return `Added ${media.toString()} to monitored`;
+    return { data: `Added ${media.toString()} to monitored` };
   }
 
-  private _check(id: number): Promise<string> {
-
+  private async _check(id: number): Promise<SwiperReply> {
+    return { data: 'TODO' };
   }
 
-  private async _info(id: number, input?: string): Promise<string> {
+  private async _info(id: number, input?: string): Promise<SwiperReply> {
     if (!input) {
-      return `Nothing was specified`;
+      return { err: `Nothing was specified` };
     }
 
     const convo = this._conversations[id];
@@ -193,8 +200,10 @@ export class Swiper {
     if (media.type === 'movie') {
       // For movies, give release and DVD release.
       const movie = media as Movie;
-      return `${movie.title}\n` +
-        `Release: ${movie.release || 'N/A'} | DVD Release: ${movie.dvd || 'N/A'}`;
+      return {
+        data: `${movie.title}\n` +
+          `Release: ${movie.release || 'N/A'} | DVD Release: ${movie.dvd || 'N/A'}`
+      };
     } else {
       // For shows, give how many seasons and episodes per season. Also give last and next air date.
       const show = media as Show;
@@ -202,15 +211,17 @@ export class Swiper {
       const leastNew = getNextToAir(show.episodes);
       const lastAired = leastOld ? getAiredStr(leastOld.airDate!) : '';
       const nextAirs = leastNew ? getAiredStr(leastNew.airDate!) : '';
-      return `${show.title}\n` +
-        `${getEpisodesPerSeasonStr(show.episodes)}\n` +
-        `${lastAired}${(lastAired && nextAirs) ? '|' : ''}${nextAirs}`;
+      return {
+        data: `${show.title}\n` +
+          `${getEpisodesPerSeasonStr(show.episodes)}\n` +
+          `${lastAired}${(lastAired && nextAirs) ? '|' : ''}${nextAirs}`
+      };
     }
   }
 
-  private async _remove(id: number, input?: string): Promise<string> {
+  private async _remove(id: number, input?: string): Promise<SwiperReply> {
     if (!input) {
-      return `Nothing was specified`;
+      return { data: `Nothing was specified` };
     }
 
     const convo = this._conversations[id];
@@ -234,11 +245,11 @@ export class Swiper {
     if (!convo.tasks) {
       const rows = await this._dbManager.searchTitles(mediaQuery.title, { type: mediaQuery.type });
       if (rows.length === 0) {
-        return `Nothing matching ${input} was found`;
+        return { data: `Nothing matching ${input} was found` };
       } else {
         // Provide the confirmation question for the first task.
         convo.tasks = rows;
-        return getConfirmRemovalString(rows[0], mediaQuery.episodes);
+        return { data: getConfirmRemovalString(rows[0], mediaQuery.episodes) };
       }
     }
 
@@ -255,22 +266,22 @@ export class Swiper {
       }
       if (!match || convo.tasks.length > 0) {
         // If the match failed or if there are still more tasks, ask about the next one.
-        return getConfirmRemovalString(convo.tasks[0], mediaQuery.episodes);
+        return { data: getConfirmRemovalString(convo.tasks[0], mediaQuery.episodes) };
       }
     }
 
     delete this._conversations[id];
-    return `Ok`;
+    return { data: `Ok` };
   }
 
-  private async _abort(id: number): Promise<string> {
+  private async _abort(id: number): Promise<SwiperReply> {
     // Remove all queued downloads.
     await this._dbManager.removeAllQueued();
 
-    return `TODO: Stop all downloads`;
+    return { data: `TODO: Stop all downloads` };
   }
 
-  private async _status(id: number): Promise<string> {
+  private async _status(id: number): Promise<SwiperReply> {
     const status = await this._dbManager.getAll();
 
     const monitoredStr = status.monitored.map(media => {
@@ -285,20 +296,24 @@ export class Swiper {
       }
     }).join('\n');
     if (!monitoredStr) {
-      return "Nothing to report";
+      return { data: "Nothing to report" };
     }
-    return (monitoredStr ? `\nMonitoring:\n${monitoredStr}\n` : '');
+    return {
+      data: (monitoredStr ? `\nMonitoring:\n${monitoredStr}\n` : '')
+    };
   }
 
-  private _help(id: number, input?: string): string {
+  private _help(id: number, input?: string): SwiperReply {
     if (!input) {
-      return `Commands:\n` +
-        `${Object.keys(commands).join(', ')}\n\n` +
-        `"help <command>" for details`;
+      return {
+        data: `Commands:\n` +
+          `${Object.keys(commands).join(', ')}\n\n` +
+          `"help <command>" for details`
+      };
     } else {
       const cmdInfo = commands[input];
       if (!cmdInfo) {
-        return `${input} isn't a command`;
+        return { data: `${input} isn't a command` };
       } else {
         const argStr = cmdInfo.arg ? ` ${cmdInfo.arg}` : ``;
         const contentDesc = cmdInfo.arg !== '<content>' ? '' : `Where <content> is of the form:\n` +
@@ -307,14 +322,14 @@ export class Swiper {
           `    game of thrones\n` +
           `    tv game of thrones 2011 s02\n` +
           `    game of thrones s01-03, s04e05 & e08\n`;
-        return `${input}${argStr}:  ${cmdInfo.desc}\n\n${contentDesc}`;
+        return { data: `${input}${argStr}:  ${cmdInfo.desc}\n\n${contentDesc}` };
       }
     }
   }
 
-  private _cancel(id: number): string {
+  private _cancel(id: number): SwiperReply {
     delete this._conversations[id];
-    return `Ok`;
+    return { data: `Ok` };
   }
 
   private async _queueDownload(id: number, media: Media): Promise<string|void> {
@@ -322,7 +337,7 @@ export class Swiper {
     await this._dbManager.add(media, {queue: true, monitor: false, addedBy: id});
   }
 
-  private _addMediaQueryToConversation(id: number, input: string): string|void {
+  private _addMediaQueryToConversation(id: number, input: string): SwiperReply|void {
     const titleFinder = /^([\w \'\"\-\:\,\&]+?)(?: (?:s(?:eason)? ?\d{1,2}.*)|(?:\d{4}\b.*))?$/gi;
     const yearFinder = /\b(\d{4})\b/gi;
 
@@ -336,7 +351,7 @@ export class Swiper {
     }
     const [title] = execCapture(input, titleFinder);
     if (!title) {
-      return `Can't parse download input`;
+      return { err: `Can't parse download input` };
     }
     const rem = removePrefix(input, title);
     const [year] = execCapture(rem, yearFinder);
@@ -355,7 +370,7 @@ export class Swiper {
     id: number,
     input: string,
     episodes?: EpisodesDescriptor
-  ): Promise<string|void> {
+  ): Promise<SwiperReply|void> {
     const convo = this._conversations[id];
 
     // If mediaQuery has not been found yet, find it.
@@ -377,7 +392,7 @@ export class Swiper {
     if (!convo.media) {
       const resp = await identifyMedia(mediaQuery);
       if (!resp.data) {
-        return resp.err!;
+        return { err: resp.err! };
       }
       convo.media = resp.data;
     }
@@ -386,8 +401,10 @@ export class Swiper {
     if (convo.media.type === 'tv' && !mediaQuery.episodes) {
       const show = convo.media as Show;
       if (!input) {
-        return `Specify episodes:\n` +
-          `ex: new | all | S1 | S03E02-06 | S02-04 | S04E06 & 7, S05E02`;
+        return {
+          data: `Specify episodes:\n` +
+            `ex: new | all | S1 | S03E02-06 | S02-04 | S04E06 & 7, S05E02`
+        };
       } else {
         // Need to parse season episode string.
         const episodesIdentifier = getEpisodesIdentifier(input);
@@ -396,7 +413,7 @@ export class Swiper {
         show.episodes = filtered;
       }
     }
-  };
+  }
 
   // Updates and returns the updated conversation.
   private _updateConversation(id: number, update?: ConversationData): Conversation {
@@ -477,4 +494,4 @@ function getEpisodesIdentifier(input: string): SeasonEpisodes|'new'|'all' {
     }
   }
   return seasons;
-};
+}

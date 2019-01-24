@@ -3,18 +3,22 @@ interface Response {
   value: string;
 }
 
+const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+  'September', 'October', 'November', 'December'];
+
 export function getMorning(): Date {
-  let morn = new Date();
+  const morn = new Date();
   morn.setHours(0);
   morn.setMinutes(0);
   morn.setSeconds(0, 0);
   return morn;
-};
+}
 
 export function splitFirst(input: string): [string, string] {
-  let broken = input.split(' ');
+  const broken = input.split(' ');
   return [broken[0], broken.slice(1).join(' ')];
-};
+}
 
 export function removePrefix(str: string, prefix: string): string {
   const l = prefix.length;
@@ -23,17 +27,17 @@ export function removePrefix(str: string, prefix: string): string {
   } else {
     throw new Error('removePrefix failed: given prefix string is not prefix');
   }
-};
+}
 
 export function execCapture(str: string, regex: RegExp) {
-  let match = regex.exec(str);
+  const match = regex.exec(str);
   if (!match) {
     // See: https://stackoverflow.com/a/16046903/9737244
     const numCaptures = (new RegExp(regex.source + '|')).exec('').length - 1;
     return new Array(numCaptures);
   }
   return match.slice(1);
-};
+}
 
 export function matchResp(input: string, responses: Response[]): string|null {
   let matched = null;
@@ -47,7 +51,7 @@ export function matchResp(input: string, responses: Response[]): string|null {
     }
   });
   return matched;
-};
+}
 
 export function matchYesNo(input: string): string {
   return matchResp(input, [{
@@ -57,7 +61,7 @@ export function matchYesNo(input: string): string {
     value: 'no',
     regex: /\b(n)|(no)\b/gi
   }]);
-};
+}
 
 // Parses date strings of the form "02 Nov 2018".
 // Note that null dates in OMDB are represented by "N/A" and should give null.
@@ -67,27 +71,24 @@ export function getDateFromStr(dateStr: string): Date|null {
   } else {
     return new Date(dateStr);
   }
-};
+}
 
 export function padZeros(int: number): string {
   return ('00' + int).slice(-2);
-};
+}
 
 export function getAiredStr(date: Date): string {
   if (!date) {
     return null;
   }
-  let oneDay = 86400000;
-  let twoDays = 2 * oneDay;
-  let oneWeek = 7 * oneDay;
-  let sixMonths = 182 * oneDay;
-  let weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  let months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
-    'September', 'October', 'November', 'December'];
-  let weekday = weekdays[date.getDay()];
-  let month = months[date.getMonth()];
-  let calDay = date.getDate();
-  let diff = date.getTime() - getMorning().getTime();
+  const oneDay = 86400000;
+  const twoDays = 2 * oneDay;
+  const oneWeek = 7 * oneDay;
+  const sixMonths = 182 * oneDay;
+  const weekday = weekdays[date.getDay()];
+  const month = months[date.getMonth()];
+  const calDay = date.getDate();
+  const diff = date.getTime() - getMorning().getTime();
   if (diff < -sixMonths) {
     return `Last aired ${month} ${calDay}`;
   } else if (diff < -oneWeek) {
@@ -112,4 +113,4 @@ export function getAiredStr(date: Date): string {
     // More than 6 months ahead
     return `Airs ${month} ${calDay}`;
   }
-};
+}

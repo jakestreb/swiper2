@@ -1,5 +1,5 @@
-const remove = require('lodash/remove');
-const values = require('lodash/values');
+import remove = require('lodash/remove');
+import values = require('lodash/values');
 import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 
@@ -60,7 +60,7 @@ export class DBManager {
       airDate INTEGER,
       show INTEGER
     )`);
-  };
+  }
 
   // Get all Movies and Shows
   public async getAll(): Promise<Status> {
@@ -72,7 +72,7 @@ export class DBManager {
       queued: [...createMovies(queuedMovies), ...createShows(queuedShows)],
       monitored: [...createMovies(movies), ...createShows(showEpisodes)]
     };
-  };
+  }
 
   public async add(media: Media, options: AddOptions): Promise<void> {
     if (media.type === 'movie') {
@@ -82,7 +82,7 @@ export class DBManager {
     } else {
       throw new Error(`Cannot add unknown item to the database`);
     }
-  };
+  }
 
   // Given a row representing either a row in the Movies or Shows table, delete either the
   // movie or episodes of the given show. If all episodes of the show are removed, the show
@@ -95,7 +95,7 @@ export class DBManager {
     } else {
       throw new Error(`Cannot remove item ${row.title} from the database`);
     }
-  };
+  }
 
   public async removeAllQueued(): Promise<void> {
     await this._run(`DELETE FROM Movies WHERE isQueued=1`);
@@ -106,7 +106,7 @@ export class DBManager {
   // Searches movie and tv tables for titles that match the given input. If the type is
   // specified in the options, only that table is searched. Returns all matches as ResultRows.
   public async searchTitles(input: string, options: SearchOptions): Promise<ResultRow[]> {
-    let rows: ResultRow[] = [];
+    const rows: ResultRow[] = [];
     if (options.type !== 'tv') {
       // Search Movies
       rows.push(...await this._all(`SELECT * FROM Movies WHERE title LIKE ?`, [`%${input}%`]));
@@ -121,7 +121,7 @@ export class DBManager {
   private async _addMovie(movie: Movie, options: AddOptions): Promise<void> {
     await this._db.run(`INSERT INTO Movies (title, year, isMonitored, isQueued) VALUES (?, ?, ?, ?, ?)`,
       [options.addedBy, movie.title, movie.year, options.monitor, options.queue]);
-  };
+  }
 
   private async _addShow(show: Show, options: AddOptions): Promise<void> {
     const showId = await this._run(
@@ -132,7 +132,7 @@ export class DBManager {
         `VALUES (?, ?, ?, ?)`,
         [ep.seasonNum, ep.episodeNum, ep.airDate ? ep.airDate.getTime() : 0, showId]);
     }
-  };
+  }
 
   private async _removeMovie(id: number): Promise<void> {
     await this._run(`DELETE FROM Movies WHERE id=?`, [id]);
@@ -145,16 +145,18 @@ export class DBManager {
       await this._run(`DELETE FROM Episodes WHERE airDate>?`, [getMorning().getTime()]);
     } else {
       // Remove all episodes in the SeasonEpisode object.
-      for (const seasonNumStr in episodes) {
+      const removals: Array<Promise<any>> = [];
+      Object.keys(episodes).forEach(seasonNumStr => {
         const seasonNum = parseInt(seasonNumStr, 10);
         const episodeNums = episodes[seasonNum];
         if (episodeNums === 'all') {
-          await this._run(`DELETE FROM Episodes WHERE seasonNum=?`, [seasonNum]);
+          removals.push(this._run(`DELETE FROM Episodes WHERE seasonNum=?`, [seasonNum]));
         } else {
-          await this._run(`DELETE FROM Episodes WHERE seasonNum=? AND episodeNum IN ` +
-            `(${episodeNums.map(e => '?')})`, [seasonNum, ...episodeNums]);
+          removals.push(this._run(`DELETE FROM Episodes WHERE seasonNum=? AND episodeNum IN ` +
+            `(${episodeNums.map(e => '?')})`, [seasonNum, ...episodeNums]));
         }
-      }
+      });
+      await Promise.all(removals);
     }
     // Remove show if all episodes were removed.
     await this._run(`DELETE FROM Shows WHERE id NOT IN (SELECT show FROM Episodes)`);

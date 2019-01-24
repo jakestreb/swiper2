@@ -1,10 +1,13 @@
 import * as dotenv from 'dotenv';
 import * as express from 'express';
 import * as readline from 'readline';
+import * as term from 'terminal-kit';
 
-import {Swiper} from './lib/Swiper';
+import {Swiper, SwiperReply} from './lib/Swiper';
 
 dotenv.config();
+
+type CommType = 'cli'|'telegram';
 
 const app = express();
 const gatewayUrl = 'https://limitless-island-56260.herokuapp.com';
@@ -13,18 +16,21 @@ const maxLength = 640;
 
 const commTypes: {[id: number]: string} = {};
 
-function acceptMsg(commType: string, id: number, msg?: string) {
+function acceptMsg(commType: CommType, id: number, msg?: string) {
   if (!commTypes[id]) {
     commTypes[id] = commType;
   }
   swiper.handleMsg(id, msg);
 }
 
-function sendMsgToClient(id: number, msg: string) {
+function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
   const commType = commTypes[id];
   if (commType === 'telegram') {
     // TODO
+  } else if (commType === 'cli') {
+    term(msg.data);
   }
+  return;
 }
 
 const swiper = new Swiper(sendMsgToClient);

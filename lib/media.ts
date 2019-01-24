@@ -4,23 +4,23 @@ import {getMorning, padZeros} from './util';
 export type Media = Movie | Show;
 
 export interface Movie {
-  type: 'movie',
-  title: string,
-  year: string,
-  release: Date|null,
-  dvd: Date|null
+  type: 'movie';
+  title: string;
+  year: string;
+  release: Date|null;
+  dvd: Date|null;
 }
 
 export interface Show {
-  type: 'tv',
-  title: string,
-  episodes: Episode[]
+  type: 'tv';
+  title: string;
+  episodes: Episode[];
 }
 
 export interface Episode {
-  seasonNum: number,
-  episodeNum: number,
-  airDate: Date|null
+  seasonNum: number;
+  episodeNum: number;
+  airDate: Date|null;
 }
 
 export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor): Episode[] {
@@ -37,13 +37,13 @@ export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor):
       return season && (season === 'all' || season.includes(ep.episodeNum));
     });
   }
-};
+}
 
 export function sortEpisodes(episodes: Episode[]): Episode[] {
   episodes.sort((a, b) => a.seasonNum < b.seasonNum ||
     (a.seasonNum === b.seasonNum && a.episodeNum < b.episodeNum) ? -1 : 1);
   return episodes;
-};
+}
 
 // Returns a string of the form: "S01 - S04: 6 episodes, S05: 8 episodes"
 export function getEpisodesPerSeasonStr(episodes: Episode[]): string {
@@ -67,17 +67,17 @@ export function getEpisodesPerSeasonStr(episodes: Episode[]): string {
   }
   // Remove ending comma.
   return str.slice(0, str.length - 2);
-};
+}
 
 export function getNextToAir(episodes: Episode[]): Episode|null {
   const morning = getMorning();
   return episodes.find(ep => ep.airDate !== null && (ep.airDate >= morning)) || null;
-};
+}
 
 export function getLastAired(episodes: Episode[]): Episode|null {
   const morning = getMorning();
   return episodes.slice().reverse().find(ep => ep.airDate !== null && (ep.airDate < morning)) || null;
-};
+}
 
 export function getEpisodeStr(episodes: Episode[]): string {
   let str = "";
@@ -108,4 +108,4 @@ export function getEpisodeStr(episodes: Episode[]): string {
     lastEpisode = ei;
   });
   return str;
-};
+}
