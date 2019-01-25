@@ -4,7 +4,7 @@ import {DBManager, ResultRow} from './DBManager';
 import {filterEpisodes, getEpisodesPerSeasonStr, getEpisodeStr, getLastAired, getNextToAir} from './media';
 import {Media, Movie, Show} from './media';
 import {identifyMedia} from './request';
-import {execCapture, getAiredStr, getMorning, matchYesNo, removePrefix, splitFirst} from './util';
+import {execCapture, getAiredStr, getMorning, matchYesNo, padZeros, removePrefix, splitFirst} from './util';
 
 // TODO: Test without search/download/monitoring.
 // TODO: Add search/download.
@@ -229,6 +229,7 @@ export class Swiper {
     // If mediaQuery has not been found yet, find it.
     if (!convo.mediaQuery) {
       const resp = this._addMediaQueryToConversation(id, input);
+      input = '';
       if (resp) {
         return resp;
       }
@@ -292,7 +293,7 @@ export class Swiper {
       } else {
         const next = getNextToAir(media.episodes);
         return ` - ${media.title} ${getEpisodeStr(media.episodes)}` +
-          next ? ` (${getAiredStr(next!.airDate!)})` : '';
+          ((next && next.airDate) ? ` (${getAiredStr(next!.airDate!)})` : '');
       }
     }).join('\n');
     if (!monitoredStr) {
@@ -307,8 +308,8 @@ export class Swiper {
     if (!input) {
       return {
         data: `Commands:\n` +
-          `${Object.keys(commands).join(', ')}\n\n` +
-          `"help <command>" for details`
+          `${Object.keys(commands).join(', ')}\n` +
+          `"help COMMAND" for details`
       };
     } else {
       const cmdInfo = commands[input];
@@ -316,13 +317,13 @@ export class Swiper {
         return { data: `${input} isn't a command` };
       } else {
         const argStr = cmdInfo.arg ? ` ${cmdInfo.arg}` : ``;
-        const contentDesc = cmdInfo.arg !== '<content>' ? '' : `Where <content> is of the form:\n` +
-          `    (movie/tv) <title> (<year>) (season <num>) (episode <num>)\n` +
+        const contentDesc = cmdInfo.arg !== 'CONTENT' ? '' : `Where CONTENT is of the form:\n` +
+          `    [movie/tv] TITLE [YEAR] [EPISODES]\n` +
           `Ex:\n` +
           `    game of thrones\n` +
           `    tv game of thrones 2011 s02\n` +
-          `    game of thrones s01-03, s04e05 & e08\n`;
-        return { data: `${input}${argStr}:  ${cmdInfo.desc}\n\n${contentDesc}` };
+          `    game of thrones s01-03, s04e05 & e08`;
+        return { data: `${input}${argStr}: ${cmdInfo.desc}\n${contentDesc}` };
       }
     }
   }
@@ -375,6 +376,8 @@ export class Swiper {
     // If mediaQuery has not been found yet, find it.
     if (!convo.mediaQuery) {
       const resp = this._addMediaQueryToConversation(id, input);
+      // Clear the input since it has already been used.
+      input = '';
       if (resp) {
         return resp;
       }
@@ -398,18 +401,17 @@ export class Swiper {
 
     // If the media is a tv show and the episodes weren't specified, ask about them.
     if (convo.media.type === 'tv' && !mediaQuery.episodes) {
-      const show = convo.media as Show;
-      if (!input) {
+      const episodesIdentifier = getEpisodesIdentifier(input);
+      if (episodesIdentifier) {
+        // Need to parse season episode string.
+        mediaQuery.episodes = episodesIdentifier;
+        const show = convo.media as Show;
+        show.episodes = filterEpisodes(show.episodes, episodesIdentifier);
+      } else {
         return {
           data: `Specify episodes:\n` +
             `ex: new | all | S1 | S03E02-06 | S02-04 | S04E06 & 7, S05E02`
         };
-      } else {
-        // Need to parse season episode string.
-        const episodesIdentifier = getEpisodesIdentifier(input);
-        mediaQuery.episodes = episodesIdentifier;
-        const filtered = filterEpisodes(show.episodes, episodesIdentifier);
-        show.episodes = filtered;
       }
     }
   }
@@ -425,13 +427,13 @@ export class Swiper {
 
 // Given either a Movie or Show ResultRow and an episodes identifier (which is only relevant
 // to Shows), create a string to confirm removal with the user.
-function getConfirmRemovalString(row: ResultRow, episodes: MediaQuery["episodes"]): string {
+function getConfirmRemovalString(row: ResultRow, episodes: SeasonEpisodes|"new"|"all"): string {
   let preStr = '';
   let postStr = '';
   if (row.type === 'tv' && (episodes === 'all' || episodes === 'new')) {
     preStr = `${episodes} episodes of `;
   } else if (row.type === 'tv') {
-    postStr = ` ${episodes}`;
+    postStr = ` ${getSeasonEpisodesStr(episodes as SeasonEpisodes)}`;
   }
   const mediaStr = `${preStr}${row.title}${postStr}`;
   if (row.isQueued) {
@@ -446,11 +448,14 @@ function getConfirmRemovalString(row: ResultRow, episodes: MediaQuery["episodes"
 // Takes a human-entered input of seasons and episodes of the following form:
 //       'S01E01-04 & E06-E08, S03-S05, S06E02&6, S07 & S08'
 // Returns a SeasonEpisodes object.
-function getEpisodesIdentifier(input: string): SeasonEpisodes|'new'|'all' {
+function getEpisodesIdentifier(input: string): SeasonEpisodes|'new'|'all'|null {
+  const numberStr = input.replace('season', 's').replace('episode', 'e');
   if (input === 'all' || input === 'new') {
     return input;
+  } else if (!input || input.match(/[^es\d\s-,&]/gi)) {
+    // If there's no input or the input has unexpected characters, return null.
+    return null;
   }
-  const numberStr = input.replace('season', 's').replace('episode', 'e');
   const seasons: SeasonEpisodes = {};
   let lastChar: 's'|'e' = 's';
   let latestSeason: number = -1;
@@ -493,4 +498,75 @@ function getEpisodesIdentifier(input: string): SeasonEpisodes|'new'|'all' {
     }
   }
   return seasons;
+}
+
+// Parses a SeasonEpisodes object back into a human readable string.
+export function getSeasonEpisodesStr(episodes: SeasonEpisodes): string {
+  console.warn('getSeasonEpisodesStr', episodes);
+
+  const order = Object.keys(episodes).map(seasonStr => parseInt(seasonStr, 10)).sort((a, b) => a - b);
+  if (order.length === 0) {
+    throw new Error(`Invalid SeasonEpisodes object: ${JSON.stringify(episodes)}`);
+  }
+
+  let allStreakStart: number = order[0];
+  let str = '';
+
+  order.forEach((s: number, i: number) => {
+    const epArr = episodes[s];
+    const seasonEpStr = epArr === 'all' ? 'all' : getEpisodesStr(epArr);
+    console.warn('seasonEpStr', seasonEpStr);
+
+    const isStreakKiller = i > 0 && ((s - order[i - 1]) > 1 || seasonEpStr !== 'all');
+    const isLastSeason = i === order.length - 1;
+
+    if (isStreakKiller) {
+      // Update the string with the streak.
+      str += getStreakStr('S', allStreakStart, order[i - 1]) + ', ';
+    }
+
+    if (isStreakKiller || allStreakStart === -1) {
+      allStreakStart = seasonEpStr === 'all' ? s : -1;
+    }
+
+    if (seasonEpStr !== 'all') {
+      str += `S${padZeros(s)}${seasonEpStr}, `;
+      allStreakStart = -1;
+    } else if (isLastSeason) {
+      str += getStreakStr('S', allStreakStart, s) + ', ';
+    }
+  });
+  // !!!!!!!!!!!!!!!!!!! remove game s04-6, s3e9 & 11, s8
+
+
+  // Remove ending comma.
+  return str.slice(0, str.length - 2);
+}
+
+// Helper for getSeasonEpisodesStr to handle the episodes in a single season.
+function getEpisodesStr(episodes: number[]): string {
+  if (episodes.length === 0) {
+    throw new Error(`Invalid episodes array: ${episodes}`);
+  }
+  let streakStart: number = episodes[0];
+  let str = '';
+  episodes.forEach((e: number, i: number) => {
+    console.warn('EP streakStart', streakStart);
+    console.warn('EP e', e);
+    // If the streak is ending
+    if (i > 0 && (e - episodes[i - 1] > 1)) {
+      str += getStreakStr('E', streakStart, episodes[i - 1]) + ' & ';
+      streakStart = e;
+    }
+    if (i === episodes.length - 1) {
+      str += getStreakStr('E', streakStart, e);
+    }
+  });
+  return str.slice(0, str.length);
+}
+
+// Helper for getEisodesStr and getSeasonEpisodesStr to give a streak string.
+function getStreakStr(prefix: 'S'|'E', start: number, end: number): string {
+  return start < 0 ? '' : (start < end ? `${prefix}${padZeros(start)} - ` : '') +
+    prefix + padZeros(end);
 }

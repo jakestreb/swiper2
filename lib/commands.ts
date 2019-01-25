@@ -6,26 +6,26 @@ interface CommandDescriptor {
 
 export const commands: {[command: string]: CommandDescriptor} = {
   download: {
-    arg: 'content',
+    arg: 'CONTENT',
     desc: "Downloads the best torrent for a show or movie."
   },
   search: {
-    arg: 'content',
+    arg: 'CONTENT',
     desc: "Returns a list of torrents for a show or movie."
   },
   monitor: {
-    arg: 'content',
+    arg: 'CONTENT',
     desc: "Adds an item to check on intermittently until it's found."
   },
   check: {
     desc: "Perform search for monitored items now."
   },
   info: {
-    arg: 'content',
+    arg: 'CONTENT',
     desc: "Returns information about a show or movie."
   },
   remove: {
-    arg: 'content',
+    arg: 'CONTENT',
     desc: "Removes the given item from monitored, queued, or downloading."
   },
   abort: {
@@ -38,7 +38,7 @@ export const commands: {[command: string]: CommandDescriptor} = {
     desc: 'Shows items being monitored, queued, and downloaded.'
   },
   help: {
-    arg: 'command (optional)',
+    arg: '[COMMAND]',
     desc: "Returns the list of commands, or describes the given command."
   }
 };

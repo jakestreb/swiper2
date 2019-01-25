@@ -53,10 +53,10 @@ export function getEpisodesPerSeasonStr(episodes: Episode[]): string {
   const episodeCount: {[seasonNum: string]: number} = {};
   episodes.forEach(ep => { episodeCount[ep.seasonNum] += 1; });
   const order = Object.keys(episodeCount).map(seasonStr => parseInt(seasonStr, 10)).sort((a, b) => a - b);
-  let streakStart: number = 0;
+  let streakStart: number = order[0];
   let str = '';
-  for (const s of order) {
-    if (s <= 1 || order[s] !== order[s - 1]) {
+  order.forEach((s: number, i: number) => {
+    if (i > 0 && episodeCount[s] !== episodeCount[s - 1]) {
       if (streakStart < s - 1) {
         str += `S${padZeros(streakStart)} - S${padZeros(s - 1)}: ${episodeCount[s - 1]} episodes, `;
       } else {
@@ -64,7 +64,7 @@ export function getEpisodesPerSeasonStr(episodes: Episode[]): string {
       }
       streakStart = s;
     }
-  }
+  });
   // Remove ending comma.
   return str.slice(0, str.length - 2);
 }

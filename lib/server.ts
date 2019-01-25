@@ -20,7 +20,7 @@ function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
   if (commType === 'telegram') {
     // TODO
   } else if (commType === 'cli') {
-    msg.data ? term(msg.data) : term.bgRed(msg.err);
+    msg.data ? term(msg.data) : term.red(msg.err);
     term(`\n> `);
   }
   try {
@@ -46,7 +46,8 @@ function start(swiper: Swiper): void {
   terminal.on('line', (line: string) => {
     acceptMsgFromClient('cli', CLI_ID, line.trim())
     .catch(err => {
-      term.bgRed(`Error handling client request "${line.trim()}": ${err}`);
+      term.bgRed(`Error handling console request "${line.trim()}": ${err}`);
+      term('\n');
       sendMsgToClient(CLI_ID, {err: `Something went wrong`});
     });
   });
@@ -68,7 +69,8 @@ function start(swiper: Swiper): void {
   app.post("/telegram", (req, res) => {
     acceptMsgFromClient('telegram', req.body.id, req.body.message)
     .catch(err => {
-      term.bgRed(`Error handling client request "${req.body.message}": ${err}`);
+      term.bgRed(`Error handling telegram request "${req.body.message}": ${err}`);
+      term('\n');
       sendMsgToClient(req.body.id, {err: `Something went wrong`});
     });
     res.send('ok');
