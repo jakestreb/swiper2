@@ -5,6 +5,7 @@ import * as sqlite3 from 'sqlite3';
 
 import {Media, Movie, Show, sortEpisodes} from './media';
 import {EpisodesDescriptor} from './Swiper';
+import {getMorning} from './util';
 
 interface AddOptions {
   monitor: boolean;
@@ -37,16 +38,18 @@ export class DBManager {
     await this._run(`CREATE TABLE IF NOT EXISTS Movies (
       id INTEGER PRIMARY KEY,
       addedBy INTEGER,
+      type TEXT,
       title TEXT,
       year TEXT,
-      release: INTEGER,
-      dvd: INTEGER,
+      release INTEGER,
+      dvd INTEGER,
       isMonitored INTEGER,
       isQueued INTEGER
     )`);
     await this._run(`CREATE TABLE IF NOT EXISTS Shows (
       id INTEGER PRIMARY KEY,
       addedBy INTEGER,
+      type TEXT,
       title TEXT,
       isMonitored INTEGER,
       isQueued INTEGER
@@ -119,14 +122,15 @@ export class DBManager {
   }
 
   private async _addMovie(movie: Movie, options: AddOptions): Promise<void> {
-    await this._db.run(`INSERT INTO Movies (title, year, isMonitored, isQueued) VALUES (?, ?, ?, ?, ?)`,
-      [options.addedBy, movie.title, movie.year, options.monitor, options.queue]);
+    await this._db.run(`INSERT INTO Movies (addedBy, type, title, year, isMonitored, isQueued) `
+      + `VALUES (?, ?, ?, ?, ?, ?)`,
+      [options.addedBy, movie.type, movie.title, movie.year, options.monitor, options.queue]);
   }
 
   private async _addShow(show: Show, options: AddOptions): Promise<void> {
     const showId = await this._run(
-      `INSERT INTO Shows (title, isMonitored, isQueued) VALUES (?, ?, ?, ?, ?)`,
-      [options.addedBy, show.title, options.monitor, options.queue]);
+      `INSERT INTO Shows (addedBy, type, title, isMonitored, isQueued) VALUES (?, ?, ?, ?, ?)`,
+      [options.addedBy, show.type, show.title, options.monitor, options.queue]);
     for (const ep of show.episodes) {
       await this._run(`INSERT INTO Episodes (seasonNum, episodeNum, airDate, show) ` +
         `VALUES (?, ?, ?, ?)`,

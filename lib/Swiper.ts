@@ -51,23 +51,20 @@ type Conversation = ConversationData & { id: number; };
 
 export class Swiper {
 
-  private _dbManager: DBManager;
-
   private _conversations: {[id: number]: Conversation} = {};
 
-  private _downloading = [];
-
-  // Monitored episodes that are currently or will soon actively be searched for.
-  private _upcoming = [];
-
+  // Should NOT be called publicly. User Swiper.create for building a Swiper instance.
+  // Note that _dbManager should be initialized when passed in.
   constructor(
-    private _sendMsg: (id: number, msg: SwiperReply) => Promise<void>
-  ) {
-    this._dbManager = new DBManager();
-    this._dbManager.initDB()
-    .catch(err => {
-      throw new Error(`Error initializing database: ${err}`);
-    });
+    private _sendMsg: (id: number, msg: SwiperReply) => Promise<void>,
+    private _dbManager: DBManager
+  ) {}
+
+  // Should be called to build a Swiper instance.
+  public static async create(sendMsg: (id: number, msg: SwiperReply) => Promise<void>): Promise<Swiper> {
+    const dbManager = new DBManager();
+    await dbManager.initDB();
+    return new Swiper(sendMsg, dbManager);
   }
 
   public async handleMsg(id: number, msg?: string): Promise<void> {
@@ -84,18 +81,13 @@ export class Swiper {
       this._conversations[id] = {id, commandFn};
       reply = await commandFn(input);
     } else if (existingCommandFn) {
-      reply = await existingCommandFn(msg);
+      reply = await existingCommandFn(msg.toLowerCase());
     } else {
       reply = { data: `Use 'help' to see what I can do` };
     }
 
     // Send a response to the client.
-    try {
-      await this._sendMsg(id, reply);
-    } catch (err) {
-      // TODO: Handle send error
-      console.error('Client reply error'); // tslint:disable-line:no-console
-    }
+    await this._sendMsg(id, reply);
   }
 
   private _getCommandFn(id: number, command: string): CommandFn|null {
@@ -141,6 +133,9 @@ export class Swiper {
 
     // Queue the download.
     await this._queueDownload(id, convo.media!);
+
+    delete this._conversations[id];
+    return { data: 'TODO' };
   }
 
   private async _search(id: number, input?: string): Promise<SwiperReply> {
@@ -155,6 +150,7 @@ export class Swiper {
     }
 
     // Perform the search.
+    delete this._conversations[id];
     return { data: 'TODO: Perform the search' };
   }
 
@@ -176,7 +172,7 @@ export class Swiper {
     await this._dbManager.add(media, {queue: false, monitor: true, addedBy: id});
 
     delete this._conversations[id];
-    return { data: `Added ${media.toString()} to monitored` };
+    return { data: `Added ${media.title} to monitored` };
   }
 
   private async _check(id: number): Promise<SwiperReply> {
@@ -197,6 +193,10 @@ export class Swiper {
     }
 
     const media = convo.media as Media;
+
+    // Once media is used, clear the conversation state.
+    delete this._conversations[id];
+
     if (media.type === 'movie') {
       // For movies, give release and DVD release.
       const movie = media as Movie;
@@ -287,11 +287,11 @@ export class Swiper {
     const monitoredStr = status.monitored.map(media => {
       if (media.type === 'movie') {
         const dvd = media.dvd && (media.dvd > getMorning());
-        const dvdStr = dvd ? ` (Digital: ${media.dvd!.toDateString()})` : ` ${media.year}`;
-        return `- ${media.title}${dvdStr}`;
+        const dvdStr = dvd ? ` (Digital: ${media.dvd!.toDateString()})` : ` (${media.year})`;
+        return ` - ${media.title}${dvdStr}`;
       } else {
         const next = getNextToAir(media.episodes);
-        return `- ${media.title} ${getEpisodeStr(media.episodes)}` +
+        return ` - ${media.title} ${getEpisodeStr(media.episodes)}` +
           next ? ` (${getAiredStr(next!.airDate!)})` : '';
       }
     }).join('\n');
@@ -299,7 +299,7 @@ export class Swiper {
       return { data: "Nothing to report" };
     }
     return {
-      data: (monitoredStr ? `\nMonitoring:\n${monitoredStr}\n` : '')
+      data: (monitoredStr ? `Monitoring:\n${monitoredStr}` : '')
     };
   }
 
@@ -328,7 +328,6 @@ export class Swiper {
   }
 
   private _cancel(id: number): SwiperReply {
-    delete this._conversations[id];
     return { data: `Ok` };
   }
 

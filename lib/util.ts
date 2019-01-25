@@ -33,14 +33,17 @@ export function execCapture(str: string, regex: RegExp) {
   const match = regex.exec(str);
   if (!match) {
     // See: https://stackoverflow.com/a/16046903/9737244
-    const numCaptures = (new RegExp(regex.source + '|')).exec('').length - 1;
-    return new Array(numCaptures);
+    const captureMatches = new RegExp(regex.source + '|').exec('');
+    if (!captureMatches) {
+      throw new Error(`Error in execCapture: no capture groups in regex`);
+    }
+    return new Array(captureMatches.length - 1);
   }
   return match.slice(1);
 }
 
 export function matchResp(input: string, responses: Response[]): string|null {
-  let matched = null;
+  let matched: string|null = null;
   responses.forEach(resp => {
     if (input.match(resp.regex)) {
       if (!matched) {
@@ -53,7 +56,7 @@ export function matchResp(input: string, responses: Response[]): string|null {
   return matched;
 }
 
-export function matchYesNo(input: string): string {
+export function matchYesNo(input: string): string|null {
   return matchResp(input, [{
     value: 'yes',
     regex: /\b(y)|(yes)\b/gi
@@ -78,9 +81,6 @@ export function padZeros(int: number): string {
 }
 
 export function getAiredStr(date: Date): string {
-  if (!date) {
-    return null;
-  }
   const oneDay = 86400000;
   const twoDays = 2 * oneDay;
   const oneWeek = 7 * oneDay;
@@ -113,4 +113,11 @@ export function getAiredStr(date: Date): string {
     // More than 6 months ahead
     return `Airs ${month} ${calDay}`;
   }
+}
+
+function _getTimeString(date: Date): string {
+  const hours = date.getHours();
+  const minutesStr = (date.getMinutes() + '0').slice(0, 2);
+  const ampm = hours < 12 ? 'am' : 'pm';
+  return `${hours % 12 || 12}:${minutesStr}${ampm}`;
 }

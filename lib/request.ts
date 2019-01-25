@@ -1,3 +1,4 @@
+import {get} from 'http';
 import * as TVDB from 'node-tvdb';
 
 import {Media, sortEpisodes} from './media';
@@ -42,14 +43,13 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
   // TODO: Define return type.
   let omdbResult: OMDB;
   let tvdbResult: TVDB;
+  const title = info.title.replace(/\&/g, '\\&');
+  const year = info.year ? `&y=${info.year}` : ``;
+  const type = info.type ? `&type=${info.type}` : ``;
+  const url = `http://www.omdbapi.com/?apikey=${process.env.OMDB_ID}&t=${title}` + year + type;
   try {
     // Escape all ampersands in the title for searching via web API
-    const title = info.title.replace(/\&/g, '\\&');
-    const year = info.year ? `&y=${info.year}` : ``;
-    const type = info.type ? `&type=${info.type}` : ``;
-    const resp = await fetch(`http://www.omdbapi.com/?apikey=${process.env.OMDB_ID}` +
-      `&t=${title}` + year + type);
-    omdbResult = await resp.json();
+    omdbResult = await getJSONResponse(url) as OMDB;
   } catch (err) {
     return { err: `Can't access the Open Movie Database` };
   }
@@ -83,7 +83,7 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
       data: {
         type: 'tv',
         title: omdbResult.Title,
-        episodes: sortEpisodes(episodes);
+        episodes: sortEpisodes(episodes)
       }
     };
   }
@@ -102,4 +102,19 @@ async function _searchTVDB(imdbId: string, isRetryAttempt: boolean = false): Pro
     tvdb = new TVDB(process.env.TVDB_ID);
     return _searchTVDB(imdbId, true);
   }
+}
+
+async function getJSONResponse(url: string): Promise<{[key: string]: any}> {
+  return new Promise((resolve, reject) => {
+    get(url, res => {
+      res.setEncoding("utf8");
+      let body = "";
+      res.on("data", data => { body += data; });
+      res.on("end", () => {
+        resolve(JSON.parse(body));
+      });
+    }).on('error', (err) => {
+      reject(err);
+    });
+  });
 }
