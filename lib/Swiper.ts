@@ -502,8 +502,6 @@ function getEpisodesIdentifier(input: string): SeasonEpisodes|'new'|'all'|null {
 
 // Parses a SeasonEpisodes object back into a human readable string.
 export function getSeasonEpisodesStr(episodes: SeasonEpisodes): string {
-  console.warn('getSeasonEpisodesStr', episodes);
-
   const order = Object.keys(episodes).map(seasonStr => parseInt(seasonStr, 10)).sort((a, b) => a - b);
   if (order.length === 0) {
     throw new Error(`Invalid SeasonEpisodes object: ${JSON.stringify(episodes)}`);
@@ -515,33 +513,28 @@ export function getSeasonEpisodesStr(episodes: SeasonEpisodes): string {
   order.forEach((s: number, i: number) => {
     const epArr = episodes[s];
     const seasonEpStr = epArr === 'all' ? 'all' : getEpisodesStr(epArr);
-    console.warn('seasonEpStr', seasonEpStr);
-
-    const isStreakKiller = i > 0 && ((s - order[i - 1]) > 1 || seasonEpStr !== 'all');
-    const isLastSeason = i === order.length - 1;
-
-    if (isStreakKiller) {
+    // If the season is a streak killer
+    if (i > 0 && ((s - order[i - 1]) > 1 || seasonEpStr !== 'all')) {
       // Update the string with the streak.
       str += getStreakStr('S', allStreakStart, order[i - 1]) + ', ';
-    }
-
-    if (isStreakKiller || allStreakStart === -1) {
       allStreakStart = seasonEpStr === 'all' ? s : -1;
     }
-
-    if (seasonEpStr !== 'all') {
-      str += `S${padZeros(s)}${seasonEpStr}, `;
+    if (seasonEpStr === 'all') {
+      // This starts a new streak.
+      allStreakStart = allStreakStart === -1 ? s : allStreakStart;
+      // If this is the last season, end the streak.
+      str += (i === order.length - 1) ? getStreakStr('S', allStreakStart, s) + ', ' : '';
+    } else {
+      // This ends the streak and does not start a new streak.
       allStreakStart = -1;
-    } else if (isLastSeason) {
-      str += getStreakStr('S', allStreakStart, s) + ', ';
+      str += `S${padZeros(s)}${seasonEpStr}, `;
     }
   });
-  // !!!!!!!!!!!!!!!!!!! remove game s04-6, s3e9 & 11, s8
-
 
   // Remove ending comma.
   return str.slice(0, str.length - 2);
 }
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! s1-2, s03e06, s05
 
 // Helper for getSeasonEpisodesStr to handle the episodes in a single season.
 function getEpisodesStr(episodes: number[]): string {
@@ -551,8 +544,6 @@ function getEpisodesStr(episodes: number[]): string {
   let streakStart: number = episodes[0];
   let str = '';
   episodes.forEach((e: number, i: number) => {
-    console.warn('EP streakStart', streakStart);
-    console.warn('EP e', e);
     // If the streak is ending
     if (i > 0 && (e - episodes[i - 1] > 1)) {
       str += getStreakStr('E', streakStart, episodes[i - 1]) + ' & ';
