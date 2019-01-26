@@ -515,18 +515,17 @@ export function getSeasonEpisodesStr(episodes: SeasonEpisodes): string {
     const seasonEpStr = epArr === 'all' ? 'all' : getEpisodesStr(epArr);
     // If the season is a streak killer
     if (i > 0 && ((s - order[i - 1]) > 1 || seasonEpStr !== 'all')) {
-      // Update the string with the streak.
-      str += getStreakStr('S', allStreakStart, order[i - 1]) + ', ';
-      allStreakStart = seasonEpStr === 'all' ? s : -1;
+      // Update the string with the streak and clear the streak.
+      str += getStreakStr('S', allStreakStart, order[i - 1], ', ');
+      allStreakStart = -1;
     }
     if (seasonEpStr === 'all') {
-      // This starts a new streak.
+      // This starts a new streak if one isn't already started.
       allStreakStart = allStreakStart === -1 ? s : allStreakStart;
       // If this is the last season, end the streak.
-      str += (i === order.length - 1) ? getStreakStr('S', allStreakStart, s) + ', ' : '';
+      str += (i === order.length - 1) ? getStreakStr('S', allStreakStart, s, ', ') : '';
     } else {
-      // This ends the streak and does not start a new streak.
-      allStreakStart = -1;
+      // Seasons with episodes can be added right away.
       str += `S${padZeros(s)}${seasonEpStr}, `;
     }
   });
@@ -534,7 +533,6 @@ export function getSeasonEpisodesStr(episodes: SeasonEpisodes): string {
   // Remove ending comma.
   return str.slice(0, str.length - 2);
 }
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! s1-2, s03e06, s05
 
 // Helper for getSeasonEpisodesStr to handle the episodes in a single season.
 function getEpisodesStr(episodes: number[]): string {
@@ -546,7 +544,7 @@ function getEpisodesStr(episodes: number[]): string {
   episodes.forEach((e: number, i: number) => {
     // If the streak is ending
     if (i > 0 && (e - episodes[i - 1] > 1)) {
-      str += getStreakStr('E', streakStart, episodes[i - 1]) + ' & ';
+      str += getStreakStr('E', streakStart, episodes[i - 1], ' & ');
       streakStart = e;
     }
     if (i === episodes.length - 1) {
@@ -557,7 +555,7 @@ function getEpisodesStr(episodes: number[]): string {
 }
 
 // Helper for getEisodesStr and getSeasonEpisodesStr to give a streak string.
-function getStreakStr(prefix: 'S'|'E', start: number, end: number): string {
+function getStreakStr(prefix: 'S'|'E', start: number, end: number, suffix: string = ''): string {
   return start < 0 ? '' : (start < end ? `${prefix}${padZeros(start)} - ` : '') +
-    prefix + padZeros(end);
+    prefix + padZeros(end) + suffix;
 }
