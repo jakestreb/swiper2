@@ -3,7 +3,7 @@ import values = require('lodash/values');
 import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 
-import {Media, Movie, Show, sortEpisodes} from './media';
+import {Episode, Media, Movie, Show, sortEpisodes} from './media';
 import {EpisodesDescriptor} from './Swiper';
 import {getMorning} from './util';
 
@@ -65,10 +65,20 @@ export class DBManager {
     )`);
   }
 
+  public async get(media: Media): Promise<ResultRow|void> {
+    const table = media.type === 'movie' ? 'Movies' : 'Shows';
+    return this._get(`SELECT * FROM ? WHERE id=?`, [table, media.id]);
+  }
+
+  public async getEpisode(episode: Episode): Promise<ResultRow|void> {
+    return this._get(`SELECT * FROM Episodes WHERE episodeId=?`, [episode.id]);
+  }
+
   // Get all Movies and Shows
   public async getAll(): Promise<Status> {
     const movies = await this._all(`SELECT * FROM Movies`);
-    const showEpisodes = await this._all(`SELECT * FROM Shows LEFT JOIN Episodes ON Shows.id = Episodes.show`);
+    const showEpisodes = await this._all(`SELECT * FROM Shows LEFT JOIN Episodes ` +
+      `ON Shows.id = Episodes.show`);
     const queuedMovies = remove(movies, (m: ResultRow) => m.isQueued);
     const queuedShows = remove(showEpisodes, (s: ResultRow) => s.isQueued);
     return {
@@ -77,14 +87,22 @@ export class DBManager {
     };
   }
 
-  public async add(media: Media, options: AddOptions): Promise<void> {
-    if (media.type === 'movie') {
-      await this._addMovie(media as Movie, options);
-    } else if (media.type === 'tv') {
-      await this._addShow(media as Show, options);
-    } else {
-      throw new Error(`Cannot add unknown item to the database`);
-    }
+  public async getMonitored(): Promise<Media[]> {
+    return this._getMonitored();
+  }
+
+  public async getMonitoredShows(): Promise<Show[]> {
+    return this._getMonitored(true) as Promise<Show[]>;
+  }
+
+  // Adds the item if it is not already in the database and sets it to monitored.
+  public async addToMonitored(media: Media, addedBy: number): Promise<void> {
+    await this._add(media, {addedBy, monitor: true, queue: false});
+  }
+
+  // Adds the item if it is not already in the database and sets it to queued.
+  public async addToQueued(media: Media, addedBy: number): Promise<void> {
+    await this._add(media, {addedBy, monitor: false, queue: true});
   }
 
   // Given a row representing either a row in the Movies or Shows table, delete either the
@@ -121,18 +139,39 @@ export class DBManager {
     return rows;
   }
 
+  private async _getMonitored(tvOnly: boolean = false): Promise<Media[]> {
+    let movies: Movie[] = [];
+    if (!tvOnly) {
+      const movieRows = await this._all(`SELECT * FROM Movies WHERE isMonitored = 1`);
+      movies = createMovies(movieRows);
+    }
+    const showEpisodes = await this._all(`SELECT * FROM Shows LEFT JOIN Episodes ` +
+      `ON Shows.id = Episodes.show WHERE isMonitored = 1`);
+    return [...movies, ...createShows(showEpisodes)];
+  }
+
+  private async _add(media: Media, options: AddOptions): Promise<void> {
+    if (media.type === 'movie') {
+      await this._addMovie(media as Movie, options);
+    } else if (media.type === 'tv') {
+      await this._addShow(media as Show, options);
+    } else {
+      throw new Error(`Cannot add unknown item to the database`);
+    }
+  }
+
   private async _addMovie(movie: Movie, options: AddOptions): Promise<void> {
-    await this._db.run(`INSERT INTO Movies (addedBy, type, title, year, isMonitored, isQueued) `
+    await this._db.run(`INSERT OR REPLACE INTO Movies (addedBy, type, title, year, isMonitored, isQueued) `
       + `VALUES (?, ?, ?, ?, ?, ?)`,
       [options.addedBy, movie.type, movie.title, movie.year, options.monitor, options.queue]);
   }
 
   private async _addShow(show: Show, options: AddOptions): Promise<void> {
     const showId = await this._run(
-      `INSERT INTO Shows (addedBy, type, title, isMonitored, isQueued) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO Shows (addedBy, type, title, isMonitored, isQueued) VALUES (?, ?, ?, ?, ?)`,
       [options.addedBy, show.type, show.title, options.monitor, options.queue]);
     for (const ep of show.episodes) {
-      await this._run(`INSERT INTO Episodes (seasonNum, episodeNum, airDate, show) ` +
+      await this._run(`INSERT OR REPLACE INTO Episodes (seasonNum, episodeNum, airDate, show) ` +
         `VALUES (?, ?, ?, ?)`,
         [ep.seasonNum, ep.episodeNum, ep.airDate ? ep.airDate.getTime() : 0, showId]);
     }
@@ -189,16 +228,24 @@ export class DBManager {
       });
     });
   }
+
+  private async _get(sql: string, params: any[] = []): Promise<ResultRow|void> {
+    const all = await this._all(sql, params);
+    if (all.length > 0) {
+      return all[0];
+    }
+  }
 }
 
 function createMovies(rows: ResultRow[]): Movie[] {
   return rows.map(row => ({
-    type: 'movie' as 'movie',
+    id: row.id,
+    type: 'movie',
     title: row.title,
     year: row.year,
     release: row.release ? new Date(row.release) : null,
     dvd: row.dvd ? new Date(row.dvd) : null
-  }));
+  } as Movie));
 }
 
 // Each row should be from a join between the Shows and Episodes table.
@@ -206,15 +253,19 @@ function createShows(rows: ResultRow[]): Show[] {
   const showMap: {[id: number]: Show} = {};
   rows.forEach(row => {
     showMap[row.id] = showMap[row.id] || {
-      type: 'tv' as 'tv',
+      id: row.id,
+      type: 'tv',
       title: row.title,
       episodes: []
-    };
+    } as Show;
     showMap[row.id].episodes.push({
+      id: row.episodeId,
+      show: showMap[row.id],
+      type: 'episode',
       seasonNum: row.seasonNum,
       episodeNum: row.episodeNum,
       airDate: row.airDate ? new Date(row.airDate) : null
-    });
+    } as Episode);
   });
   const shows: Show[] = values(showMap);
   shows.forEach(show => show.episodes = sortEpisodes(show.episodes));

@@ -1,9 +1,11 @@
 import {EpisodesDescriptor} from './Swiper';
 import {getMorning, padZeros} from './util';
 
-export type Media = Movie | Show;
+export type Media = Movie|Show;
+export type Video = Movie|Episode;
 
 export interface Movie {
+  id: number;
   type: 'movie';
   title: string;
   year: string;
@@ -12,12 +14,16 @@ export interface Movie {
 }
 
 export interface Show {
+  id: number;
   type: 'tv';
   title: string;
   episodes: Episode[];
 }
 
 export interface Episode {
+  id: number;
+  type: 'episode';
+  show: Show;
   seasonNum: number;
   episodeNum: number;
   airDate: Date|null;
@@ -45,30 +51,6 @@ export function sortEpisodes(episodes: Episode[]): Episode[] {
   return episodes;
 }
 
-// Returns a string of the form: "S01 - S04: 6 episodes, S05: 8 episodes"
-export function getEpisodesPerSeasonStr(episodes: Episode[]): string {
-  if (episodes.length === 0) {
-    return 'No episodes';
-  }
-  const episodeCount: {[seasonNum: string]: number} = {};
-  episodes.forEach(ep => { episodeCount[ep.seasonNum] += 1; });
-  const order = Object.keys(episodeCount).map(seasonStr => parseInt(seasonStr, 10)).sort((a, b) => a - b);
-  let streakStart: number = order[0];
-  let str = '';
-  order.forEach((s: number, i: number) => {
-    if (i > 0 && episodeCount[s] !== episodeCount[s - 1]) {
-      if (streakStart < s - 1) {
-        str += `S${padZeros(streakStart)} - S${padZeros(s - 1)}: ${episodeCount[s - 1]} episodes, `;
-      } else {
-        str += `S${padZeros(s - 1)}: ${episodeCount[s - 1]} episodes, `;
-      }
-      streakStart = s;
-    }
-  });
-  // Remove ending comma.
-  return str.slice(0, str.length - 2);
-}
-
 export function getNextToAir(episodes: Episode[]): Episode|null {
   const morning = getMorning();
   return episodes.find(ep => ep.airDate !== null && (ep.airDate >= morning)) || null;
@@ -79,33 +61,14 @@ export function getLastAired(episodes: Episode[]): Episode|null {
   return episodes.slice().reverse().find(ep => ep.airDate !== null && (ep.airDate < morning)) || null;
 }
 
-export function getEpisodeStr(episodes: Episode[]): string {
-  let str = "";
-  let chain = 0;
-  let lastEpisode = -1;
-  let lastSeason = -1;
-  episodes.forEach((episode: Episode, i: number) => {
-    const si = episode.seasonNum;
-    const ei = episode.episodeNum;
-    if (lastSeason === -1 && lastEpisode === -1) {
-      str += `S${padZeros(si)}E${padZeros(ei)}`;
-    } else if (si > lastSeason) {
-      // New season
-      str += `-${padZeros(lastEpisode)}, S${padZeros(si)}E${padZeros(ei)}`;
-      chain = 0;
-    } else if (si === lastSeason && (ei > lastEpisode + 1)) {
-      // Same season, later episode
-      str += `${chain > 1 ?
-        `-${padZeros(lastEpisode)}` : ``} & E${padZeros(ei)}`;
-      chain = 0;
-    } else if (i === episodes.length - 1) {
-      // Last episode
-      str += `-${padZeros(ei)}`;
-    } else {
-      chain++;
-    }
-    lastSeason = si;
-    lastEpisode = ei;
-  });
-  return str;
+export function getSearchTerm(video: Video): string {
+  if (video.type === 'movie') {
+    const cleanTitle = video.title.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
+    return `${cleanTitle} ${video.year}`;
+  } else if (video.type === 'episode') {
+    const cleanTitle = video.show.title.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
+    return `${cleanTitle} s${padZeros(video.seasonNum)}e${padZeros(video.episodeNum)}`;
+  } else {
+    throw new Error(`getSearchTerm error: invalid video`);
+  }
 }

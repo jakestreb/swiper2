@@ -1,7 +1,7 @@
 import {get} from 'http';
 import * as TVDB from 'node-tvdb';
 
-import {Media, sortEpisodes} from './media';
+import {Episode, Media, Show, sortEpisodes} from './media';
 import {MediaQuery} from './Swiper';
 import {getDateFromStr} from './util';
 
@@ -60,6 +60,7 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
     // Movie
     return {
       data: {
+        id: 0,
         type: 'movie',
         title: omdbResult.Title,
         year: omdbResult.Year,
@@ -74,17 +75,23 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
     } catch (err) {
       return { err: `Can't find that show` };
     }
+    const show: Show = {
+      id: 0,
+      type: 'tv',
+      title: omdbResult.Title,
+      episodes: ([] as Episode[])
+    };
     const episodes = tvdbResult.episodes.map(ep => ({
+      show,
+      id: 0,
+      type: 'episode',
       seasonNum: ep.airedSeason,
       episodeNum: ep.airedEpisodeNumber,
       airDate: ep.firstAired ? new Date(`${ep.firstAired} ${tvdbResult.airsTime}`) : null
-    }));
+    } as Episode));
+    show.episodes.push(...sortEpisodes(episodes))
     return {
-      data: {
-        type: 'tv',
-        title: omdbResult.Title,
-        episodes: sortEpisodes(episodes)
-      }
+      data: show
     };
   }
 }

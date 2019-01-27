@@ -7,12 +7,34 @@ const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
   'September', 'October', 'November', 'December'];
 
+export function delay(ms: number): Promise<void> {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms < 0 ? 0 : ms);
+  });
+}
+
 export function getMorning(): Date {
   const morn = new Date();
   morn.setHours(0);
   morn.setMinutes(0);
   morn.setSeconds(0, 0);
   return morn;
+}
+
+// Given a daily time in hours (0 - 23), returns the time until that hour in ms.
+export function getMsUntil(hour: number): number {
+  const now = new Date();
+  const searchTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour);
+  const msUntil = searchTime.valueOf() - now.valueOf();
+  // If the time has passed, add a full day.
+  return msUntil < 0 ? msUntil + 86400000 : msUntil;
+}
+
+// Given the number of days until the given date (rounded down).
+export function getDaysUntil(date: Date): number {
+  const now = new Date();
+  const msUntil = date.valueOf() - now.valueOf();
+  return Math.floor(msUntil / 86400000);
 }
 
 export function splitFirst(input: string): [string, string] {
@@ -56,14 +78,21 @@ export function matchResp(input: string, responses: Response[]): string|null {
   return matched;
 }
 
-export function matchYesNo(input: string): string|null {
+export function matchYesNo(input: string, other: Response[] = []): string|null {
   return matchResp(input, [{
     value: 'yes',
     regex: /\b(y)|(yes)\b/gi
   }, {
     value: 'no',
     regex: /\b(n)|(no)\b/gi
-  }]);
+  }].concat(other));
+}
+
+export function matchNumber(input: string, other: Response[] = []): string|null {
+  return matchResp(input, [{
+    value: 'number',
+    regex: /\b[0-9]+\b/gi
+  }].concat(other));
 }
 
 // Parses date strings of the form "02 Nov 2018".
@@ -88,9 +117,10 @@ export function getAiredStr(date: Date): string {
   const weekday = weekdays[date.getDay()];
   const month = months[date.getMonth()];
   const calDay = date.getDate();
+  const year = date.getFullYear();
   const diff = date.getTime() - getMorning().getTime();
   if (diff < -sixMonths) {
-    return `Last aired ${month} ${calDay}`;
+    return `Last aired ${month} ${calDay}, ${year}`;
   } else if (diff < -oneWeek) {
     // Over a week ago
     return `Last aired ${weekday}, ${month} ${calDay}`;
@@ -105,13 +135,13 @@ export function getAiredStr(date: Date): string {
     return `Airs tomorrow at ${_getTimeString(date)}`;
   } else if (diff < oneWeek) {
     // In the next week
-    return `Airs ${weekday} at ${_getTimeString(date)}`;
+    return `Next airs ${weekday} at ${_getTimeString(date)}`;
   } else if (diff < sixMonths) {
     // More than a week ahead
-    return `Airs ${weekday}, ${month} ${calDay}`;
+    return `Next airs ${weekday}, ${month} ${calDay}`;
   } else {
     // More than 6 months ahead
-    return `Airs ${month} ${calDay}`;
+    return `Next airs ${month} ${calDay}, ${year}`;
   }
 }
 

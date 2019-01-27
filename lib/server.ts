@@ -32,7 +32,7 @@ function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
   }
 }
 
-function start(swiper: Swiper): void {
+function startComms(swiper: Swiper): void {
   // Create function to accept messages from the client.
   async function acceptMsgFromClient(commType: CommType, id: number, msg?: string): Promise<void> {
     if (!commTypes[id]) {
@@ -80,7 +80,7 @@ function start(swiper: Swiper): void {
 // Create a Swiper instance and start the process.
 Swiper.create(sendMsgToClient)
 .then(swiper => {
-  start(swiper);
+  startComms(swiper);
 })
 .catch(err => {
   term.bgRed(`Process exiting on error: ${err}`);

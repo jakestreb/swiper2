@@ -1,4 +1,5 @@
 declare module "node-tvdb";
+declare module "parse-torrent-name";
 declare module "terminal-kit" {
   export var terminal: Terminal;
   interface Terminal {

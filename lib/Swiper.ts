@@ -1,16 +1,23 @@
 import range = require('lodash/range');
+import {terminal as term} from 'terminal-kit';
 import {commands} from './commands';
 import {DBManager, ResultRow} from './DBManager';
-import {filterEpisodes, getEpisodesPerSeasonStr, getEpisodeStr, getLastAired, getNextToAir} from './media';
-import {Media, Movie, Show} from './media';
+import {filterEpisodes, getLastAired, getNextToAir} from './media';
+import {Episode, Media, Movie, Show, Video} from './media';
 import {identifyMedia} from './request';
-import {execCapture, getAiredStr, getMorning, matchYesNo, padZeros, removePrefix, splitFirst} from './util';
+import {settings} from './settings';
+import {getTorrentString, getTorrentTier, Torrent, torrentSearch} from './torrent';
+import {delay, execCapture, getAiredStr, getDaysUntil, getMorning, getMsUntil} from './util';
+import {matchNumber, matchYesNo, padZeros, removePrefix, splitFirst} from './util';
 
-// TODO: Test without search/download/monitoring.
-// TODO: Add search/download.
-// TODO: Test search/download.
-// TODO: Add check/monitoring.
-// TODO: Test check/monitoring.
+// TODO: Test check/monitoring/search.
+// TODO: Add download.
+// TODO: Test download.
+// TODO: Add debug logs and a flag to show them.
+// TODO: For fancy terminal settings, make terminal fully integrated. Remove as a server-using
+// "client" and create a "term" class that logs and returns the text, then wrap any text that
+// should be returned as text for clients and also logged to the console with it. Create variant
+// wrappers for terminal-kit functions.
 
 // TODO: Figure out why there are so many listeners on client.add.
 // TODO: Create readme (heroku address, how to check ips, etc).
@@ -18,11 +25,23 @@ import {execCapture, getAiredStr, getMorning, matchYesNo, padZeros, removePrefix
 type CommandFn = (input?: string) => Promise<SwiperReply>|SwiperReply;
 
 interface ConversationData {
+  id: number;
+  input?: string;
   commandFn?: CommandFn;
   mediaQuery?: MediaQuery;
   media?: Media;
+  torrents?: Torrent[];
   tasks?: any[];     // An array of any kind of data to be dealt with before Swiper can proceed.
   pageNum?: number;
+}
+
+interface AddMediaOptions {
+  forceEpisodes?: EpisodesDescriptor; // Forces the episode mediaQuery argument to be as given.
+  requireVideo?: boolean; // Indicates whether prompts should be given to reduce to a single video.
+}
+
+interface CommandOptions {
+  catchErrors?: boolean;
 }
 
 export interface SwiperReply {
@@ -52,13 +71,16 @@ type Conversation = ConversationData & { id: number; };
 export class Swiper {
 
   private _conversations: {[id: number]: Conversation} = {};
+  private _checkInProgress: boolean = false;
 
   // Should NOT be called publicly. User Swiper.create for building a Swiper instance.
   // Note that _dbManager should be initialized when passed in.
   constructor(
     private _sendMsg: (id: number, msg: SwiperReply) => Promise<void>,
     private _dbManager: DBManager
-  ) {}
+  ) {
+    this._startMonitoring();
+  }
 
   // Should be called to build a Swiper instance.
   public static async create(sendMsg: (id: number, msg: SwiperReply) => Promise<void>): Promise<Swiper> {
@@ -68,20 +90,21 @@ export class Swiper {
   }
 
   public async handleMsg(id: number, msg?: string): Promise<void> {
-    msg = msg || '';
+    msg = (msg || '').toLowerCase().trim();
     // Initialize the conversation if it does not exist and get the command function.
-    this._updateConversation(id);
+    const convo = this._updateConversation(id);
     const existingCommandFn = this._conversations[id].commandFn;
-    const [command, input] = splitFirst(msg.toLowerCase());
-    const commandFn = this._getCommandFn(id, command);
+    const [command, input] = splitFirst(msg);
+    const commandFn = this._getCommandFn(convo, command);
 
     // Run a new command or an existing command.
     let reply: SwiperReply;
     if (commandFn) {
-      this._conversations[id] = {id, commandFn};
-      reply = await commandFn(input);
+      this._updateConversation(id, {commandFn, input});
+      reply = await commandFn();
     } else if (existingCommandFn) {
-      reply = await existingCommandFn(msg.toLowerCase());
+      this._updateConversation(id, {input: msg});
+      reply = await existingCommandFn();
     } else {
       reply = { data: `Use 'help' to see what I can do` };
     }
@@ -90,104 +113,162 @@ export class Swiper {
     await this._sendMsg(id, reply);
   }
 
-  private _getCommandFn(id: number, command: string): CommandFn|null {
+  private async _startMonitoring(): Promise<void> {
+    this._doMonitor()
+    .catch(err => {
+      term.bgRed(`Monitoring process failed with error: ${err}`);
+      setTimeout(() => {
+        term.bgYellow(`Restarting monitoring process`);
+        this._startMonitoring();
+      }, 5000);
+    });
+  }
+
+  private _getCommandFn(convo: Conversation, command: string): CommandFn|null {
     switch (command) {
       case "download":
       case "get":
-        return (input?: string) => this._download(id, (input || '').trim());
+        return () => this._download(convo);
       case "search":
-        return (input?: string) => this._search(id, (input || '').trim());
+        return () => this._search(convo);
       case "monitor":
       case "watch":
-        return (input?: string) => this._monitor(id, (input || '').trim());
+        return () => this._monitor(convo);
       case "check":
-        return (input?: string) => this._check(id);
+        return () => this._check(convo);
       case "info":
-        return (input?: string) => this._info(id, (input || '').trim());
+        return () => this._info(convo);
       case "remove":
       case "delete":
-        return (input?: string) => this._remove(id, (input || '').trim());
+        return () => this._remove(convo);
       case "abort":
-        return (input?: string) => this._abort(id);
+        return () => this._abort(convo);
       case "status":
       case "progress":
       case "state":
-        return (input?: string) => this._status(id);
+        return () => this._status(convo);
       case "help":
       case "commands":
-        return (input?: string) => this._help(id, (input || '').trim());
+        return () => this._help(convo);
       case "cancel":
-        return (input?: string) => this._cancel(id);
+        return () => this._cancel(convo);
       default:
         return null;
     }
   }
 
-  private async _download(id: number, input?: string): Promise<SwiperReply> {
-    const resp = await this._search(id, input);
+  private async _download(convo: Conversation): Promise<SwiperReply> {
+    const resp = await this._search(convo);
     if (resp) {
       return resp;
     }
 
-    const convo = this._conversations[id];
-
     // Queue the download.
-    await this._queueDownload(id, convo.media!);
+    // await this._doDownload(id, convo.media!);
 
-    delete this._conversations[id];
+    this._deleteConversation(convo);
     return { data: 'TODO' };
   }
 
-  private async _search(id: number, input?: string): Promise<SwiperReply> {
-    if (!input) {
+  private async _search(convo: Conversation): Promise<SwiperReply> {
+    if (!convo.input) {
       return { data: `Nothing was specified` };
     }
 
     // Add the media item to the conversation.
-    const resp = await this._addMediaToConversation(id, input);
+    const resp = await this._addMedia(convo, { requireVideo: true });
     if (resp) {
       return resp;
     }
 
-    // Perform the search.
-    delete this._conversations[id];
-    return { data: 'TODO: Perform the search' };
+    // Perform the search and add the torrents to the conversation.
+    if (!convo.torrents) {
+      const media = convo.media as Media;
+      const video = media.type === 'tv' ? media.episodes[0] : media;
+      convo.torrents = await torrentSearch(video);
+      convo.pageNum = 0;
+    }
+
+    // Display the torrents to the user.
+    convo.pageNum = convo.pageNum || 0;
+
+    const startIndex = settings.torrentsPerPage * convo.pageNum;
+    const navs = [];
+    if (startIndex > 0) {
+      navs.push({value: 'prev', regex: /\bp(rev)?(ious)?\b/gi});
+    }
+    if (startIndex + settings.torrentsPerPage < convo.torrents.length) {
+      navs.push({value: 'next', regex: /\bn(ext)?\b/gi});
+    }
+    const match = matchNumber(convo.input, navs);
+    if (match === 'next') {
+      // Go forward a page.
+      convo.pageNum += 1;
+      return { data: showTorrents(convo.torrents, convo.pageNum) };
+    } else if (match === 'prev') {
+      // Go back a page.
+      convo.pageNum -= 1;
+      return { data: showTorrents(convo.torrents, convo.pageNum) };
+    } else if (match === null) {
+      // No match - no change.
+      return { data: showTorrents(convo.torrents, convo.pageNum) };
+    }
+
+    // Matched a number
+    const torrentNum = parseInt(match, 10);
+    if (torrentNum <= 0 && torrentNum > convo.torrents.length) {
+      // Invalid number - show torrents again.
+      return { data: showTorrents(convo.torrents, convo.pageNum) };
+    }
+    const torrent = convo.torrents[torrentNum - 1];
+
+    this._deleteConversation(convo);
+    return { data: `TODO: download ${getTorrentString(torrent)}` };
   }
 
-  private async _monitor(id: number, input?: string): Promise<SwiperReply> {
-    if (!input) {
+  private async _monitor(convo: Conversation): Promise<SwiperReply> {
+    if (!convo.input) {
       return { data: `Nothing was specified` };
     }
 
     // Add the media item to the conversation.
-    const resp = await this._addMediaToConversation(id, input);
+    const resp = await this._addMedia(convo);
     if (resp) {
       return resp;
     }
 
     // Declare media since it is now confirmed defined.
-    const media = this._conversations[id].media as Media;
+    const media = convo.media as Media;
 
     // Add the media item to monitored.
-    await this._dbManager.add(media, {queue: false, monitor: true, addedBy: id});
+    await this._dbManager.addToMonitored(media, convo.id);
 
-    delete this._conversations[id];
+    this._deleteConversation(convo);
     return { data: `Added ${media.title} to monitored` };
   }
 
-  private async _check(id: number): Promise<SwiperReply> {
-    return { data: 'TODO' };
+  private async _check(convo: Conversation): Promise<SwiperReply> {
+    if (this._checkInProgress) {
+      return { err: `Check is already in progress` };
+    }
+    this._checkInProgress = true;
+    setImmediate(async () => {
+      try {
+        await this._doCheck();
+      } finally {
+        this._checkInProgress = false;
+      }
+    });
+    return { data: `Checking for monitored content` };
   }
 
-  private async _info(id: number, input?: string): Promise<SwiperReply> {
-    if (!input) {
+  private async _info(convo: Conversation): Promise<SwiperReply> {
+    if (!convo.input) {
       return { err: `Nothing was specified` };
     }
 
-    const convo = this._conversations[id];
-
     // Add the media item to the conversation.
-    const resp = await this._addMediaToConversation(id, input, 'all');
+    const resp = await this._addMedia(convo, {forceEpisodes: 'all'});
     if (resp) {
       return resp;
     }
@@ -195,7 +276,7 @@ export class Swiper {
     const media = convo.media as Media;
 
     // Once media is used, clear the conversation state.
-    delete this._conversations[id];
+    this._deleteConversation(convo);
 
     if (media.type === 'movie') {
       // For movies, give release and DVD release.
@@ -214,25 +295,20 @@ export class Swiper {
       return {
         data: `${show.title}\n` +
           `${getEpisodesPerSeasonStr(show.episodes)}\n` +
-          `${lastAired}${(lastAired && nextAirs) ? '|' : ''}${nextAirs}`
+          `${lastAired}${(lastAired && nextAirs) ? ' | ' : ''}${nextAirs}`
       };
     }
   }
 
-  private async _remove(id: number, input?: string): Promise<SwiperReply> {
-    if (!input) {
+  private async _remove(convo: Conversation): Promise<SwiperReply> {
+    if (!convo.input) {
       return { data: `Nothing was specified` };
     }
 
-    const convo = this._conversations[id];
-
     // If mediaQuery has not been found yet, find it.
-    if (!convo.mediaQuery) {
-      const resp = this._addMediaQueryToConversation(id, input);
-      input = '';
-      if (resp) {
-        return resp;
-      }
+    const resp = this._addMediaQuery(convo);
+    if (resp) {
+      return resp;
     }
 
     const mediaQuery = convo.mediaQuery as MediaQuery;
@@ -246,7 +322,7 @@ export class Swiper {
     if (!convo.tasks) {
       const rows = await this._dbManager.searchTitles(mediaQuery.title, { type: mediaQuery.type });
       if (rows.length === 0) {
-        return { data: `Nothing matching ${input} was found` };
+        return { data: `Nothing matching ${convo.input} was found` };
       } else {
         // Provide the confirmation question for the first task.
         convo.tasks = rows;
@@ -256,7 +332,7 @@ export class Swiper {
 
     // Ask the user about a row if they are not all dealt with.
     if (convo.tasks.length > 0) {
-      const match = matchYesNo(input);
+      const match = matchYesNo(convo.input);
       if (match) {
         // If yes or no, shift the task to 'complete' it, then remove it from the database.
         const media: ResultRow = convo.tasks.shift();
@@ -271,18 +347,18 @@ export class Swiper {
       }
     }
 
-    delete this._conversations[id];
+    this._deleteConversation(convo);
     return { data: `Ok` };
   }
 
-  private async _abort(id: number): Promise<SwiperReply> {
+  private async _abort(convo: Conversation): Promise<SwiperReply> {
     // Remove all queued downloads.
     await this._dbManager.removeAllQueued();
 
     return { data: `TODO: Stop all downloads` };
   }
 
-  private async _status(id: number): Promise<SwiperReply> {
+  private async _status(convo: Conversation): Promise<SwiperReply> {
     const status = await this._dbManager.getAll();
 
     const monitoredStr = status.monitored.map(media => {
@@ -292,7 +368,7 @@ export class Swiper {
         return ` - ${media.title}${dvdStr}`;
       } else {
         const next = getNextToAir(media.episodes);
-        return ` - ${media.title} ${getEpisodeStr(media.episodes)}` +
+        return ` - ${media.title} ${getExpandedEpisodeStr(media.episodes)}` +
           ((next && next.airDate) ? ` (${getAiredStr(next!.airDate!)})` : '');
       }
     }).join('\n');
@@ -304,17 +380,17 @@ export class Swiper {
     };
   }
 
-  private _help(id: number, input?: string): SwiperReply {
-    if (!input) {
+  private _help(convo: Conversation): SwiperReply {
+    if (!convo.input) {
       return {
         data: `Commands:\n` +
           `${Object.keys(commands).join(', ')}\n` +
           `"help COMMAND" for details`
       };
     } else {
-      const cmdInfo = commands[input];
+      const cmdInfo = commands[convo.input];
       if (!cmdInfo) {
-        return { data: `${input} isn't a command` };
+        return { data: `${convo.input} isn't a command` };
       } else {
         const argStr = cmdInfo.arg ? ` ${cmdInfo.arg}` : ``;
         const contentDesc = cmdInfo.arg !== 'CONTENT' ? '' : `Where CONTENT is of the form:\n` +
@@ -323,71 +399,177 @@ export class Swiper {
           `    game of thrones\n` +
           `    tv game of thrones 2011 s02\n` +
           `    game of thrones s01-03, s04e05 & e08`;
-        return { data: `${input}${argStr}: ${cmdInfo.desc}\n${contentDesc}` };
+        return { data: `${convo.input}${argStr}: ${cmdInfo.desc}\n${contentDesc}` };
       }
     }
   }
 
-  private _cancel(id: number): SwiperReply {
+  private _cancel(convo: Conversation): SwiperReply {
     return { data: `Ok` };
   }
 
-  private async _queueDownload(id: number, media: Media): Promise<string|void> {
-    // Add the item to the database.
-    await this._dbManager.add(media, {queue: true, monitor: false, addedBy: id});
+  private async _scheduleEpisodeChecks(): Promise<void> {
+
+    const shows = await this._dbManager.getMonitoredShows();
+    // Create one array of episodes with scheduled air dates only.
+    const episodes = ([] as Episode[]).concat(...shows.map(s => s.episodes));
+    episodes.forEach(ep => { this._doBackoffCheckEpisode(ep); })
   }
 
-  private _addMediaQueryToConversation(id: number, input: string): SwiperReply|void {
-    const titleFinder = /^([\w \'\"\-\:\,\&]+?)(?: (?:s(?:eason)? ?\d{1,2}.*)|(?:\d{4}\b.*))?$/gi;
-    const yearFinder = /\b(\d{4})\b/gi;
+  private async _doBackoffCheckEpisode(episode: Episode): Promise<void> {
+    if (!episode.airDate) {
+      return;
+    }
+    const backoff = settings.newEpisodeBackoff;
+    const now = new Date();
+    // Difference in minutes between now and the release date.
+    const msTil = now.valueOf() - episode.airDate.valueOf();
+    let acc = 0;
+    for (let i = 0; msTil > acc && i < backoff.length; i++) {
+      acc += backoff[i] * 60 * 1000;
+    }
+    if (msTil > acc) {
+      // Repeat search array has ended.
+      return;
+    }
+    // Delay until the next check time.
+    await delay(acc - msTil);
+    // If the episode is still in the monitored array, look for it and repeat on failure.
+    try {
+      const copy = await this._dbManager.getEpisode(episode);
+      if (copy && copy.isMonitored) {
+        setImmediate(async () => {
+          this._doSearch(episode, {catchErrors: true});
+          // After searching, always delay 1 minute before re-scheduling to prevent an endless loop.
+          await delay(60 * 1000);
+          this._doBackoffCheckEpisode(episode);
+        });
+      }
+    } catch (err) {
+      term.bgRed(`_doBackoffCheckEpisode error: ${err}`);
+    }
+  }
 
-    const splitStr = input.split(' ');
-    const keyword = splitStr[0];
-    let type: MediaQuery["type"] = null;
-    if (keyword === 'tv' || keyword === 'movie') {
-      // If the type was included, set it and remove it from the titleStr
-      type = keyword;
-      input = splitStr.slice(1).join(' ');
+  /**
+   * The monitoring process, which should be started and made to log and restart in case of errors.
+   */
+  private async _doMonitor(): Promise<void> {
+    while (true) {
+      // Episodes are released at predictable times, so their checks are individually scheduled.
+      await this._scheduleEpisodeChecks();
+      // Wait until the daily time given in settings to search for monitored items.
+      await delay(getMsUntil(settings.monitorAt));
+      await this._doCheck({catchErrors: true});
     }
-    const [title] = execCapture(input, titleFinder);
-    if (!title) {
-      return { err: `Can't parse download input` };
+  }
+
+  // Perform automated searched for all released monitored items.
+  private async _doCheck(options: CommandOptions = {}): Promise<void> {
+    try {
+      const now = new Date();
+      const monitored = await this._dbManager.getMonitored();
+      const videos = ([] as Video[]).concat(...monitored.map(media =>
+        media.type === 'movie' ? [media] : media.episodes
+      ));
+      // Decide which media items should be searched.
+      const released = videos.filter(vid => {
+        if (vid.type === 'movie') {
+          const daysUntilDVD = vid.dvd ? getDaysUntil(vid.dvd) : 0;
+          return daysUntilDVD <= settings.daysBeforeDVD;
+        } else {
+          return vid.airDate && now > vid.airDate;
+        }
+      });
+      const searches = released.map(vid => this._doSearch(vid, options));
+      await Promise.all(searches);
+    } catch (err) {
+      if (options.catchErrors) {
+        term.bgRed(`_doCheck error: ${err}`);
+      } else {
+        throw err;
+      }
     }
-    const rem = removePrefix(input, title);
-    const [year] = execCapture(rem, yearFinder);
-    const seasonEpisodeStr = rem.trim();
-    let episodes: EpisodesDescriptor|null = null;
-    if (seasonEpisodeStr.length > 0) {
-      type = 'tv';
-      episodes = getEpisodesIdentifier(rem);
+  }
+
+  // Perform an automated search for an item and download it if it's found. Give no prompts to the
+  // user if the video is not found.
+  private async _doSearch(video: Video, options: CommandOptions = {}): Promise<void> {
+    try {
+      const torrents: Torrent[] = await torrentSearch(video);
+      let bestTorrent = null;
+      let bestTier = 0;
+      torrents.forEach(t => {
+        const tier = getTorrentTier(video, t);
+        if (tier > bestTier) {
+          bestTorrent = t;
+          bestTier = tier;
+        }
+      });
+      if (bestTorrent !== null) {
+        await this._doDownload(video, bestTorrent);
+      }
+    } catch (err) {
+      if (options.catchErrors) {
+        const itemStr = video.type === 'movie' ? video.title :
+          `video.show.title S${padZeros(video.seasonNum)}E${padZeros(video.episodeNum)}`;
+        term.bgRed(`_doSearch ${itemStr} error: ${err}`);
+      } else {
+        throw err;
+      }
     }
-    this._conversations[id].mediaQuery = {title, type, episodes, year};
+  }
+
+  private async _doDownload(video: Video, torrent: Torrent): Promise<string|void> {
+    term(`TODO: Download ${getTorrentString(torrent)}`);
+    // Add the item to the database.
+    // await this._dbManager.addToQueued(media, id);
+  }
+
+  private _addMediaQuery(convo: Conversation): SwiperReply|void {
+    if (!convo.mediaQuery) {
+      let input = convo.input || '';
+      const titleFinder = /^([\w \'\"\-\:\,\&]+?)(?: (?:s(?:eason)? ?\d{1,2}.*)|(?:\d{4}\b.*))?$/gi;
+      const yearFinder = /\b(\d{4})\b/gi;
+
+      const splitStr = input.split(' ');
+      const keyword = splitStr[0];
+      let type: MediaQuery["type"] = null;
+      if (keyword === 'tv' || keyword === 'movie') {
+        // If the type was included, set it and remove it from the titleStr
+        type = keyword;
+        input = splitStr.slice(1).join(' ');
+      }
+      const [title] = execCapture(input, titleFinder);
+      if (!title) {
+        return { err: `Can't parse download input` };
+      }
+      const rem = removePrefix(input, title);
+      const [year] = execCapture(rem, yearFinder);
+      const seasonEpisodeStr = rem.trim();
+      let episodes: EpisodesDescriptor|null = null;
+      if (seasonEpisodeStr.length > 0) {
+        type = 'tv';
+        episodes = getEpisodesIdentifier(rem);
+      }
+      convo.mediaQuery = {title, type, episodes, year};
+      convo.input = '';
+    }
   }
 
   // Adds a media content item to the conversation. Returns a string if Swiper requires
   // more information from the user. Returns nothing on success.
-  private async _addMediaToConversation(
-    id: number,
-    input: string,
-    episodes?: EpisodesDescriptor
-  ): Promise<SwiperReply|void> {
-    const convo = this._conversations[id];
-
+  private async _addMedia(convo: Conversation, options: AddMediaOptions = {}): Promise<SwiperReply|void> {
     // If mediaQuery has not been found yet, find it.
-    if (!convo.mediaQuery) {
-      const resp = this._addMediaQueryToConversation(id, input);
-      // Clear the input since it has already been used.
-      input = '';
-      if (resp) {
-        return resp;
-      }
+    const resp = this._addMediaQuery(convo);
+    if (resp) {
+      return resp;
     }
 
     const mediaQuery = convo.mediaQuery as MediaQuery;
 
     // If episodes was added as an optional argument, prioritize it.
-    if (episodes) {
-      mediaQuery.episodes = episodes;
+    if (options.forceEpisodes) {
+      mediaQuery.episodes = options.forceEpisodes;
     }
 
     // If media has not been found yet, find it.
@@ -397,31 +579,41 @@ export class Swiper {
         return { err: resp.err! };
       }
       convo.media = resp.data;
+      // Clear the input since it has already been used.
+      convo.input = '';
     }
 
     // If the media is a tv show and the episodes weren't specified, ask about them.
-    if (convo.media.type === 'tv' && !mediaQuery.episodes) {
-      const episodesIdentifier = getEpisodesIdentifier(input);
-      if (episodesIdentifier) {
-        // Need to parse season episode string.
-        mediaQuery.episodes = episodesIdentifier;
-        const show = convo.media as Show;
-        show.episodes = filterEpisodes(show.episodes, episodesIdentifier);
-      } else {
+    if (convo.media.type === 'tv') {
+      mediaQuery.episodes = mediaQuery.episodes || getEpisodesIdentifier(convo.input || '');
+      if (!mediaQuery.episodes && options.requireVideo) {
+        return { data: `Specify episode:\nex: S03E02` };
+      } else if (!mediaQuery.episodes) {
         return {
           data: `Specify episodes:\n` +
             `ex: new | all | S1 | S03E02-06 | S02-04 | S04E06 & 7, S05E02`
         };
+      } else if (options.requireVideo && !describesSingleEpisode(mediaQuery.episodes)) {
+        mediaQuery.episodes = null;
+        return { err: `A single episode must be specified:\nex: S03E02` };
       }
+      // Need to parse season episode string.
+      const show = convo.media as Show;
+      show.episodes = filterEpisodes(show.episodes, mediaQuery.episodes);
     }
   }
 
   // Updates and returns the updated conversation.
-  private _updateConversation(id: number, update?: ConversationData): Conversation {
+  private _updateConversation(id: number, update?: {[key: string]: any}): Conversation {
     if (!this._conversations[id]) {
       this._conversations[id] = {id};
     }
     return Object.assign(this._conversations[id], update || {});
+  }
+
+  // Updates and returns the updated conversation.
+  private _deleteConversation(convo: Conversation): void {
+    delete this._conversations[convo.id];
   }
 }
 
@@ -443,6 +635,72 @@ function getConfirmRemovalString(row: ResultRow, episodes: SeasonEpisodes|"new"|
   } else {
     throw new Error(`getConfirmRemovalString error: ${row.title} is not queued or monitored`);
   }
+}
+
+// Returns a string of the form: "S01 - S04: 6 episodes, S05: 8 episodes"
+function getEpisodesPerSeasonStr(episodes: Episode[]): string {
+  if (episodes.length === 0) {
+    return 'No episodes';
+  }
+  const counts: {[seasonNum: string]: number} = {};
+  episodes.forEach(ep => { counts[ep.seasonNum] = counts[ep.seasonNum] ? counts[ep.seasonNum] + 1 : 1; });
+  const order = Object.keys(counts).map(seasonStr => parseInt(seasonStr, 10)).sort((a, b) => a - b);
+  let streakStart: number = order[0];
+  let str = '';
+  order.forEach((s: number, i: number) => {
+    if (i > 0 && counts[s] !== counts[s - 1]) {
+      str += _getStreakStr('S', streakStart, s - 1) + `: ${counts[s - 1]} episodes, `;
+      streakStart = s;
+    }
+  });
+  // Remove ending comma.
+  return str.slice(0, str.length - 2);
+}
+
+// Indicates whether the EpisodesDescriptor describes a single episode.
+function describesSingleEpisode(episodes: EpisodesDescriptor): boolean {
+  if (episodes === 'new' || episodes === 'all') {
+    return false;
+  }
+  const seasons = Object.keys(episodes);
+  if (seasons.length !== 1) {
+    return false;
+  }
+  return episodes[seasons[0]] !== 'all' && episodes[seasons[0]].length === 1;
+}
+
+/**
+ * Returns a string giving all seasons and episodes for a show already fetched from TVDB.
+ */
+function getExpandedEpisodeStr(episodes: Episode[]): string {
+  let str = "";
+  let chain = 0;
+  let lastEpisode = -1;
+  let lastSeason = -1;
+  episodes.forEach((episode: Episode, i: number) => {
+    const si = episode.seasonNum;
+    const ei = episode.episodeNum;
+    if (lastSeason === -1 && lastEpisode === -1) {
+      str += `S${padZeros(si)}E${padZeros(ei)}`;
+    } else if (si > lastSeason) {
+      // New season
+      str += `-${padZeros(lastEpisode)}, S${padZeros(si)}E${padZeros(ei)}`;
+      chain = 0;
+    } else if (si === lastSeason && (ei > lastEpisode + 1)) {
+      // Same season, later episode
+      str += `${chain > 1 ?
+        `-${padZeros(lastEpisode)}` : ``} & E${padZeros(ei)}`;
+      chain = 0;
+    } else if (i === episodes.length - 1) {
+      // Last episode
+      str += `-${padZeros(ei)}`;
+    } else {
+      chain++;
+    }
+    lastSeason = si;
+    lastEpisode = ei;
+  });
+  return str;
 }
 
 // Takes a human-entered input of seasons and episodes of the following form:
@@ -500,8 +758,19 @@ function getEpisodesIdentifier(input: string): SeasonEpisodes|'new'|'all'|null {
   return seasons;
 }
 
+// Show a subset of the torrents decided by the pageNum.
+function showTorrents(torrents: Torrent[], pageNum: number): string {
+  const startIndex = settings.torrentsPerPage * pageNum;
+  const prev = startIndex > 0;
+  const next = (startIndex + settings.torrentsPerPage) < torrents.length;
+  const someTorrents = torrents.slice(startIndex, startIndex + settings.torrentsPerPage);
+  const respStr = prev && next ? `"prev" or "next"` : (next ? `"next"` : (prev ? `"prev"` : ``));
+  const str = someTorrents.reduce((acc, t, i) => `${acc}${startIndex + i + 1} - ${getTorrentString(t)}\n`, ``);
+  return `${str}\nGive number to download` + (respStr ? ` - ${respStr} to see more` : ``);
+}
+
 // Parses a SeasonEpisodes object back into a human readable string.
-export function getSeasonEpisodesStr(episodes: SeasonEpisodes): string {
+function getSeasonEpisodesStr(episodes: SeasonEpisodes): string {
   const order = Object.keys(episodes).map(seasonStr => parseInt(seasonStr, 10)).sort((a, b) => a - b);
   if (order.length === 0) {
     throw new Error(`Invalid SeasonEpisodes object: ${JSON.stringify(episodes)}`);
@@ -512,18 +781,18 @@ export function getSeasonEpisodesStr(episodes: SeasonEpisodes): string {
 
   order.forEach((s: number, i: number) => {
     const epArr = episodes[s];
-    const seasonEpStr = epArr === 'all' ? 'all' : getEpisodesStr(epArr);
+    const seasonEpStr = epArr === 'all' ? 'all' : _getEpisodeNumStr(epArr);
     // If the season is a streak killer
     if (i > 0 && ((s - order[i - 1]) > 1 || seasonEpStr !== 'all')) {
       // Update the string with the streak and clear the streak.
-      str += getStreakStr('S', allStreakStart, order[i - 1], ', ');
+      str += _getStreakStr('S', allStreakStart, order[i - 1], ', ');
       allStreakStart = -1;
     }
     if (seasonEpStr === 'all') {
       // This starts a new streak if one isn't already started.
       allStreakStart = allStreakStart === -1 ? s : allStreakStart;
       // If this is the last season, end the streak.
-      str += (i === order.length - 1) ? getStreakStr('S', allStreakStart, s, ', ') : '';
+      str += (i === order.length - 1) ? _getStreakStr('S', allStreakStart, s, ', ') : '';
     } else {
       // Seasons with episodes can be added right away.
       str += `S${padZeros(s)}${seasonEpStr}, `;
@@ -535,7 +804,7 @@ export function getSeasonEpisodesStr(episodes: SeasonEpisodes): string {
 }
 
 // Helper for getSeasonEpisodesStr to handle the episodes in a single season.
-function getEpisodesStr(episodes: number[]): string {
+function _getEpisodeNumStr(episodes: number[]): string {
   if (episodes.length === 0) {
     throw new Error(`Invalid episodes array: ${episodes}`);
   }
@@ -544,18 +813,18 @@ function getEpisodesStr(episodes: number[]): string {
   episodes.forEach((e: number, i: number) => {
     // If the streak is ending
     if (i > 0 && (e - episodes[i - 1] > 1)) {
-      str += getStreakStr('E', streakStart, episodes[i - 1], ' & ');
+      str += _getStreakStr('E', streakStart, episodes[i - 1], ' & ');
       streakStart = e;
     }
     if (i === episodes.length - 1) {
-      str += getStreakStr('E', streakStart, e);
+      str += _getStreakStr('E', streakStart, e);
     }
   });
   return str.slice(0, str.length);
 }
 
-// Helper for getEisodesStr and getSeasonEpisodesStr to give a streak string.
-function getStreakStr(prefix: 'S'|'E', start: number, end: number, suffix: string = ''): string {
+// Helper for getEpisodesStr and getSeasonEpisodesStr to give a streak string.
+function _getStreakStr(prefix: 'S'|'E', start: number, end: number, suffix: string = ''): string {
   return start < 0 ? '' : (start < end ? `${prefix}${padZeros(start)} - ` : '') +
     prefix + padZeros(end) + suffix;
 }
