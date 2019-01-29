@@ -1,24 +1,18 @@
 import range = require('lodash/range');
-import {terminal as term} from 'terminal-kit';
 import {commands} from './commands';
 import {DBManager, ResultRow} from './DBManager';
-import {filterEpisodes, getLastAired, getNextToAir} from './media';
+import {filterEpisodes, getDescription, getLastAired, getNextToAir, getVideo} from './media';
 import {Episode, Media, Movie, Show, Video} from './media';
 import {identifyMedia} from './request';
 import {settings} from './settings';
-import {getTorrentString, getTorrentTier, Torrent, torrentSearch} from './torrent';
+import {log, logSubProcess, logSubProcessError} from './terminal';
+import {getBestTorrent, getTorrentString, Torrent, TorrentClient} from './torrent';
 import {delay, execCapture, getAiredStr, getDaysUntil, getMorning, getMsUntil} from './util';
 import {matchNumber, matchYesNo, padZeros, removePrefix, splitFirst} from './util';
 
-// TODO: Test check/monitoring/search.
-// TODO: Add download.
-// TODO: Test download.
-// TODO: Add debug logs and a flag to show them.
-// TODO: For fancy terminal settings, make terminal fully integrated. Remove as a server-using
-// "client" and create a "term" class that logs and returns the text, then wrap any text that
-// should be returned as text for clients and also logged to the console with it. Create variant
-// wrappers for terminal-kit functions.
+// TODO: Test re-adding, adding episodes to an existing show, searching something in monitored, etc
 
+// TODO: Add enhanced console features.
 // TODO: Figure out why there are so many listeners on client.add.
 // TODO: Create readme (heroku address, how to check ips, etc).
 
@@ -30,6 +24,7 @@ interface ConversationData {
   commandFn?: CommandFn;
   mediaQuery?: MediaQuery;
   media?: Media;
+  position?: 'first'|'last';
   torrents?: Torrent[];
   tasks?: any[];     // An array of any kind of data to be dealt with before Swiper can proceed.
   pageNum?: number;
@@ -70,6 +65,8 @@ type Conversation = ConversationData & { id: number; };
 
 export class Swiper {
 
+  private _torrentClient: TorrentClient;
+  private _downloadManager: DownloadManager;
   private _conversations: {[id: number]: Conversation} = {};
   private _checkInProgress: boolean = false;
 
@@ -79,6 +76,11 @@ export class Swiper {
     private _sendMsg: (id: number, msg: SwiperReply) => Promise<void>,
     private _dbManager: DBManager
   ) {
+    this._torrentClient = new TorrentClient();
+
+    this._downloadManager = new DownloadManager(this._dbManager, this._torrentClient);
+    this._downloadManager.ping();
+
     this._startMonitoring();
   }
 
@@ -116,9 +118,8 @@ export class Swiper {
   private async _startMonitoring(): Promise<void> {
     this._doMonitor()
     .catch(err => {
-      term.bgRed(`Monitoring process failed with error: ${err}`);
+      logSubProcessError(`Monitoring process failed with error: ${err}`);
       setTimeout(() => {
-        term.bgYellow(`Restarting monitoring process`);
         this._startMonitoring();
       }, 5000);
     });
@@ -141,6 +142,8 @@ export class Swiper {
       case "remove":
       case "delete":
         return () => this._remove(convo);
+      case "reorder":
+        return () => this._reorder(convo);
       case "abort":
         return () => this._abort(convo);
       case "status":
@@ -158,16 +161,39 @@ export class Swiper {
   }
 
   private async _download(convo: Conversation): Promise<SwiperReply> {
-    const resp = await this._search(convo);
+    if (!convo.input) {
+      return { data: `Nothing was specified` };
+    }
+
+    // Add the media item to the conversation.
+    const resp = await this._addMedia(convo);
     if (resp) {
       return resp;
     }
 
+    // Check if the media item is a single video for special handling.
+    const media = convo.media as Media;
+    const video: Video|null = getVideo(media);
+    if (video) {
+      const torrents = await this._torrentClient.search(video);
+      const best = getBestTorrent(video, torrents);
+      if (best) {
+        // If a best was found, end the conversation.
+        this._deleteConversation(convo);
+        return { data: `Queued ${getDescription(video)} for download` };
+      } else {
+        // If the target is a single video and an automated search failed, show the torrents.
+        convo.torrents = torrents;
+        await this._search(convo);
+      }
+    }
+
     // Queue the download.
-    // await this._doDownload(id, convo.media!);
+    await this._dbManager.addToQueued(media, convo.id)
+    this._downloadManager.ping();
 
     this._deleteConversation(convo);
-    return { data: 'TODO' };
+    return { data: `Queued ${getDescription(media)} for download` };
   }
 
   private async _search(convo: Conversation): Promise<SwiperReply> {
@@ -181,11 +207,13 @@ export class Swiper {
       return resp;
     }
 
+    const media = convo.media as Media;
+    const video = media.type === 'tv' ? media.episodes[0] : media;
+
     // Perform the search and add the torrents to the conversation.
     if (!convo.torrents) {
-      const media = convo.media as Media;
-      const video = media.type === 'tv' ? media.episodes[0] : media;
-      convo.torrents = await torrentSearch(video);
+      log(`Searching for ${getDescription(video)} downloads...\n`);
+      convo.torrents = await this._torrentClient.search(video);
       convo.pageNum = 0;
     }
 
@@ -204,26 +232,31 @@ export class Swiper {
     if (match === 'next') {
       // Go forward a page.
       convo.pageNum += 1;
-      return { data: showTorrents(convo.torrents, convo.pageNum) };
+      return showTorrents(convo.torrents, convo.pageNum);
     } else if (match === 'prev') {
       // Go back a page.
       convo.pageNum -= 1;
-      return { data: showTorrents(convo.torrents, convo.pageNum) };
+      return showTorrents(convo.torrents, convo.pageNum);
     } else if (match === null) {
       // No match - no change.
-      return { data: showTorrents(convo.torrents, convo.pageNum) };
+      return showTorrents(convo.torrents, convo.pageNum);
     }
 
     // Matched a number
-    const torrentNum = parseInt(match, 10);
-    if (torrentNum <= 0 && torrentNum > convo.torrents.length) {
+    const torrentNum = parseInt(convo.input, 10);
+    if (!torrentNum || torrentNum <= 0 && torrentNum > convo.torrents.length) {
       // Invalid number - show torrents again.
-      return { data: showTorrents(convo.torrents, convo.pageNum) };
+      return showTorrents(convo.torrents, convo.pageNum);
     }
     const torrent = convo.torrents[torrentNum - 1];
 
+    // Assign the torrent magnet to the video and queue it for download.
+    video.magnet = torrent.magnet;
+    await this._dbManager.addToQueued(media, convo.id);
+    this._downloadManager.ping();
+
     this._deleteConversation(convo);
-    return { data: `TODO: download ${getTorrentString(torrent)}` };
+    return { data: `Queued ${getDescription(video)} for download` };
   }
 
   private async _monitor(convo: Conversation): Promise<SwiperReply> {
@@ -259,6 +292,8 @@ export class Swiper {
         this._checkInProgress = false;
       }
     });
+
+    this._deleteConversation(convo);
     return { data: `Checking for monitored content` };
   }
 
@@ -338,7 +373,13 @@ export class Swiper {
         const media: ResultRow = convo.tasks.shift();
         if (match === 'yes') {
           // Remove media
-          await this._dbManager.remove(media, mediaQuery.episodes);
+          if (media.type === 'movie') {
+            await this._dbManager.removeMovie(media.id);
+          } else {
+            await this._dbManager.removeEpisodesByDescriptor(media.id, mediaQuery.episodes);
+          }
+          // After a removal, ping the download manager.
+          this._downloadManager.ping();
         }
       }
       if (!match || convo.tasks.length > 0) {
@@ -351,15 +392,77 @@ export class Swiper {
     return { data: `Ok` };
   }
 
+  private async _reorder(convo: Conversation): Promise<SwiperReply> {
+    if (!convo.input) {
+      return { data: `Nothing was specified` };
+    }
+
+    if (!convo.position) {
+      const splitStr = convo.input.split(' ');
+      const lastStr = splitStr.pop();
+      if (!lastStr) {
+        return { data: `Specifiy the new position as "first" or "last"` };
+      }
+      const [first, last] = execCapture(lastStr, /(first)|(last)/);
+      if (!first && !last) {
+        return { data: `Specifiy the new position as "first" or "last"` };
+      }
+      convo.position = first ? 'first' : 'last';
+      convo.input = splitStr.join(' ');
+    }
+
+    // If mediaQuery has not been found yet, find it.
+    const resp = this._addMediaQuery(convo);
+    if (resp) {
+      return resp;
+    }
+
+    const mediaQuery = convo.mediaQuery as MediaQuery;
+
+    // Search the database for all matching Movies/Shows.
+    if (!convo.tasks) {
+      const rows = await this._dbManager.searchTitles(mediaQuery.title, { type: mediaQuery.type });
+      if (rows.length === 0) {
+        return { data: `Nothing matching ${convo.input} was found` };
+      } else {
+        // Provide the confirmation question for the first task.
+        convo.tasks = rows;
+        return { data: getConfirmReorderString(rows[0], convo.position) };
+      }
+    }
+
+    // Ask the user about a row if they are not all dealt with.
+    if (convo.tasks.length > 0) {
+      const match = matchYesNo(convo.input);
+      if (match) {
+        // If yes or no, shift the task to 'complete' it, then remove it from the database.
+        const media: ResultRow = convo.tasks.shift();
+        if (match === 'yes') {
+          // Remove media
+          await this._dbManager.changeQueuePos(media, convo.position);
+          this._downloadManager.ping();
+        }
+      }
+      if (!match || convo.tasks.length > 0) {
+        // If the match failed or if there are still more tasks, ask about the next one.
+        return { data: getConfirmReorderString(convo.tasks[0], convo.position) };
+      }
+    }
+
+    this._deleteConversation(convo);
+    return { data: `Ok` };
+  }
+
   private async _abort(convo: Conversation): Promise<SwiperReply> {
     // Remove all queued downloads.
-    await this._dbManager.removeAllQueued();
+    await this._dbManager.removeAllQueued(convo.id);
 
+    this._deleteConversation(convo);
     return { data: `TODO: Stop all downloads` };
   }
 
   private async _status(convo: Conversation): Promise<SwiperReply> {
-    const status = await this._dbManager.getAll();
+    const status = await this._dbManager.getStatus();
 
     const monitoredStr = status.monitored.map(media => {
       if (media.type === 'movie') {
@@ -372,6 +475,8 @@ export class Swiper {
           ((next && next.airDate) ? ` (${getAiredStr(next!.airDate!)})` : '');
       }
     }).join('\n');
+
+    this._deleteConversation(convo);
     if (!monitoredStr) {
       return { data: "Nothing to report" };
     }
@@ -381,6 +486,7 @@ export class Swiper {
   }
 
   private _help(convo: Conversation): SwiperReply {
+    this._deleteConversation(convo);
     if (!convo.input) {
       return {
         data: `Commands:\n` +
@@ -392,8 +498,8 @@ export class Swiper {
       if (!cmdInfo) {
         return { data: `${convo.input} isn't a command` };
       } else {
-        const argStr = cmdInfo.arg ? ` ${cmdInfo.arg}` : ``;
-        const contentDesc = cmdInfo.arg !== 'CONTENT' ? '' : `Where CONTENT is of the form:\n` +
+        const argStr = ` ` + cmdInfo.args.join(' ');
+        const contentDesc = cmdInfo.args.includes('CONTENT') ? `Where CONTENT is of the form:\n` : '' +
           `    [movie/tv] TITLE [YEAR] [EPISODES]\n` +
           `Ex:\n` +
           `    game of thrones\n` +
@@ -405,11 +511,11 @@ export class Swiper {
   }
 
   private _cancel(convo: Conversation): SwiperReply {
+    this._deleteConversation(convo);
     return { data: `Ok` };
   }
 
   private async _scheduleEpisodeChecks(): Promise<void> {
-
     const shows = await this._dbManager.getMonitoredShows();
     // Create one array of episodes with scheduled air dates only.
     const episodes = ([] as Episode[]).concat(...shows.map(s => s.episodes));
@@ -446,7 +552,7 @@ export class Swiper {
         });
       }
     } catch (err) {
-      term.bgRed(`_doBackoffCheckEpisode error: ${err}`);
+      logSubProcessError(`_doBackoffCheckEpisode error: ${err}`);
     }
   }
 
@@ -454,6 +560,7 @@ export class Swiper {
    * The monitoring process, which should be started and made to log and restart in case of errors.
    */
   private async _doMonitor(): Promise<void> {
+    logSubProcess(`Monitoring started`);
     while (true) {
       // Episodes are released at predictable times, so their checks are individually scheduled.
       await this._scheduleEpisodeChecks();
@@ -484,7 +591,7 @@ export class Swiper {
       await Promise.all(searches);
     } catch (err) {
       if (options.catchErrors) {
-        term.bgRed(`_doCheck error: ${err}`);
+        logSubProcessError(`_doCheck error: ${err}`);
       } else {
         throw err;
       }
@@ -494,35 +601,24 @@ export class Swiper {
   // Perform an automated search for an item and download it if it's found. Give no prompts to the
   // user if the video is not found.
   private async _doSearch(video: Video, options: CommandOptions = {}): Promise<void> {
+    logSubProcess(`Searching ${getDescription(video)}`);
     try {
-      const torrents: Torrent[] = await torrentSearch(video);
-      let bestTorrent = null;
-      let bestTier = 0;
-      torrents.forEach(t => {
-        const tier = getTorrentTier(video, t);
-        if (tier > bestTier) {
-          bestTorrent = t;
-          bestTier = tier;
-        }
-      });
+      const torrents: Torrent[] = await this._torrentClient.search(video);
+      const bestTorrent = getBestTorrent(video, torrents);
       if (bestTorrent !== null) {
-        await this._doDownload(video, bestTorrent);
+        // Set the item in the database to queued.
+        await this._dbManager.moveToQueued(video);
+        this._downloadManager.ping();
+      } else {
+        logSubProcess(`${getDescription(video)} not found`);
       }
     } catch (err) {
       if (options.catchErrors) {
-        const itemStr = video.type === 'movie' ? video.title :
-          `video.show.title S${padZeros(video.seasonNum)}E${padZeros(video.episodeNum)}`;
-        term.bgRed(`_doSearch ${itemStr} error: ${err}`);
+        logSubProcess(`_doSearch ${getDescription(video)} error: ${err}`);
       } else {
         throw err;
       }
     }
-  }
-
-  private async _doDownload(video: Video, torrent: Torrent): Promise<string|void> {
-    term(`TODO: Download ${getTorrentString(torrent)}`);
-    // Add the item to the database.
-    // await this._dbManager.addToQueued(media, id);
   }
 
   private _addMediaQuery(convo: Conversation): SwiperReply|void {
@@ -617,6 +713,111 @@ export class Swiper {
   }
 }
 
+class DownloadManager {
+  private _pinged: boolean = false;
+  private _inProgress: boolean = false;
+
+  constructor(private _dbManager: DBManager, private _torrentClient: TorrentClient) {}
+
+  // A non-async public wrapper is used to prevent waiting on the ping function.
+  public ping(): void { this._ping(); }
+
+  // This function should NOT be awaited.
+  private async _ping(): Promise<void> {
+    this._pinged = true;
+    if (!this._inProgress) {
+      this._inProgress = true;
+      while (this._pinged) {
+        this._pinged = false;
+        await this._manageDownloads();
+      }
+      this._inProgress = false;
+    }
+  }
+
+  private async _manageDownloads(): Promise<void> {
+    // Should be pinged when:
+    // - An item is added/moved/reordered in the queue.
+    // - An item finishes downloading.
+    try {
+      // Manage which videos are downloading in the queue.
+      const {start, stop} = await this._dbManager.manageDownloads();
+
+      // Use the results from the database query to start/stop downloads.
+      start.forEach(v => this._startDownload);
+      stop.forEach(v => this._stopDownload);
+
+      // On download completions, remove video from the db and ping this.
+      // logSubProcess('AAAAAA');
+    } catch (err) {
+      logSubProcessError(`_manageDownloads err: ${err}`);
+    }
+  }
+
+  private async _startRemovingFailed(): Promise<void> {
+    try {
+      while (true) {
+        await this._removeFailed();
+        // Wait until the daily time given in settings to remove failed items.
+        await delay(getMsUntil(settings.clearFailedAt));
+      }
+    } catch (err) {
+      logSubProcessError(`Failed item removal process failed with error: ${err}`);
+      setTimeout(() => {
+        this._startRemovingFailed();
+      }, 5000);
+    }
+  }
+
+  private async _removeFailed(): Promise<void> {
+    const failedUpTimeMs = settings.failedUpTime * 60 * 60 * 1000;
+    const cutoff = Date.now() - failedUpTimeMs;
+    await this._dbManager.removeFailed(cutoff);
+  }
+
+  private async _startDownload(video: Video): Promise<void> {
+    try {
+      // Assign the torrent if it isn't already.
+      if (!video.magnet) {
+        const torrents = await this._torrentClient.search(video);
+        const best = getBestTorrent(video, torrents);
+        if (!best) {
+          // If no good torrent was found, add the video to failed.
+          await this._dbManager.markAsFailed(video);
+        } else {
+          video.magnet = best.magnet;
+        }
+      }
+
+      // Run the download
+      await this._torrentClient.download(video.magnet!);
+
+      // On completion, remove the item from the database.
+      const removeFn = video.type === 'movie' ? this._dbManager.removeMovie :
+        this._dbManager.removeEpisode;
+      await removeFn(video.id);
+
+      // Ping since the database changed.
+      this.ping();
+    } catch (err) {
+      logSubProcessError(`_startDownload err: ${err}`);
+      // When downloading fails, remove the magnet and mark the video as failed.
+      video.magnet = null;
+      await this._dbManager.markAsFailed(video);
+    }
+  }
+
+  private async _stopDownload(video: Video): Promise<void> {
+    try {
+      if (video.magnet) {
+        await this._torrentClient.stopDownload(video.magnet);
+      }
+    } catch (err) {
+      logSubProcessError(`_stopDownload err: ${err}`);
+    }
+  }
+}
+
 // Given either a Movie or Show ResultRow and an episodes identifier (which is only relevant
 // to Shows), create a string to confirm removal with the user.
 function getConfirmRemovalString(row: ResultRow, episodes: SeasonEpisodes|"new"|"all"): string {
@@ -628,12 +829,23 @@ function getConfirmRemovalString(row: ResultRow, episodes: SeasonEpisodes|"new"|
     postStr = ` ${getSeasonEpisodesStr(episodes as SeasonEpisodes)}`;
   }
   const mediaStr = `${preStr}${row.title}${postStr}`;
-  if (row.isQueued) {
+  if (row.queuePos) {
     return `Cancel downloading ${mediaStr}?`;
   } else if (row.isMonitored) {
     return `Stop monitoring ${mediaStr}?`;
   } else {
     throw new Error(`getConfirmRemovalString error: ${row.title} is not queued or monitored`);
+  }
+}
+
+// Given either a Movie or Show ResultRow and a position, create a string to confirm reorder
+// with the user.
+function getConfirmReorderString(row: ResultRow, pos: 'first'|'last'): string {
+  const newPosStr = pos === 'first' ? 'front' : 'back';
+  if (row.queuePos) {
+    return `Move ${row.title} to the ${newPosStr} of the queue?`;
+  } else {
+    throw new Error(`getConfirmReorderString error: ${row.title} is not queued`);
   }
 }
 
@@ -759,14 +971,17 @@ function getEpisodesIdentifier(input: string): SeasonEpisodes|'new'|'all'|null {
 }
 
 // Show a subset of the torrents decided by the pageNum.
-function showTorrents(torrents: Torrent[], pageNum: number): string {
+function showTorrents(torrents: Torrent[], pageNum: number): SwiperReply {
   const startIndex = settings.torrentsPerPage * pageNum;
   const prev = startIndex > 0;
   const next = (startIndex + settings.torrentsPerPage) < torrents.length;
   const someTorrents = torrents.slice(startIndex, startIndex + settings.torrentsPerPage);
+  const torrentRows = someTorrents.map((t, i) => `${startIndex + i + 1} - ${getTorrentString(t)}`);
   const respStr = prev && next ? `"prev" or "next"` : (next ? `"next"` : (prev ? `"prev"` : ``));
-  const str = someTorrents.reduce((acc, t, i) => `${acc}${startIndex + i + 1} - ${getTorrentString(t)}\n`, ``);
-  return `${str}\nGive number to download` + (respStr ? ` - ${respStr} to see more` : ``);
+  const str = torrentRows.join(`\n`);
+  return {
+    data: `${str}\nGive number to download` + (respStr ? ` - ${respStr} to see more` : ``)
+  };
 }
 
 // Parses a SeasonEpisodes object back into a human readable string.

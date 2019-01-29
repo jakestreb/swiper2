@@ -17,6 +17,9 @@ export const settings = {
       max: 5000
     }
   },
+  maxDownloads: 10,
+  failedUpTime: 6, // Min number of hours for which failed items should remain in the failed list.
+  clearFailedAt: 2, // 0-23, hour at which failed items should be cleared.
   // Low seeder tier to determine download pick quality. Things with fewer seeders than this
   // will still be downloaded, but as a last priority.
   minSeeders: 10,

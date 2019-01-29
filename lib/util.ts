@@ -51,7 +51,7 @@ export function removePrefix(str: string, prefix: string): string {
   }
 }
 
-export function execCapture(str: string, regex: RegExp) {
+export function execCapture(str: string, regex: RegExp): Array<void|string> {
   const match = regex.exec(str);
   if (!match) {
     // See: https://stackoverflow.com/a/16046903/9737244

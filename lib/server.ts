@@ -2,8 +2,8 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import * as express from 'express';
+import {log, logError, logInputError, logSubProcess, prompt} from './terminal';
 import * as readline from 'readline';
-import {terminal as term} from 'terminal-kit';
 
 import {Swiper, SwiperReply} from './Swiper';
 
@@ -12,7 +12,8 @@ type CommType = 'cli'|'telegram';
 const app = express();
 const CLI_ID = -1;
 // const gatewayUrl = process.env.GATEWAY_URL;
-const port = process.env.PORT;
+const PORT = process.env.PORT;
+const ENHANCED_TERMINAL = Boolean(parseInt(process.env.ENHANCED_TERMINAL || "0", 10));
 const commTypes: {[id: number]: string} = {};
 
 function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
@@ -20,14 +21,18 @@ function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
   if (commType === 'telegram') {
     // TODO
   } else if (commType === 'cli') {
-    msg.data ? term(msg.data) : term.red(msg.err);
-    term(`\n> `);
+    if (ENHANCED_TERMINAL && msg.enhanced) {
+      msg.enhanced();
+    } else {
+      msg.data ? log(msg.data) : logInputError(msg.err);
+      prompt();
+    }
   }
   try {
     return Promise.resolve();
   } catch (err) {
     // TODO: Attempt retry
-    term.bgRed(`Error responding to client with message: ${msg.data}`);
+    logError(`Error responding to client with message: ${msg.data}`);
     return Promise.resolve();
   }
 }
@@ -46,8 +51,8 @@ function startComms(swiper: Swiper): void {
   terminal.on('line', (line: string) => {
     acceptMsgFromClient('cli', CLI_ID, line.trim())
     .catch(err => {
-      term.bgRed(`Error handling console request "${line.trim()}": ${err}`);
-      term('\n');
+      logError(`Error handling console request "${line.trim()}": ${err}`);
+      log('\n');
       sendMsgToClient(CLI_ID, {err: `Something went wrong`});
     });
   });
@@ -56,9 +61,9 @@ function startComms(swiper: Swiper): void {
   });
 
   // Start the app.
-  app.listen(port, () => {
+  app.listen(PORT, () => {
     // Prompt the user once the app is running.
-    term(`Running and listening on port ${port}\n> `);
+    logSubProcess(`Running and listening on port ${PORT}`);
   });
   app.get("/", (req, res) => {
     // Send a response when GET is called on the port for debugging.
@@ -69,8 +74,8 @@ function startComms(swiper: Swiper): void {
   app.post("/telegram", (req, res) => {
     acceptMsgFromClient('telegram', req.body.id, req.body.message)
     .catch(err => {
-      term.bgRed(`Error handling telegram request "${req.body.message}": ${err}`);
-      term('\n');
+      logError(`Error handling telegram request "${req.body.message}": ${err}`);
+      log('\n');
       sendMsgToClient(req.body.id, {err: `Something went wrong`});
     });
     res.send('ok');
@@ -83,6 +88,6 @@ Swiper.create(sendMsgToClient)
   startComms(swiper);
 })
 .catch(err => {
-  term.bgRed(`Process exiting on error: ${err}`);
+  logError(`Process exiting on error: ${err}`);
   process.exit(1);
 });

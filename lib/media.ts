@@ -11,6 +11,7 @@ export interface Movie {
   year: string;
   release: Date|null;
   dvd: Date|null;
+  magnet: string|null;
 }
 
 export interface Show {
@@ -27,6 +28,7 @@ export interface Episode {
   seasonNum: number;
   episodeNum: number;
   airDate: Date|null;
+  magnet: string|null;
 }
 
 export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor): Episode[] {
@@ -70,5 +72,24 @@ export function getSearchTerm(video: Video): string {
     return `${cleanTitle} s${padZeros(video.seasonNum)}e${padZeros(video.episodeNum)}`;
   } else {
     throw new Error(`getSearchTerm error: invalid video`);
+  }
+}
+
+export function getDescription(anyMedia: Movie|Show|Episode): string {
+  if (anyMedia.type === 'episode') {
+    return `${anyMedia.show.title} S${padZeros(anyMedia.seasonNum)}E${padZeros(anyMedia.episodeNum)}`;
+  } else {
+    return anyMedia.title;
+  }
+}
+
+// If the media object represents a single video, returns that video. Otherwise returns null.
+export function getVideo(media: Media): Video|null {
+  if (media.type === 'movie') {
+    return media;
+  } else if (media.type === 'tv' && media.episodes.length === 1) {
+    return media.episodes[0];
+  } else {
+    return null;
   }
 }

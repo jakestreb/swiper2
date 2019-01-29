@@ -19,7 +19,7 @@ interface OMDB {
   Title: string;
   Year: string;
   Type: 'movie'|'series';
-  imdbID: string;
+  imdbID: string; // Ex: tt0000000
   Released: string;
   DVD: string;
 }
@@ -36,6 +36,7 @@ interface TVDBEpisode {
   airedEpisodeNumber: number;
   airedSeason: number;
   firstAired: string;
+  imdbId: string; // Ex: tt0000000
 }
 
 // Returns the media with all episodes. Filtering must be performed afterward.
@@ -60,12 +61,13 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
     // Movie
     return {
       data: {
-        id: 0,
+        id: convertImdbId(omdbResult.imdbID),
         type: 'movie',
         title: omdbResult.Title,
         year: omdbResult.Year,
         release: getDateFromStr(omdbResult.Released),
-        dvd: getDateFromStr(omdbResult.DVD)
+        dvd: getDateFromStr(omdbResult.DVD),
+        magnet: null
       }
     };
   } else {
@@ -76,24 +78,29 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
       return { err: `Can't find that show` };
     }
     const show: Show = {
-      id: 0,
+      id: convertImdbId(omdbResult.imdbID),
       type: 'tv',
       title: omdbResult.Title,
       episodes: ([] as Episode[])
     };
-    const episodes = tvdbResult.episodes.map(ep => ({
+    const episodes = tvdbResult.episodes.filter(ep => ep.imdbId).map(ep => ({
       show,
-      id: 0,
-      type: 'episode',
+      id: convertImdbId(ep.imdbId),
+      type: 'episode' as 'episode',
       seasonNum: ep.airedSeason,
       episodeNum: ep.airedEpisodeNumber,
-      airDate: ep.firstAired ? new Date(`${ep.firstAired} ${tvdbResult.airsTime}`) : null
-    } as Episode));
+      airDate: ep.firstAired ? new Date(`${ep.firstAired} ${tvdbResult.airsTime}`) : null,
+      magnet: null
+    }));
     show.episodes.push(...sortEpisodes(episodes))
     return {
       data: show
     };
   }
+}
+
+function convertImdbId(imdbId: string): number {
+  return parseInt(imdbId.slice(2), 10);
 }
 
 // Helper function to search TVDB and retry with a refreshed API token on error.

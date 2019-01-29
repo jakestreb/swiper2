@@ -1,44 +1,52 @@
 
 interface CommandDescriptor {
-  arg?: string;
+  args: string[];
   desc: string;
 }
 
 export const commands: {[command: string]: CommandDescriptor} = {
   download: {
-    arg: 'CONTENT',
+    args: ['CONTENT'],
     desc: "Downloads the best torrent for a show or movie."
   },
   search: {
-    arg: 'CONTENT',
+    args: ['CONTENT'],
     desc: "Returns a list of torrents for a show or movie."
   },
   monitor: {
-    arg: 'CONTENT',
+    args: ['CONTENT'],
     desc: "Adds an item to check on intermittently until it's found."
   },
   check: {
+    args: [],
     desc: "Perform search for monitored items now."
   },
   info: {
-    arg: 'CONTENT',
+    args: ['CONTENT'],
     desc: "Returns information about a show or movie."
   },
   remove: {
-    arg: 'CONTENT',
+    args: ['CONTENT'],
     desc: "Removes the given item from monitored, queued, or downloading."
   },
+  reorder: {
+    args: ['CONTENT', 'first/last'],
+    desc: "Moves the given item in the queue to download first or last."
+  },
   abort: {
+    args: [],
     desc: "Aborts any downloads started by you."
   },
   cancel: {
+    args: [],
     desc: "Ends the current conversation."
   },
   status: {
+    args: [],
     desc: 'Shows items being monitored, queued, and downloaded.'
   },
   help: {
-    arg: '[COMMAND]',
+    args: ['[COMMAND]'],
     desc: "Returns the list of commands, or describes the given command."
   }
 };
