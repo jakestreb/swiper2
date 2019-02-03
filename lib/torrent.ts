@@ -7,8 +7,7 @@ import {settings} from './settings';
 import {logDebug, logSubProcessError} from './terminal';
 import {delay} from './util';
 
-const root = path.dirname(__dirname);
-const DOWNLOAD_ROOT = path.join(root, process.env.DOWNLOAD_ROOT || 'downloads');;
+const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../downloads');
 
 // Typescript doesn't recognize the default export of TSA.
 const torrentSearchApi = require('torrent-search-api');

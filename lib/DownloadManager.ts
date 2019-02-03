@@ -12,8 +12,7 @@ const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
 const readdir = promisify(fs.readdir);
 
-const root = path.dirname(__dirname);
-const EXPORT_ROOT = path.join(root, process.env.EXPORT_ROOT || 'media');;
+const EXPORT_ROOT = process.env.EXPORT_ROOT || path.resolve(__dirname, '../media');
 
 export class DownloadManager {
   private _downloading: Video[] = [];
