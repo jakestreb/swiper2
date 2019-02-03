@@ -2,18 +2,19 @@ import * as ptn from 'parse-torrent-name';
 import * as path from 'path';
 import * as rmfr from 'rmfr';
 import * as WebTorrent from 'webtorrent';
-import {getSearchTerm, Video} from './media';
+import {getFileSafeTitle, getSearchTerm, Video} from './media';
 import {settings} from './settings';
-import {logSubProcessError} from './terminal';
+import {logDebug, logSubProcessError} from './terminal';
 import {delay} from './util';
 
-const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT;
+const root = path.dirname(__dirname);
+const DOWNLOAD_ROOT = path.join(root, process.env.DOWNLOAD_ROOT || 'downloads');;
 
 // Typescript doesn't recognize the default export of TSA.
 const torrentSearchApi = require('torrent-search-api');
-// this._torrentSearch.enableProvider('ThePirateBay');
+torrentSearchApi.enableProvider('ThePirateBay');
 torrentSearchApi.enableProvider('Rarbg');
-torrentSearchApi.enableProvider('Torrentz2');
+// torrentSearchApi.enableProvider('Torrentz2');
 torrentSearchApi.enableProvider('1337x');
 torrentSearchApi.enableProvider('ExtraTorrent');
 
@@ -25,6 +26,13 @@ export interface Torrent {
   leechers: number;
   uploadTime: string;
   magnet: string;
+}
+
+export interface DownloadProgress {
+  progress: string,  // (0-100)
+  speed: string,     // (MB/s)
+  remaining: string  // (min)
+  peers: number
 }
 
 export class TorrentClient {
@@ -42,15 +50,22 @@ export class TorrentClient {
     return this._searchClient.search(searchTerm);
   }
 
-  public download(magnet: string): Promise<void> {
+  public download(magnet: string): Promise<string> {
     return this._downloadClient.download(magnet);
+  }
+
+  public getProgress(magnet: string): DownloadProgress {
+    return this._downloadClient.getProgress(magnet);
   }
 
   public stopDownload(magnet: string): Promise<void> {
     return this._downloadClient.stopDownload(magnet);
   }
-}
 
+  public deleteFiles(magnet: string): Promise<void> {
+    return this._downloadClient.deleteFiles(magnet);
+  }
+}
 
 export function getTorrentString(torrent: Torrent): string {
   const seed = torrent.seeders ? `${torrent.seeders} seed | ` : '';
@@ -61,32 +76,36 @@ export function getTorrentString(torrent: Torrent): string {
 
 // Get download quality tier. The tiers range from 0 <-> (2 * number of quality preferences)
 function getTorrentTier(video: Video, torrent: Torrent): number {
+  console.warn('GET TORRENT TIER', torrent);
   // Make sure the title matches.
-  const videoTitle = video.type === 'movie' ? video.title : video.show.title;
-  // console.warn('!!!', torrent.parsedTitle, videoTitle.replace(/[\\/:*?"<>|']/g, ''));
-  const wrongTitle = torrent.parsedTitle !== videoTitle.replace(/[\\/:*?"<>|']/g, '');
+  const wrongTitle = torrent.parsedTitle !== getFileSafeTitle(video);
   if (wrongTitle) {
     return 0;
   }
+  console.warn('RIGHT TITLE!');
   // Check if any insta-reject strings match (ex. CAMRip).
   const rejected = settings.reject.find(r => Boolean(torrent.title.match(r)));
   if (rejected) {
     return 0;
   }
+  console.warn('NO INSTA REJECTS!');
   // Check if the size is too big or too small.
   const sizeBounds = settings.size[video.type];
   const goodSize = torrent.size >= sizeBounds.min && torrent.size <= sizeBounds.max;
   if (!goodSize) {
     return 0;
   }
+  console.warn('GOOD SIZE!');
   // Get the quality preference index.
   const qualityPrefOrder = settings.quality[video.type];
   const qualityIndex = qualityPrefOrder.findIndex(q => Boolean(torrent.title.match(q)));
   if (qualityIndex === -1) {
     return 0;
   }
+  console.warn('POSITIVE QUALITY INDEX', qualityIndex);
   // Prioritize minSeeders over having the best quality.
   const hasMinSeeders = torrent.seeders >= settings.minSeeders;
+  console.warn('SEEDERS', torrent.seeders, hasMinSeeders);
   return (hasMinSeeders ? qualityPrefOrder.length : 0) + (qualityPrefOrder.length - qualityIndex);
 }
 
@@ -142,18 +161,22 @@ class TSA extends SearchClient {
 
   public async _doSearch(searchTerm: string): Promise<Torrent[]> {
     const results = await torrentSearchApi.search(searchTerm);
-    return results
+    const torrents: Torrent[] = results.filter((res: TSAResult) => res.title && res.magnet && res.size)
     .map((res: TSAResult) => this._createTorrent(res))
     .filter((torrent: Torrent) => torrent.size > -1);
+    // Sort by peers desc
+    torrents.sort((a, b) => b.seeders - a.seeders || b.leechers - a.leechers);
+    return torrents;
   }
 
   private _createTorrent(result: TSAResult): Torrent {
+    console.warn('CREATING', result);
     return {
       title: result.title,
       parsedTitle: ptn(result.title).title,
       size: getSizeInMB(result.size) || -1,
-      seeders: result.seeds,
-      leechers: result.peers,
+      seeders: result.seeds || 0,
+      leechers: result.peers || 0,
       uploadTime: result.time,
       magnet: result.magnet
     };
@@ -162,8 +185,11 @@ class TSA extends SearchClient {
 
 abstract class DownloadClient {
   constructor() {}
-  public abstract async download(magnet: string): Promise<void>;
+  // Returns the download directory.
+  public abstract async download(magnet: string): Promise<string>;
+  public abstract getProgress(magnet: string): DownloadProgress;
   public abstract async stopDownload(magnet: string): Promise<void>;
+  public abstract async deleteFiles(magnet: string): Promise<void>;
 }
 
 class WT extends DownloadClient {
@@ -174,18 +200,31 @@ class WT extends DownloadClient {
     this._startClient();
   }
 
-  public async download(magnet: string): Promise<void> {
+  // Returns the download directory.
+  public async download(magnet: string): Promise<string> {
+    logDebug(`WT: download(${magnet})`);
     return new Promise((resolve, reject) => {
-      this._client.add(magnet, { path: DOWNLOAD_ROOT }, wtTorrent => {
-        wtTorrent.once('done', () => {
-          resolve();
+      this._client.add(magnet, {path: DOWNLOAD_ROOT}, wtTorrent => {
+        wtTorrent.on('done', () => {
+          resolve(wtTorrent.path);
         });
         wtTorrent.on('error', async (err) => {
-          this._removeDownloadFiles(wtTorrent);
+          this.deleteFiles(magnet);
           reject(err);
         });
       });
     });
+  }
+
+  public getProgress(magnet: string): DownloadProgress {
+    logDebug(`WT: getProgress(${magnet})`);
+    const wtTorrent = this._client.get(magnet);
+    return {
+      progress: wtTorrent ? (wtTorrent.progress * 100).toPrecision(3) : '0',
+      speed: wtTorrent ? (wtTorrent.downloadSpeed / (1000 * 1000)).toPrecision(3) : '0',
+      remaining: wtTorrent ? (wtTorrent.timeRemaining / (60 * 1000)).toPrecision(3) : '',
+      peers: wtTorrent ? wtTorrent.numPeers : 0
+    };
   }
 
   public async stopDownload(magnet: string): Promise<void> {
@@ -200,8 +239,12 @@ class WT extends DownloadClient {
     });
   }
 
-  private async _removeDownloadFiles(wtTorrent: WebTorrent.Torrent): Promise<void> {
+  public async deleteFiles(magnet: string): Promise<void> {
     try {
+      const wtTorrent = this._client.get(magnet);
+      if (!wtTorrent) {
+        throw new Error(`torrent not found from magnet`);
+      }
       // Get all the paths that should be deleted.
       const paths: string[] = [];
       wtTorrent.files.forEach(file => {

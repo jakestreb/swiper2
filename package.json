@@ -6,7 +6,8 @@
   "typings": "dist/index",
   "scripts": {
     "start": "ts-node --files lib/server.ts",
-    "lint": "tslint -p tsconfig.json"
+    "lint": "tslint -p tsconfig.json",
+    "lines": "git -C lib grep ^ | wc -l"
   },
   "repository": {
     "type": "git",

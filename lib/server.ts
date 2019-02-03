@@ -51,7 +51,7 @@ function startComms(swiper: Swiper): void {
   terminal.on('line', (line: string) => {
     acceptMsgFromClient('cli', CLI_ID, line.trim())
     .catch(err => {
-      logError(`Error handling console request "${line.trim()}": ${err}`);
+      logError(`Error handling cli request "${line.trim()}": ${err}`);
       log('\n');
       sendMsgToClient(CLI_ID, {err: `Something went wrong`});
     });

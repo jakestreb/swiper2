@@ -3,6 +3,7 @@ import * as TVDB from 'node-tvdb';
 
 import {Episode, Media, Show, sortEpisodes} from './media';
 import {MediaQuery} from './Swiper';
+import {logDebug, logError} from './terminal';
 import {getDateFromStr} from './util';
 
 let tvdb = new TVDB(process.env.TVDB_ID);
@@ -22,6 +23,7 @@ interface OMDB {
   imdbID: string; // Ex: tt0000000
   Released: string;
   DVD: string;
+  Error: string;
 }
 
 // Return type of the TVDB database, with only fields we need defined.
@@ -41,20 +43,24 @@ interface TVDBEpisode {
 
 // Returns the media with all episodes. Filtering must be performed afterward.
 export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Media>> {
+  logDebug(`identifyMedia(${JSON.stringify(info)})`);
   // TODO: Define return type.
   let omdbResult: OMDB;
   let tvdbResult: TVDB;
-  const title = info.title.replace(/\&/g, '\\&');
+  // Escape any ampersands in the title for the URL string.
+  const title = encodeURIComponent(info.title);
   const year = info.year ? `&y=${info.year}` : ``;
-  const type = info.type ? `&type=${info.type}` : ``;
+  const type = info.type ? `&type=${info.type === 'movie' ? 'movie' : 'series'}` : ``;
   const url = `http://www.omdbapi.com/?apikey=${process.env.OMDB_ID}&t=${title}` + year + type;
   try {
     // Escape all ampersands in the title for searching via web API
     omdbResult = await getJSONResponse(url) as OMDB;
+    logDebug(`OMDB Response: ${JSON.stringify(omdbResult)}`);
   } catch (err) {
     return { err: `Can't access the Open Movie Database` };
   }
-  if (!omdbResult) {
+  if (omdbResult.Error) {
+    logError(`OMDB call failed: ${omdbResult.Error}`);
     // Failed to ID
     return { err: `I can't identify that` };
   } else if (omdbResult.Type === 'movie') {
@@ -75,6 +81,7 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
     try {
       tvdbResult = await _searchTVDB(omdbResult.imdbID);
     } catch (err) {
+      logError(`_searchTVDB Failed: ${err}`);
       return { err: `Can't find that show` };
     }
     const show: Show = {

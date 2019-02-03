@@ -2,26 +2,35 @@ import {terminal as term} from 'terminal-kit';
 
 const DEBUG = Boolean(parseInt(process.env.DEBUG || "0", 10));
 
-export function prompt(): void {
-  term(`\n> `);
+export function prompt(prefix: string = ''): void {
+  term(`${prefix}> `);
+}
+
+export function log(str: string = ''): void {
+  term.eraseLine();
+  term.column(0);
+  term(`${str}\n`);
 }
 
 export function logDebug(str: string = ''): void {
   if (DEBUG) {
-    term.magenta(str);
+    term.eraseLine();
+    term.column(0);
+    term.magenta(`${str}`);
+    prompt('\n');
   }
 }
 
-export function log(str: string = ''): void {
-  term(str);
-}
-
 export function logInputError(str: string = ''): void {
-  term.red(str);
+  term.eraseLine();
+  term.column(0);
+  term.red(`${str}\n`);
 }
 
 export function logError(str: string = ''): void {
-  term.bgRed(str);
+  term.eraseLine();
+  term.column(0);
+  term.bgRed(`${str}\n`);
 }
 
 export function logSubProcess(str: string = ''): void {
@@ -29,7 +38,7 @@ export function logSubProcess(str: string = ''): void {
   term.eraseLine();
   term.column(whitespace);
   term.inverse(` ${str} `);
-  prompt();
+  prompt('\n');
 }
 
 export function logSubProcessError(str: string = ''): void {
@@ -37,5 +46,5 @@ export function logSubProcessError(str: string = ''): void {
   term.eraseLine();
   term.column(whitespace);
   term.bgRed(` ${str} `);
-  prompt();
+  prompt('\n');
 }

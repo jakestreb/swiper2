@@ -75,6 +75,17 @@ export function getSearchTerm(video: Video): string {
   }
 }
 
+export function getFileSafeTitle(video: Video): string {
+  const regex = /[\\/:*?"<>|']/g;
+  if (video.type === 'movie') {
+    return video.title.replace(regex, '');
+  } else if (video.type === 'episode') {
+    return video.show.title.replace(regex, '');
+  } else {
+    throw new Error(`getFileSafeTitle error: invalid video`);
+  }
+}
+
 export function getDescription(anyMedia: Movie|Show|Episode): string {
   if (anyMedia.type === 'episode') {
     return `${anyMedia.show.title} S${padZeros(anyMedia.seasonNum)}E${padZeros(anyMedia.episodeNum)}`;

@@ -13,11 +13,15 @@ export function delay(ms: number): Promise<void> {
   });
 }
 
+// Returns a Date representing 12AM of the day it is in the current timezone.
 export function getMorning(): Date {
-  const morn = new Date();
-  morn.setHours(0);
-  morn.setMinutes(0);
-  morn.setSeconds(0, 0);
+  const offset = (new Date()).getTimezoneOffset();
+  const now = Date.now();
+  const nowTz = now - (offset * 60 * 1000);
+  const morn = new Date(nowTz);
+  morn.setUTCHours(0);
+  morn.setUTCMinutes(0);
+  morn.setUTCSeconds(0, 0);
   return morn;
 }
 
@@ -51,7 +55,7 @@ export function removePrefix(str: string, prefix: string): string {
   }
 }
 
-export function execCapture(str: string, regex: RegExp): Array<void|string> {
+export function execCapture(str: string, regex: RegExp): Array<string|null> {
   const match = regex.exec(str);
   if (!match) {
     // See: https://stackoverflow.com/a/16046903/9737244
@@ -59,7 +63,7 @@ export function execCapture(str: string, regex: RegExp): Array<void|string> {
     if (!captureMatches) {
       throw new Error(`Error in execCapture: no capture groups in regex`);
     }
-    return new Array(captureMatches.length - 1);
+    return new Array(captureMatches.length - 1).map(() => null);
   }
   return match.slice(1);
 }
@@ -98,7 +102,7 @@ export function matchNumber(input: string, other: Response[] = []): string|null 
 // Parses date strings of the form "02 Nov 2018".
 // Note that null dates in OMDB are represented by "N/A" and should give null.
 export function getDateFromStr(dateStr: string): Date|null {
-  if (!dateStr.match(/\d/g)) {
+  if (!dateStr || !dateStr.match(/\d/g)) {
     return null;
   } else {
     return new Date(dateStr);
