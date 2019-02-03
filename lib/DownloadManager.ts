@@ -117,8 +117,8 @@ export class DownloadManager {
       const downloadDir = await this._torrentClient.download(video.magnet);
 
       // On completion, remove the item from the database.
-      const removeFn = video.type === 'movie' ? this._dbManager.removeMovie :
-        this._dbManager.removeEpisode;
+      const removeFn = video.type === 'movie' ? (id: number) => this._dbManager.removeMovie(id) :
+        (id: number) => this._dbManager.removeEpisode(id);
       await removeFn(video.id);
 
       // Remove from downloading

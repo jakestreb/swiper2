@@ -154,7 +154,7 @@ export class DBManager {
   }
 
   public async markAsFailed(video: Video): Promise<void> {
-    logDebug(`DBManager: markAsFailed(getDescription${video})`);
+    logDebug(`DBManager: markAsFailed(${getDescription(video)})`);
     const nowMs = Date.now();
     if (video.type === 'movie') {
       const movie = video as Movie;
