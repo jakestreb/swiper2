@@ -1,6 +1,9 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
+import {EventEmitter} from 'events';
+EventEmitter.defaultMaxListeners = Infinity; // Hides a repeated warning from 'webtorrent'
+
 import * as express from 'express';
 import {log, logError, logInputError, logSubProcess, prompt} from './terminal';
 import * as readline from 'readline';

@@ -38,18 +38,43 @@ export class TorrentClient {
   private _searchClient: SearchClient;
   private _downloadClient: DownloadClient;
 
+  // Array of search delay promise resolvers.
+  private _searchPendingQueue: Array<() => void> = [];
+  private _activeSearchCount = 0;
+  private readonly _maxActiveSearches = 1;
+
   constructor() {
+    // Create a TorrentSearchApi search implementation with 1 retry default.
     this._searchClient = new TSA(1);
     this._downloadClient = new WT();
   }
 
-  public search(video: Video): Promise<Torrent[]> {
-    // Create a TorrentSearchApi search implementation with 1 retry default.
+  // Perform the search, delaying searches so that no more than the maxActiveSearches count occur
+  // concurrently.
+  public async search(video: Video): Promise<Torrent[]> {
+    this._activeSearchCount += 1;
+    if (this._activeSearchCount > this._maxActiveSearches) {
+      await new Promise(resolve => {
+        this._searchPendingQueue.push(resolve);
+      });
+    }
+    try {
+      return await this._doSearch(video);
+    } finally {
+      if (this._searchPendingQueue.length > 0) {
+        const resolver = this._searchPendingQueue.shift()!;
+        resolver();
+      }
+      this._activeSearchCount -= 1;
+    }
+  }
+
+  private _doSearch(video: Video): Promise<Torrent[]> {
     const searchTerm = getSearchTerm(video);
     return this._searchClient.search(searchTerm);
   }
 
-  public download(magnet: string): Promise<string> {
+  public download(magnet: string): Promise<string[]> {
     return this._downloadClient.download(magnet);
   }
 
@@ -75,36 +100,30 @@ export function getTorrentString(torrent: Torrent): string {
 
 // Get download quality tier. The tiers range from 0 <-> (2 * number of quality preferences)
 function getTorrentTier(video: Video, torrent: Torrent): number {
-  console.warn('GET TORRENT TIER', torrent);
   // Make sure the title matches.
   const wrongTitle = torrent.parsedTitle !== getFileSafeTitle(video);
   if (wrongTitle) {
     return 0;
   }
-  console.warn('RIGHT TITLE!');
   // Check if any insta-reject strings match (ex. CAMRip).
   const rejected = settings.reject.find(r => Boolean(torrent.title.match(r)));
   if (rejected) {
     return 0;
   }
-  console.warn('NO INSTA REJECTS!');
   // Check if the size is too big or too small.
   const sizeBounds = settings.size[video.type];
   const goodSize = torrent.size >= sizeBounds.min && torrent.size <= sizeBounds.max;
   if (!goodSize) {
     return 0;
   }
-  console.warn('GOOD SIZE!');
   // Get the quality preference index.
   const qualityPrefOrder = settings.quality[video.type];
   const qualityIndex = qualityPrefOrder.findIndex(q => Boolean(torrent.title.match(q)));
   if (qualityIndex === -1) {
     return 0;
   }
-  console.warn('POSITIVE QUALITY INDEX', qualityIndex);
   // Prioritize minSeeders over having the best quality.
   const hasMinSeeders = torrent.seeders >= settings.minSeeders;
-  console.warn('SEEDERS', torrent.seeders, hasMinSeeders);
   return (hasMinSeeders ? qualityPrefOrder.length : 0) + (qualityPrefOrder.length - qualityIndex);
 }
 
@@ -169,7 +188,6 @@ class TSA extends SearchClient {
   }
 
   private _createTorrent(result: TSAResult): Torrent {
-    console.warn('CREATING', result);
     return {
       title: result.title,
       parsedTitle: ptn(result.title).title,
@@ -185,7 +203,7 @@ class TSA extends SearchClient {
 abstract class DownloadClient {
   constructor() {}
   // Returns the download directory.
-  public abstract async download(magnet: string): Promise<string>;
+  public abstract async download(magnet: string): Promise<string[]>;
   public abstract getProgress(magnet: string): DownloadProgress;
   public abstract async stopDownload(magnet: string): Promise<void>;
   public abstract async deleteFiles(magnet: string): Promise<void>;
@@ -200,12 +218,12 @@ class WT extends DownloadClient {
   }
 
   // Returns the download directory.
-  public async download(magnet: string): Promise<string> {
+  public async download(magnet: string): Promise<string[]> {
     logDebug(`WT: download(${magnet})`);
     return new Promise((resolve, reject) => {
       this._client.add(magnet, {path: DOWNLOAD_ROOT}, wtTorrent => {
         wtTorrent.on('done', () => {
-          resolve(wtTorrent.path);
+          resolve(wtTorrent.files.map(f => f.path));
         });
         wtTorrent.on('error', async (err) => {
           this.deleteFiles(magnet);

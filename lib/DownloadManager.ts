@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import {ncp} from 'ncp';
 import * as path from 'path';
 import * as rmfr from 'rmfr';
 import {promisify} from 'util';
@@ -10,8 +11,8 @@ import {DownloadProgress, getBestTorrent, TorrentClient} from './torrent';
 import {delay, getMsUntil} from './util';
 const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
-const readdir = promisify(fs.readdir);
 
+const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../downloads');
 const EXPORT_ROOT = process.env.EXPORT_ROOT || path.resolve(__dirname, '../media');
 
 export class DownloadManager {
@@ -114,7 +115,7 @@ export class DownloadManager {
       }
 
       // Run the download
-      const downloadDir = await this._torrentClient.download(video.magnet);
+      const downloadPaths = await this._torrentClient.download(video.magnet);
 
       // On completion, remove the item from the database.
       const removeFn = video.type === 'movie' ? (id: number) => this._dbManager.removeMovie(id) :
@@ -125,7 +126,7 @@ export class DownloadManager {
       this._downloading = this._downloading.filter(v => v.id !== video.id);
 
       // Export the video (run separately).
-      exportVideo(video, downloadDir);
+      exportVideo(video, downloadPaths);
 
       // Ping since the database changed.
       this.ping();
@@ -149,12 +150,14 @@ export class DownloadManager {
 }
 
 // Save a video in the correct directory, adding any necessary directories.
-async function exportVideo(video: Video, downloadDir: string): Promise<void> {
+async function exportVideo(video: Video, downloadPaths: string[]): Promise<void> {
+  logDebug(`exportVideo(${getDescription(video)}, ${downloadPaths})`);
   const safeTitle = getFileSafeTitle(video);
   const dirs = video.type === 'movie' ? ['movies', safeTitle] :
     ['tv', safeTitle, `Season ${video.seasonNum}`];
 
   try {
+    logDebug(`exportVideo: Create missing folders in export directory`);
     // Create any directories needed to store the video file.
     let filepath = EXPORT_ROOT;
     for (let i = 0; i < dirs.length; i++) {
@@ -167,16 +170,19 @@ async function exportVideo(video: Video, downloadDir: string): Promise<void> {
       }
     }
 
-    // Get the names of all the downloaded files.
-    const downloadFileNames = await readdir(downloadDir);
-
     // Move the files to the final directory.
-    const copyActions = downloadFileNames.map(filename =>
-      copy(path.join(downloadDir, filename), path.join(filepath, filename)));
+    logDebug(`exportVideo: Copying videos to ${filepath}`);
+    const copyActions = downloadPaths.map(downloadPath => {
+      const from = path.join(DOWNLOAD_ROOT, downloadPath);
+      const to = path.join(filepath, downloadPath.split('/').pop()!);
+      return copy(from, to);
+    });
     await Promise.all(copyActions);
 
-    // Remove the download directory.
-    await rmfr(downloadDir);
+    // Remove the download directories (Remove the first directory of each downloaded file).
+    logDebug(`exportVideo: Removing download directory`);
+    const deleteActions = downloadPaths.map(downloadPath => rmfr(downloadPath.split('/').shift()!));
+    await Promise.all(deleteActions);
   } catch (err) {
     logSubProcessError(`Failed to export video files: ${err}`);
   }
@@ -185,13 +191,12 @@ async function exportVideo(video: Video, downloadDir: string): Promise<void> {
 // Copys a file from the src path to the dst path, returns a promise.
 function copy(src: string, dst: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const rd = fs.createReadStream(src);
-    rd.on("error", err => {
-      reject(err);
+    ncp(src, dst, (err: Error) => {
+     if (err) {
+       reject(err);
+     } else {
+       resolve();
+     }
     });
-    const wr = fs.createWriteStream(dst);
-    wr.on("error", reject);
-    wr.on("close", resolve);
-    rd.pipe(wr);
   });
 }
