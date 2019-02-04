@@ -38,6 +38,7 @@
     "node-tvdb": "^4.1.0",
     "parse-torrent-name": "^0.5.4",
     "rmfr": "^2.0.0",
+    "sqlite": "^3.0.1",
     "sqlite3": "^4.0.6",
     "terminal-kit": "^1.26.10",
     "torrent-search-api": "^2.0.4",
