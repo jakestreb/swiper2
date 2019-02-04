@@ -179,9 +179,7 @@ export class Swiper {
     if (video) {
       log(`Searching for ${getDescription(video)} downloads`);
       const torrents = await this._torrentClient.search(video);
-      console.warn('FINISHED SEARCH');
       const best = getBestTorrent(video, torrents);
-      console.warn('FINISHED GET BEST', best);
       if (!best) {
         logDebug(`Swiper: _download failed to find torrent`);
         // If the target is a single video and an automated search failed, show the torrents.
@@ -569,7 +567,6 @@ export class Swiper {
     const now = new Date();
     // Difference in ms between now and the release date.
     const msPast = now.valueOf() - episode.airDate.valueOf();
-    console.warn('msPast', msPast);
     let acc = 0;
     for (let i = 0; msPast > acc && i < backoff.length; i++) {
       acc += backoff[i] * 60 * 1000;
@@ -712,6 +709,8 @@ export class Swiper {
     if (!convo.media) {
       const resp = await identifyMedia(mediaQuery);
       if (!resp.data) {
+        // If the media cannot be identified, clear the conversation state.
+        this._deleteConversation(convo);
         return { err: resp.err! };
       }
       convo.media = resp.data;
