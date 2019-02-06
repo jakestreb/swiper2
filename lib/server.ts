@@ -13,6 +13,8 @@ import {log, logError, logInputError, logSubProcess, prompt} from './terminal';
 type CommType = 'cli'|'telegram';
 
 const app = express();
+app.use(express.json());
+
 const CLI_ID = -1;
 // const gatewayUrl = process.env.GATEWAY_URL;
 const PORT = process.env.PORT;
