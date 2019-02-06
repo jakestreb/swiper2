@@ -24,6 +24,13 @@ interface Status {
   failed: Video[];
 }
 
+interface MoviePick {
+  imdbId: string;
+  title: string;
+  year: string;
+  lastDownloaded: number;
+}
+
 export interface ResultRow {
   [column: string]: any;
 }
@@ -35,7 +42,7 @@ export class DBManager {
   private _nextLow: number = -1;
 
   constructor() {
-    const dbPath = path.join(path.dirname(__dirname), process.env.DB_PATH || 'memory.db');
+    const dbPath = process.env.DB_PATH || path.resolve(__dirname, '../memory.db');
     this._db = new sqlite3.Database(dbPath);
   }
 
@@ -46,7 +53,7 @@ export class DBManager {
   public async initDB(): Promise<void> {
     logDebug(`DBManager: initDB()`);
     await this._run(`CREATE TABLE IF NOT EXISTS Movies (
-      id INTEGER PRIMARY KEY ON CONFLICT REPLACE,
+      id INTEGER PRIMARY KEY UNIQUE ON CONFLICT REPLACE,
       addedBy INTEGER,
       type TEXT,
       title TEXT,
@@ -59,14 +66,14 @@ export class DBManager {
       failedAt INTEGER DEFAULT 0
     )`);
     await this._run(`CREATE TABLE IF NOT EXISTS Shows (
-      id INTEGER PRIMARY KEY ON CONFLICT REPLACE,
+      id INTEGER PRIMARY KEY UNIQUE ON CONFLICT REPLACE,
       addedBy INTEGER,
       type TEXT,
       title TEXT
     )`);
     // The episodeId column is uniquely named to avoid a duplicate name when joining with shows.
     await this._run(`CREATE TABLE IF NOT EXISTS Episodes (
-      episodeId INTEGER PRIMARY KEY ON CONFLICT REPLACE,
+      episodeId INTEGER PRIMARY KEY UNIQUE ON CONFLICT REPLACE,
       addedBy INTEGER,
       seasonNum INTEGER,
       episodeNum INTEGER,
@@ -76,6 +83,13 @@ export class DBManager {
       queuePos INTEGER DEFAULT 0,
       isDownloading INTEGER DEFAULT 0,
       failedAt INTEGER DEFAULT 0
+    )`);
+    // Create a table for movies that will be downloaded randomly.
+    await this._run(`CREATE TABLE IF NOT EXISTS MoviePicks (
+      imdbId TEXT PRIMARY KEY UNIQUE ON CONFLICT REPLACE,
+      title TEXT,
+      year TEXT,
+      lastDownloaded INTEGER DEFAULT 0
     )`);
   }
 
@@ -134,20 +148,17 @@ export class DBManager {
     await this._add(media, {addedBy, queue: true});
   }
 
-  public async moveToQueued(anyMedia: Movie|Show|Episode) {
-    logDebug(`DBManager: moveToQueued(getDescription${anyMedia})`);
-    if (anyMedia.type === 'movie') {
-      const movie = anyMedia as Movie;
-      await this._run(`UPDATE Movies SET queuePos=? WHERE id=?`, [this._nextLow--, movie.id]);
-    } else if (anyMedia.type === 'tv') {
-      const show = anyMedia as Show;
-      const queuePos = this._nextLow--;
-      for (const ep of show.episodes) {
-        await this._run(`UPDATE Episodes SET queuePos=? WHERE show=?`, [queuePos, ep.show.id]);
-      }
-    } else if (anyMedia.type === 'episode') {
-      const episode = anyMedia as Episode;
-      await this._run(`UPDATE Episodes SET queuePos=? WHERE episodeId=?`, [this._nextLow--, episode.id]);
+  // Move to queued, and set the optional magnet on the video.
+  public async moveToQueued(video: Video, optMagnet: string = '') {
+    logDebug(`DBManager: moveToQueued(${getDescription(video)})`);
+    if (video.type === 'movie') {
+      const movie = video as Movie;
+      await this._run(`UPDATE Movies SET queuePos=?, magnet=? WHERE id=?`,
+        [this._nextLow--, optMagnet, movie.id]);
+    } else if (video.type === 'episode') {
+      const episode = video as Episode;
+      await this._run(`UPDATE Episodes SET queuePos=?, magnet=? WHERE episodeId=?`,
+        [this._nextLow--, optMagnet, episode.id]);
     } else {
       throw new Error(`Cannot move unknown item to queued`);
     }
@@ -178,20 +189,6 @@ export class DBManager {
     await this._run(`DELETE FROM Shows WHERE id NOT IN (SELECT show FROM Episodes)`);
   }
 
-  public async changeQueuePos(row: ResultRow, pos: 'first'|'last') {
-    logDebug(`DBManager: changeQueuePos(${row.id}, ${pos})`);
-    const newPos = pos === 'first' ? this._nextHigh++ : this._nextLow--;
-    if (row.type === 'movie') {
-      await this._run(`UPDATE Movies SET queuePos=? WHERE id=? AND queuePos!=0`, [newPos, row.id]);
-    } else if (row.type === 'tv') {
-      for (const ep of row.episodes) {
-        await this._run(`UPDATE Episodes SET queuePos=? WHERE show=? AND queuePos!=0`, [newPos, ep.show.id]);
-      }
-    } else {
-      throw new Error(`Cannot change unknown item position`);
-    }
-  }
-
   public async removeMovie(id: number): Promise<void> {
     logDebug(`DBManager: removeMovie(${id})`);
     await this._run(`DELETE FROM Movies WHERE id=?`, [id]);
@@ -209,7 +206,7 @@ export class DBManager {
     if (episodes === 'all') {
       await this._run(`DELETE FROM Episodes WHERE show=?`, [showId]);
     } else if (episodes === 'new') {
-      await this._run(`DELETE FROM Episodes WHERE airDate>?`, [getMorning().getTime()]);
+      await this._run(`DELETE FROM Episodes WHERE show=? AND airDate>?`, [getMorning().getTime()]);
     } else {
       // Remove all episodes in the SeasonEpisode object.
       const removals: Array<Promise<any>> = [];
@@ -217,9 +214,9 @@ export class DBManager {
         const seasonNum = parseInt(seasonNumStr, 10);
         const episodeNums = episodes[seasonNum];
         if (episodeNums === 'all') {
-          removals.push(this._run(`DELETE FROM Episodes WHERE seasonNum=?`, [seasonNum]));
+          removals.push(this._run(`DELETE FROM Episodes WHERE show=? AND seasonNum=?`, [seasonNum]));
         } else {
-          removals.push(this._run(`DELETE FROM Episodes WHERE seasonNum=? AND episodeNum IN ` +
+          removals.push(this._run(`DELETE FROM Episodes WHERE show=? AND seasonNum=? AND episodeNum IN ` +
             `(${episodeNums.map(e => '?')})`, [seasonNum, ...episodeNums]));
         }
       });
@@ -227,6 +224,43 @@ export class DBManager {
     }
     // Remove show if all episodes were removed.
     await this._run(`DELETE FROM Shows WHERE id NOT IN (SELECT show FROM Episodes)`);
+  }
+
+  public async changeMovieQueuePos(id: number, pos: 'first'|'last'): Promise<void> {
+    logDebug(`DBManager: changeMovieQueuePos(${id}, ${pos})`);
+    const newPos = pos === 'first' ? this._nextHigh++ : this._nextLow--;
+    await this._run(`UPDATE Movies SET queuePos=? WHERE id=? AND queuePos!=0`, [newPos, id]);
+  }
+
+  public async changeEpisodesQueuePosByDescriptor(
+    showId: number,
+    episodes: EpisodesDescriptor,
+    pos: 'first'|'last'
+  ): Promise<void> {
+    logDebug(`DBManager: changeEpisodesQueuePosByDescriptor(${showId}, ${episodes}, ${pos})`);
+    const newPos = pos === 'first' ? this._nextHigh++ : this._nextLow--;
+    if (episodes === 'all') {
+      await this._run(`UPDATE Episodes SET queuePos=? WHERE show=? AND queuePos!=0`, [newPos, showId]);
+    } else if (episodes === 'new') {
+      await this._run(`UPDATE Episodes SET queuePos=? WHERE show=? AND queuePos!=0 AND airDate>?`,
+        [newPos, showId, getMorning().getTime()]);
+    } else {
+      // Move all episodes in the SeasonEpisode object.
+      const moves: Array<Promise<any>> = [];
+      Object.keys(episodes).forEach(seasonNumStr => {
+        const seasonNum = parseInt(seasonNumStr, 10);
+        const episodeNums = episodes[seasonNum];
+        if (episodeNums === 'all') {
+          moves.push(this._run(`UPDATE Episodes SET queuePos=? WHERE show=? AND queuePos!=0 ` +
+            `AND seasonNum=?`, [newPos, showId, seasonNum]));
+        } else {
+          moves.push(this._run(`UPDATE Episodes SET queuePos=? WHERE show=? AND queuePos!=0 ` +
+            `AND seasonNum=? AND episodeNum IN (${episodeNums.map(e => '?')})`,
+            [newPos, showId, seasonNum, ...episodeNums]));
+        }
+      });
+      await Promise.all(moves);
+    }
   }
 
   public async moveAllQueuedToFailed(addedBy: number): Promise<void> {
@@ -286,6 +320,18 @@ export class DBManager {
     } else {
       throw new Error(`Cannot add magnet to unknown video`);
     }
+  }
+
+  public async getMoviePicks(n: number): Promise<Movie[]> {
+    logDebug(`DBManager: getMoviePicks(${n})`);
+    const nowMs = Date.now();
+    const oneYearAgoMs = nowMs - settings.randomMovieTimeout;
+    const picks = await this._all(`SELECT * FROM MoviePicks WHERE lastDownloaded<? ` +
+      `ORDER BY RANDOM() LIMIT ?`, [oneYearAgoMs, n]) as MoviePick[];
+    // Update the last downloaded date for all picked movies.
+    await this._run(`UPDATE MoviePicks SET lastDownloaded=? WHERE imdbId IN ` +
+      `(${picks.map(p => '?')})`, [nowMs, ...picks.map(p => p.imdbId)]);
+    return picks.map(mp => _createPickedMovie(mp));
   }
 
   // Result rows should be Movie or EpisodeShow rows. Sets isDownloading to true for the videos given by the rows
@@ -428,6 +474,19 @@ function createVideos(rows: ResultRow[]): Video[] {
   // Sort show episodes by seasonNum/episodeNum to maintain invariant.
   shows.forEach(show => show.episodes = sortEpisodes(show.episodes));
   return videos;
+}
+
+// The row should be from MoviePicks.
+function _createPickedMovie(row: MoviePick): Movie {
+  return {
+    id: parseInt(row.imdbId.slice(2), 10),
+    type: 'movie',
+    title: row.title,
+    year: row.year,
+    release: null,
+    dvd: null,
+    magnet: null
+  };
 }
 
 // The row should be from Movies.

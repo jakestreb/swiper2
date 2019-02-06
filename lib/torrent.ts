@@ -28,10 +28,10 @@ export interface Torrent {
 }
 
 export interface DownloadProgress {
-  progress: string,  // (0-100)
-  speed: string,     // (MB/s)
-  remaining: string  // (min)
-  peers: number
+  progress: string;  // (0-100)
+  speed: string;     // (MB/s)
+  remaining: string; // (min)
+  peers: number;
 }
 
 export class TorrentClient {
@@ -69,11 +69,6 @@ export class TorrentClient {
     }
   }
 
-  private _doSearch(video: Video): Promise<Torrent[]> {
-    const searchTerm = getSearchTerm(video);
-    return this._searchClient.search(searchTerm);
-  }
-
   public download(magnet: string): Promise<string[]> {
     return this._downloadClient.download(magnet);
   }
@@ -88,6 +83,11 @@ export class TorrentClient {
 
   public deleteFiles(magnet: string): Promise<void> {
     return this._downloadClient.deleteFiles(magnet);
+  }
+
+  private _doSearch(video: Video): Promise<Torrent[]> {
+    const searchTerm = getSearchTerm(video);
+    return this._searchClient.search(searchTerm);
   }
 }
 
@@ -201,7 +201,6 @@ class TSA extends SearchClient {
 }
 
 abstract class DownloadClient {
-  constructor() {}
   // Returns the download directory.
   public abstract async download(magnet: string): Promise<string[]>;
   public abstract getProgress(magnet: string): DownloadProgress;
@@ -291,7 +290,7 @@ class WT extends DownloadClient {
 
 // Expects a string which starts with a decimal number and either GiB, MiB, or kiB
 function getSizeInMB(sizeStr: string): number|null {
-  const factorMap: {[prefix: string]: number} = {'g': 1000.0, 'm': 1.0, 'k': 0.001};
+  const factorMap: {[prefix: string]: number} = {g: 1000.0, m: 1.0, k: 0.001};
   const [valStr, units] = sizeStr.replace(/,/g, '').split(/\s/g);
   const val = parseFloat(valStr);
   if (units.length > 0 && units[0].toLowerCase() in factorMap) {

@@ -5,10 +5,10 @@ import {EventEmitter} from 'events';
 EventEmitter.defaultMaxListeners = Infinity; // Hides a repeated warning from 'webtorrent'
 
 import * as express from 'express';
-import {log, logError, logInputError, logSubProcess, prompt} from './terminal';
 import * as readline from 'readline';
 
 import {Swiper, SwiperReply} from './Swiper';
+import {log, logError, logInputError, logSubProcess, prompt} from './terminal';
 
 type CommType = 'cli'|'telegram';
 

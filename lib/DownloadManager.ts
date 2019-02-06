@@ -21,12 +21,18 @@ export class DownloadManager {
   private _inProgress: boolean = false;
 
   constructor(private _dbManager: DBManager, private _torrentClient: TorrentClient) {
-    this._startRemovingFailed();
+    this._startRemovingFailed().catch(err => {
+      logSubProcessError(`DownloadManager _startRemovingFailed first call failed with error: ${err}`);
+    });
     this.ping();
   }
 
   // A non-async public wrapper is used to prevent waiting on the ping function.
-  public ping(): void { this._ping(); }
+  public ping(): void {
+    this._ping().catch(err => {
+      logSubProcessError(`DownloadManager _ping failed with error: ${err}`);
+    });
+  }
 
   public getProgress(video: Video): DownloadProgress {
     return this._torrentClient.getProgress(video.magnet || '');
@@ -83,7 +89,9 @@ export class DownloadManager {
     } catch (err) {
       logSubProcessError(`Failed item removal process failed with error: ${err}`);
       setTimeout(() => {
-        this._startRemovingFailed();
+        this._startRemovingFailed().catch(err => {
+          logSubProcessError(`DownloadManager _startRemovingFailed failed with error: ${err}`);
+        });
       }, 5000);
     }
   }
@@ -126,7 +134,9 @@ export class DownloadManager {
       this._downloading = this._downloading.filter(v => v.id !== video.id);
 
       // Export the video (run separately).
-      exportVideo(video, downloadPaths);
+      exportVideo(video, downloadPaths).catch(err => {
+        logSubProcessError(`Failed to export video files: ${err}`);
+      });
 
       // Ping since the database changed.
       this.ping();
@@ -156,36 +166,32 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   const dirs = video.type === 'movie' ? ['movies', safeTitle] :
     ['tv', safeTitle, `Season ${video.seasonNum}`];
 
-  try {
-    logDebug(`exportVideo: Create missing folders in export directory`);
-    // Create any directories needed to store the video file.
-    let filepath = EXPORT_ROOT;
-    for (let i = 0; i < dirs.length; i++) {
-      filepath = path.join(filepath, dirs[i]);
-      try {
-        await access(filepath, fs.constants.F_OK);
-      } catch {
-        // Throws when path does not exist
-        await mkdir(filepath);
-      }
+  logDebug(`exportVideo: Create missing folders in export directory`);
+  // Create any directories needed to store the video file.
+  let filepath = EXPORT_ROOT;
+  for (const pathElem of dirs) {
+    filepath = path.join(filepath, pathElem);
+    try {
+      await access(filepath, fs.constants.F_OK);
+    } catch {
+      // Throws when path does not exist
+      await mkdir(filepath);
     }
-
-    // Move the files to the final directory.
-    logDebug(`exportVideo: Copying videos to ${filepath}`);
-    const copyActions = downloadPaths.map(downloadPath => {
-      const from = path.join(DOWNLOAD_ROOT, downloadPath);
-      const to = path.join(filepath, downloadPath.split('/').pop()!);
-      return copy(from, to);
-    });
-    await Promise.all(copyActions);
-
-    // Remove the download directories (Remove the first directory of each downloaded file).
-    logDebug(`exportVideo: Removing download directory`);
-    const deleteActions = downloadPaths.map(downloadPath => rmfr(downloadPath.split('/').shift()!));
-    await Promise.all(deleteActions);
-  } catch (err) {
-    logSubProcessError(`Failed to export video files: ${err}`);
   }
+
+  // Move the files to the final directory.
+  logDebug(`exportVideo: Copying videos to ${filepath}`);
+  const copyActions = downloadPaths.map(downloadPath => {
+    const from = path.join(DOWNLOAD_ROOT, downloadPath);
+    const to = path.join(filepath, downloadPath.split('/').pop()!);
+    return copy(from, to);
+  });
+  await Promise.all(copyActions);
+
+  // Remove the download directories (Remove the first directory of each downloaded file).
+  logDebug(`exportVideo: Removing download directory`);
+  const deleteActions = downloadPaths.map(downloadPath => rmfr(downloadPath.split('/').shift()!));
+  await Promise.all(deleteActions);
 }
 
 // Copys a file from the src path to the dst path, returns a promise.

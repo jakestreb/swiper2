@@ -99,7 +99,7 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
       airDate: ep.firstAired ? new Date(`${ep.firstAired} ${tvdbResult.airsTime}`) : null,
       magnet: null
     }));
-    show.episodes.push(...sortEpisodes(episodes))
+    show.episodes.push(...sortEpisodes(episodes));
     return {
       data: show
     };
