@@ -48,3 +48,19 @@ export function logSubProcessError(str: string = ''): void {
   term.bgRed(` ${str} `);
   prompt('\n');
 }
+
+export function logForeignResponse(str: string = ''): void {
+  const whitespace = Math.max(0, term.width - str.length - 2);
+  term.eraseLine();
+  term.column(whitespace);
+  term.green(` ${str} `);
+  prompt('\n');
+}
+
+export function logForeignInputError(str: string = ''): void {
+  const whitespace = Math.max(0, term.width - str.length - 2);
+  term.eraseLine();
+  term.column(whitespace);
+  term.red(` ${str} `);
+  prompt('\n');
+}

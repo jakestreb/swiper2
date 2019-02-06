@@ -6,9 +6,11 @@ EventEmitter.defaultMaxListeners = Infinity; // Hides a repeated warning from 'w
 
 import * as express from 'express';
 import * as readline from 'readline';
+import * as rp from 'request-promise';
 
 import {Swiper, SwiperReply} from './Swiper';
-import {log, logError, logInputError, logSubProcess, prompt} from './terminal';
+import {log, logError, logForeignInputError, logForeignResponse, logInputError} from './terminal';
+import {logSubProcess, prompt} from './terminal';
 
 type CommType = 'cli'|'telegram';
 
@@ -16,29 +18,39 @@ const app = express();
 app.use(express.json());
 
 const CLI_ID = -1;
-// const gatewayUrl = process.env.GATEWAY_URL;
+const gatewayUrl = process.env.GATEWAY_URL || 'https://limitless-island-56260.herokuapp.com';
 const PORT = process.env.PORT;
 const ENHANCED_TERMINAL = Boolean(parseInt(process.env.ENHANCED_TERMINAL || "0", 10));
 const commTypes: {[id: number]: string} = {};
 
-function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
+async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
   const commType = commTypes[id];
-  if (commType === 'telegram') {
-    // TODO
-  } else if (commType === 'cli') {
+  if (commType === 'cli') {
     if (ENHANCED_TERMINAL && msg.enhanced) {
       msg.enhanced();
     } else {
-      msg.data ? log(msg.data) : logInputError(msg.err);
+      if (msg.data) {
+        log(msg.data);
+      } else {
+        logInputError(msg.err);
+      }
       prompt();
     }
-  }
-  try {
-    return Promise.resolve();
-  } catch (err) {
-    // TODO: Attempt retry
-    logError(`Error responding to client with message: ${msg.data}`);
-    return Promise.resolve();
+  } else {
+    if (msg.data) {
+      logForeignResponse(msg.data);
+    } else {
+      logForeignInputError(msg.err);
+    }
+    return rp({
+      uri: `${gatewayUrl}/swiper`,
+      method: 'POST',
+      json: {
+        id: id,
+        message: msg.data ? msg.data : msg.err,
+        destination: commType
+      }
+    });
   }
 }
 
