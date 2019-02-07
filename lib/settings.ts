@@ -48,5 +48,8 @@ export const settings = {
   // Sunday - Saturday number of random movies to download that day at the monitorAt time.
   weeklyRandomMovies: [1, 0, 0, 0, 0, 2, 0],
   // Time before a random movie in the database is eligible to be downloaded again, in ms
-  randomMovieTimeout: 365 * 24 * 60 * 60 * 1000
+  randomMovieTimeout: 365 * 24 * 60 * 60 * 1000,
+  // Number 0 - 6 representing Sunday - Saturday, the weekday that upcoming movies should be added at
+  // the monitorAt time. Add movies from the past 2 weeks.
+  addUpcomingWeekday: 1
 };

@@ -34,6 +34,16 @@ export function getMsUntil(hour: number): number {
   return msUntil < 0 ? msUntil + 86400000 : msUntil;
 }
 
+// Given a weekday number (0 - 6) and hour (0 - 23), returns the time until that hour in ms.
+export function getMsUntilWeekday(weekday: number, hour: number): number {
+  const now = new Date();
+  const daysTil = weekday - now.getDay();
+  const daysTilMod = ((daysTil % 7) + 7) % 7;
+  const searchTime = new Date(getMorning().getTime() + (daysTilMod * 24 * 60 * 60 * 1000));
+  searchTime.setHours(hour);
+  return searchTime.valueOf() - now.valueOf();
+}
+
 // Given the number of days until the given date (rounded down).
 export function getDaysUntil(date: Date): number {
   const now = new Date();
@@ -82,7 +92,7 @@ export function matchResp(input: string, responses: Response[]): string|null {
   return matched;
 }
 
-export function matchYesNo(input: string, other: Response[] = []): string|null {
+export function matchYesNo(input: string = '', other: Response[] = []): string|null {
   return matchResp(input, [{
     value: 'yes',
     regex: /\b(y)|(yes)\b/gi
@@ -92,7 +102,7 @@ export function matchYesNo(input: string, other: Response[] = []): string|null {
   }].concat(other));
 }
 
-export function matchNumber(input: string, other: Response[] = []): string|null {
+export function matchNumber(input: string = '', other: Response[] = []): string|null {
   return matchResp(input, [{
     value: 'number',
     regex: /\b[0-9]+\b/gi

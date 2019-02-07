@@ -2,15 +2,16 @@ import values = require('lodash/values');
 import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 
-import {Episode, getDescription, Media, Movie, Show, sortEpisodes, Video} from './media';
+import {getDescription, sortEpisodes} from './media';
+import {Episode, EpisodeMeta, Media, Movie, MovieMeta, Show, Video, VideoMeta} from './media';
 import {settings} from './settings';
-import {EpisodesDescriptor} from './Swiper';
 import {logDebug} from './terminal';
-import {getMorning} from './util';
+import {Torrent} from './torrent';
 
 interface AddOptions {
   queue: boolean;
   addedBy: number;
+  torrent?: Torrent|null;
 }
 
 interface SearchOptions {
@@ -20,8 +21,8 @@ interface SearchOptions {
 interface Status {
   monitored: Media[];
   queued: Media[];
-  downloading: Video[];
-  failed: Video[];
+  downloading: VideoMeta[];
+  failed: VideoMeta[];
 }
 
 interface MoviePick {
@@ -31,7 +32,7 @@ interface MoviePick {
   lastDownloaded: number;
 }
 
-export interface ResultRow {
+interface ResultRow {
   [column: string]: any;
 }
 
@@ -53,40 +54,46 @@ export class DBManager {
   public async initDB(): Promise<void> {
     logDebug(`DBManager: initDB()`);
     await this._run(`CREATE TABLE IF NOT EXISTS Movies (
-      id INTEGER PRIMARY KEY UNIQUE ON CONFLICT REPLACE,
+      id INTEGER PRIMARY KEY ON CONFLICT REPLACE,
       addedBy INTEGER,
       type TEXT,
       title TEXT,
       year TEXT,
       release INTEGER,
       dvd INTEGER,
-      magnet TEXT,
       queuePos INTEGER DEFAULT 0,
       isDownloading INTEGER DEFAULT 0,
       failedAt INTEGER DEFAULT 0
     )`);
     await this._run(`CREATE TABLE IF NOT EXISTS Shows (
-      id INTEGER PRIMARY KEY UNIQUE ON CONFLICT REPLACE,
+      id INTEGER PRIMARY KEY ON CONFLICT REPLACE,
       addedBy INTEGER,
       type TEXT,
       title TEXT
     )`);
     // The episodeId column is uniquely named to avoid a duplicate name when joining with shows.
     await this._run(`CREATE TABLE IF NOT EXISTS Episodes (
-      episodeId INTEGER PRIMARY KEY UNIQUE ON CONFLICT REPLACE,
+      episodeId INTEGER PRIMARY KEY ON CONFLICT REPLACE,
       addedBy INTEGER,
       seasonNum INTEGER,
       episodeNum INTEGER,
       airDate INTEGER,
       show INTEGER,
-      magnet TEXT,
       queuePos INTEGER DEFAULT 0,
       isDownloading INTEGER DEFAULT 0,
       failedAt INTEGER DEFAULT 0
     )`);
+    // Blacklisted is a JSON array of torrent names.
+    await this._run(`CREATE TABLE IF NOT EXISTS VideoData (
+      videoId INTEGER PRIMARY KEY ON CONFLICT REPLACE,
+      magnet TEXT,
+      quality TEXT,
+      resolution TEXT,
+      blacklisted TEXT DEFAULT "[]"
+    )`);
     // Create a table for movies that will be downloaded randomly.
     await this._run(`CREATE TABLE IF NOT EXISTS MoviePicks (
-      imdbId TEXT PRIMARY KEY UNIQUE ON CONFLICT REPLACE,
+      imdbId TEXT PRIMARY KEY ON CONFLICT REPLACE,
       title TEXT,
       year TEXT,
       lastDownloaded INTEGER DEFAULT 0
@@ -108,15 +115,17 @@ export class DBManager {
   // episodes in each.
   public async getStatus(): Promise<Status> {
     logDebug(`DBManager: getStatus()`);
-    const movies = await this._all(`SELECT * FROM Movies`);
-    const showEpisodes = await this._all(`SELECT * FROM Episodes LEFT JOIN Shows ` +
-      `ON Episodes.show = Shows.id`);
+    const movies = await this._all(`SELECT * FROM Movies LEFT JOIN VideoData ON ` +
+      `Movies.id = VideoData.videoId`);
+    const showEpisodes = await this._all(`SELECT * FROM Episodes ` +
+      `LEFT JOIN Shows ON Episodes.show = Shows.id ` +
+      `LEFT JOIN VideoData ON Episodes.episodeId = VideoData.videoId`);
     const all = movies.concat(showEpisodes);
     return {
       monitored: createMedia(all.filter(row => !row.queuePos && !row.failedAt)),
       queued: createMedia(all.filter(row => row.queuePos && !row.isDownloading)),
-      downloading: createVideos(all.filter(row => row.isDownloading)),
-      failed: createVideos(all.filter(row => row.failedAt)),
+      downloading: createVideoMetas(all.filter(row => row.isDownloading)),
+      failed: createVideoMetas(all.filter(row => row.failedAt)),
     };
   }
 
@@ -143,22 +152,21 @@ export class DBManager {
   }
 
   // Adds the item if it is not already in the database and sets it to queued.
-  public async addToQueued(media: Media, addedBy: number): Promise<void> {
+  public async addToQueued(media: Media, addedBy: number, torrent?: Torrent|null): Promise<void> {
     logDebug(`DBManager: addToQueued(${media.title}, ${addedBy})`);
-    await this._add(media, {addedBy, queue: true});
+    await this._add(media, {addedBy, queue: true, torrent});
   }
 
-  // Move to queued, and set the optional magnet on the video.
-  public async moveToQueued(video: Video, optMagnet: string = '') {
+  // Move to queued, and set the optional torrent magnet on the video.
+  public async moveToQueued(video: Video, torrent: Torrent) {
     logDebug(`DBManager: moveToQueued(${getDescription(video)})`);
+    await this.setTorrent(video.id, torrent);
     if (video.type === 'movie') {
       const movie = video as Movie;
-      await this._run(`UPDATE Movies SET queuePos=?, magnet=? WHERE id=?`,
-        [this._nextLow--, optMagnet, movie.id]);
+      await this._run(`UPDATE Movies SET queuePos=? WHERE id=?`, [this._nextLow--, movie.id]);
     } else if (video.type === 'episode') {
       const episode = video as Episode;
-      await this._run(`UPDATE Episodes SET queuePos=?, magnet=? WHERE episodeId=?`,
-        [this._nextLow--, optMagnet, episode.id]);
+      await this._run(`UPDATE Episodes SET queuePos=? WHERE episodeId=?`, [this._nextLow--, episode.id]);
     } else {
       throw new Error(`Cannot move unknown item to queued`);
     }
@@ -194,34 +202,9 @@ export class DBManager {
     await this._run(`DELETE FROM Movies WHERE id=?`, [id]);
   }
 
-  public async removeEpisode(id: number): Promise<void> {
-    logDebug(`DBManager: removeEpisode(${id})`);
-    await this._run(`DELETE FROM Episodes WHERE episodeId=?`, [id]);
-    // Remove show if all episodes were removed.
-    await this._run(`DELETE FROM Shows WHERE id NOT IN (SELECT show FROM Episodes)`);
-  }
-
-  public async removeEpisodesByDescriptor(showId: number, episodes: EpisodesDescriptor): Promise<void> {
-    logDebug(`DBManager: removeEpisodesByDescriptor(${showId}, ${JSON.stringify(episodes)})`);
-    if (episodes === 'all') {
-      await this._run(`DELETE FROM Episodes WHERE show=?`, [showId]);
-    } else if (episodes === 'new') {
-      await this._run(`DELETE FROM Episodes WHERE show=? AND airDate>?`, [getMorning().getTime()]);
-    } else {
-      // Remove all episodes in the SeasonEpisode object.
-      const removals: Array<Promise<any>> = [];
-      Object.keys(episodes).forEach(seasonNumStr => {
-        const seasonNum = parseInt(seasonNumStr, 10);
-        const episodeNums = episodes[seasonNum];
-        if (episodeNums === 'all') {
-          removals.push(this._run(`DELETE FROM Episodes WHERE show=? AND seasonNum=?`, [seasonNum]));
-        } else {
-          removals.push(this._run(`DELETE FROM Episodes WHERE show=? AND seasonNum=? AND episodeNum IN ` +
-            `(${episodeNums.map(e => '?')})`, [seasonNum, ...episodeNums]));
-        }
-      });
-      await Promise.all(removals);
-    }
+  public async removeEpisodes(episodeIds: number[]): Promise<void> {
+    logDebug(`DBManager: removeEpisode(${episodeIds})`);
+    await this._run(`DELETE FROM Episodes WHERE episodeId IN (${episodeIds.map(e => '?')})`, episodeIds);
     // Remove show if all episodes were removed.
     await this._run(`DELETE FROM Shows WHERE id NOT IN (SELECT show FROM Episodes)`);
   }
@@ -232,35 +215,14 @@ export class DBManager {
     await this._run(`UPDATE Movies SET queuePos=? WHERE id=? AND queuePos!=0`, [newPos, id]);
   }
 
-  public async changeEpisodesQueuePosByDescriptor(
-    showId: number,
-    episodes: EpisodesDescriptor,
+  public async changeEpisodesQueuePos(
+    episodeIds: number[],
     pos: 'first'|'last'
   ): Promise<void> {
-    logDebug(`DBManager: changeEpisodesQueuePosByDescriptor(${showId}, ${episodes}, ${pos})`);
+    logDebug(`DBManager: changeEpisodesQueuePos(${episodeIds}, ${pos})`);
     const newPos = pos === 'first' ? this._nextHigh++ : this._nextLow--;
-    if (episodes === 'all') {
-      await this._run(`UPDATE Episodes SET queuePos=? WHERE show=? AND queuePos!=0`, [newPos, showId]);
-    } else if (episodes === 'new') {
-      await this._run(`UPDATE Episodes SET queuePos=? WHERE show=? AND queuePos!=0 AND airDate>?`,
-        [newPos, showId, getMorning().getTime()]);
-    } else {
-      // Move all episodes in the SeasonEpisode object.
-      const moves: Array<Promise<any>> = [];
-      Object.keys(episodes).forEach(seasonNumStr => {
-        const seasonNum = parseInt(seasonNumStr, 10);
-        const episodeNums = episodes[seasonNum];
-        if (episodeNums === 'all') {
-          moves.push(this._run(`UPDATE Episodes SET queuePos=? WHERE show=? AND queuePos!=0 ` +
-            `AND seasonNum=?`, [newPos, showId, seasonNum]));
-        } else {
-          moves.push(this._run(`UPDATE Episodes SET queuePos=? WHERE show=? AND queuePos!=0 ` +
-            `AND seasonNum=? AND episodeNum IN (${episodeNums.map(e => '?')})`,
-            [newPos, showId, seasonNum, ...episodeNums]));
-        }
-      });
-      await Promise.all(moves);
-    }
+    await this._run(`UPDATE Episodes SET queuePos=? WHERE episodeId IN (${episodeIds.map(e => '?')})` +
+      ` AND queuePos!=0`, [newPos, ...episodeIds]);
   }
 
   public async moveAllQueuedToFailed(addedBy: number): Promise<void> {
@@ -274,7 +236,7 @@ export class DBManager {
 
   // Searches movie and tv tables for titles that match the given input. If the type is
   // specified in the options, only that table is searched. Returns all matches as ResultRows.
-  public async searchTitles(input: string, options: SearchOptions): Promise<ResultRow[]> {
+  public async searchTitles(input: string, options: SearchOptions): Promise<Media[]> {
     logDebug(`DBManager: searchTitles(${input})`);
     const rows: ResultRow[] = [];
     if (options.type !== 'tv') {
@@ -283,21 +245,24 @@ export class DBManager {
     }
     if (options.type !== 'movie') {
       // Search Shows
-      rows.push(...await this._all(`SELECT * FROM Shows WHERE title LIKE ?`, [`%${input}%`]));
+      rows.push(...await this._all(`SELECT * FROM Shows LEFT JOIN Shows ON ` +
+        `Episodes.show = Shows.id WHERE title LIKE ?`, [`%${input}%`]));
     }
-    return rows;
+    return createMedia(rows);
   }
 
   // Updates the downloading items if the queue order or count has changed. After this function
   // is run, top n queued videos should be set to isDownloading. We don't use transactions
   // so the results just have to be consistent, if things change between fetches the process should
   // be pinged again to read just after. Returns all videos that are now set to download.
-  public async manageDownloads(): Promise<Video[]> {
+  public async manageDownloads(): Promise<VideoMeta[]> {
     logDebug(`DBManager: manageDownloads()`);
     // Get all queued movies and episodes.
-    const movies = await this._all(`SELECT * FROM Movies WHERE queuePos!=0`);
-    const episodes = await this._all(`SELECT * FROM Episodes LEFT JOIN Shows ON ` +
-      `Episodes.show = Shows.id WHERE queuePos!=0`);
+    const movies = await this._all(`SELECT * FROM Movies ` +
+      `LEFT JOIN VideoData ON Movies.id = VideoData.videoId WHERE queuePos!=0`);
+    const episodes = await this._all(`SELECT * FROM Episodes ` +
+      `LEFT JOIN Shows ON Episodes.show = Shows.id ` +
+      `LEFT JOIN VideoData ON Episodes.episodeId = VideoData.videoId WHERE queuePos!=0`);
 
     // Combine and sort.
     const all = sortQueued(movies.concat(episodes));
@@ -308,18 +273,13 @@ export class DBManager {
     // Update the database.
     await this._updateDownloading(top);
 
-    return createVideos(top);
+    return createVideoMetas(top);
   }
 
-  public async addMagnet(video: Video, magnet: string): Promise<void> {
-    logDebug(`DBManager: addMagnet(${getDescription(video)}, ${magnet})`);
-    if (video.type === 'movie') {
-      return this._run(`UPDATE Movies SET magnet=? WHERE id=?`, [magnet, video.id]);
-    } else if (video.type === 'episode') {
-      return this._run(`UPDATE Episodes SET magnet=? WHERE episodeId=?`, [magnet, video.id]);
-    } else {
-      throw new Error(`Cannot add magnet to unknown video`);
-    }
+  public async setTorrent(videoId: number, torrent: Torrent): Promise<void> {
+    logDebug(`DBManager: addTorrent(${videoId}, ${torrent.parsedTitle})`);
+    return this._run(`UPDATE VideoData SET magnet=?, quality=?, resolution=? WHERE videoId=?`,
+      [torrent.magnet, torrent.quality, torrent.resolution, videoId]);
   }
 
   public async getMoviePicks(n: number): Promise<Movie[]> {
@@ -334,14 +294,38 @@ export class DBManager {
     return picks.map(mp => _createPickedMovie(mp));
   }
 
+  // Blacklists the torrent and returns a boolean indicating whether the video was ever downloaded.
+  public async blacklistMagnet(videoId: number): Promise<boolean> {
+    logDebug(`DBManager: blacklistMagnet(${videoId}`);
+    const result = await this._get(`SELECT magnet, blacklisted FROM VideoData WHERE videoId=?`,
+      [videoId]);
+    if (!result || !result.magnet) {
+      return false;
+    } else {
+      const blacklisted = JSON.parse(result.blacklisted);
+      blacklisted.push(result.magnet);
+      await this._run(`UPDATE VideoData SET blacklisted=? WHERE videoId=?`,
+        [JSON.stringify(blacklisted), videoId]);
+      return true;
+    }
+  }
+
+  public async addMetadata(video: Video): Promise<VideoMeta> {
+    const metadata = await this._get(`SELECT * FROM VideoData WHERE videoId=?`, [video.id]);
+    if (!metadata) {
+      throw new Error(`DBManager addMetadata error: invalid video argument`);
+    }
+    return _addMeta(video, metadata);
+  }
+
   // Result rows should be Movie or EpisodeShow rows. Sets isDownloading to true for the videos given by the rows
   // to downloading and sets all other downloading videos to not downloading.
   private async _updateDownloading(rows: ResultRow[]): Promise<void> {
     const movieIds = rows.filter(row => row.type === 'movie').map(row => row.id);
     const tasks = [];
     if (movieIds.length > 0) {
-    tasks.push(this._run(`UPDATE Movies SET isDownloading = CASE WHEN id IN ` +
-      `(${movieIds.map(m => '?')}) THEN 1 ELSE 0 END`, movieIds));
+      tasks.push(this._run(`UPDATE Movies SET isDownloading = CASE WHEN id IN ` +
+        `(${movieIds.map(m => '?')}) THEN 1 ELSE 0 END`, movieIds));
     }
     const episodeIds = rows.filter(row => row.type !== 'movie').map(row => row.episodeId);
     if (episodeIds.length > 0) {
@@ -363,9 +347,12 @@ export class DBManager {
 
   private async _addMovie(movie: Movie, options: AddOptions): Promise<void> {
     const queuePos = options.queue ? this._nextHigh++ : 0;
-    await this._run(`INSERT INTO Movies (id, type, title, year, magnet, addedBy, queuePos) `
-      + `VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [movie.id, movie.type, movie.title, movie.year, movie.magnet, options.addedBy, queuePos]);
+    if (options.torrent) {
+      await this.setTorrent(movie.id, options.torrent);
+    }
+    await this._run(`INSERT INTO Movies (id, type, title, year, addedBy, queuePos) `
+      + `VALUES (?, ?, ?, ?, ?, ?)`,
+      [movie.id, movie.type, movie.title, movie.year, options.addedBy, queuePos]);
   }
 
   private async _addShow(show: Show, options: AddOptions): Promise<void> {
@@ -376,9 +363,12 @@ export class DBManager {
     const queuePos = options.queue ? this._nextHigh++ : 0;
     show.episodes.forEach(ep => {
       const airDate = ep.airDate ? ep.airDate.getTime() : 0;
-      insertions.push(this._run(`INSERT INTO Episodes (episodeId, seasonNum, episodeNum, airDate, show, ` +
-        `magnet, addedBy, queuePos) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [ep.id, ep.seasonNum, ep.episodeNum, airDate, show.id, ep.magnet, options.addedBy, queuePos]));
+      if (options.torrent) {
+        insertions.push(this.setTorrent(ep.id, options.torrent));
+      }
+      insertions.push(this._run(`INSERT INTO Episodes (episodeId, seasonNum, episodeNum, airDate, ` +
+        `show, addedBy, queuePos) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [ep.id, ep.seasonNum, ep.episodeNum, airDate, show.id, options.addedBy, queuePos]));
     });
     await Promise.all(insertions);
   }
@@ -454,16 +444,18 @@ function createMedia(rows: ResultRow[]): Media[] {
 }
 
 // Each row should be from Movies or a join between Shows and Episodes.
-function createVideos(rows: ResultRow[]): Video[] {
+function createVideos(rows: ResultRow[], meta: boolean = false): Video[] {
+  const makeMovie = meta ? _createMovieMeta : _createMovie;
+  const makeEpisode = meta ? _createEpisodeMeta : _createEpisode;
   // Sort by queuePos descending, or by title if the same.
   rows.sort((a, b) => (b.queuePos - a.queuePos) || (a.title > b.title ? 1 : -1));
   const showRefs: {[id: number]: Show} = {};
   const videos: Video[] = rows.map(row => {
     if (row.type === 'movie') {
-      return _createMovie(row);
+      return makeMovie(row);
     } else if (row.type === 'tv') {
       showRefs[row.id] = showRefs[row.id] || _createEmptyShow(row);
-      const episode = _createEpisode(row, showRefs[row.id]);
+      const episode = makeEpisode(row, showRefs[row.id]);
       showRefs[row.id].episodes.push(episode);
       return episode;
     } else {
@@ -476,6 +468,11 @@ function createVideos(rows: ResultRow[]): Video[] {
   return videos;
 }
 
+// Each row should be from Movies x VideoData or Shows x Episodes x VideoData.
+function createVideoMetas(rows: ResultRow[]): VideoMeta[] {
+  return createVideos(rows, true) as VideoMeta[];
+}
+
 // The row should be from MoviePicks.
 function _createPickedMovie(row: MoviePick): Movie {
   return {
@@ -484,9 +481,25 @@ function _createPickedMovie(row: MoviePick): Movie {
     title: row.title,
     year: row.year,
     release: null,
-    dvd: null,
-    magnet: null
+    dvd: null
   };
+}
+
+function _addMeta(video: Video, row: ResultRow): VideoMeta {
+  return Object.assign(video, {
+    magnet: row.magnet,
+    quality: row.quality,
+    resolution: row.resolution,
+    blacklisted: JSON.parse(row.blacklisted)
+  });
+}
+
+function _createMovieMeta(row: ResultRow): MovieMeta {
+  return _addMeta(_createMovie(row), row) as MovieMeta;
+}
+
+function _createEpisodeMeta(row: ResultRow, show: Show): EpisodeMeta {
+  return _addMeta(_createEpisode(row, show), row) as EpisodeMeta;
 }
 
 // The row should be from Movies.
@@ -497,8 +510,7 @@ function _createMovie(row: ResultRow): Movie {
     title: row.title,
     year: row.year,
     release: row.release ? new Date(row.release) : null,
-    dvd: row.dvd ? new Date(row.dvd) : null,
-    magnet: row.magnet || null
+    dvd: row.dvd ? new Date(row.dvd) : null
   };
 }
 
@@ -520,7 +532,6 @@ function _createEpisode(row: ResultRow, show: Show): Episode {
     type: 'episode',
     seasonNum: row.seasonNum,
     episodeNum: row.episodeNum,
-    airDate: row.airDate ? new Date(row.airDate) : null,
-    magnet: row.magnet || null
+    airDate: row.airDate ? new Date(row.airDate) : null
   };
 }

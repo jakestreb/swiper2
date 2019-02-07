@@ -11,7 +11,6 @@ export interface Movie {
   year: string;
   release: Date|null;
   dvd: Date|null;
-  magnet: string|null;
 }
 
 export interface Show {
@@ -28,8 +27,18 @@ export interface Episode {
   seasonNum: number;
   episodeNum: number;
   airDate: Date|null;
-  magnet: string|null;
 }
+
+export interface Metadata {
+  magnet: string|null;
+  quality: string|null;
+  resolution: string|null;
+  blacklisted: string[]; // Array of blacklisted magnets
+}
+
+export type MovieMeta = Movie & Metadata;
+export type EpisodeMeta = Episode & Metadata;
+export type VideoMeta = MovieMeta|EpisodeMeta;
 
 export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor): Episode[] {
   if (filter === 'new') {
@@ -45,6 +54,18 @@ export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor):
       return season && (season === 'all' || season.includes(ep.episodeNum));
     });
   }
+}
+
+// Filters all shows episodes in the media array, and removes any shows without episodes.
+export function filterMediaEpisodes(mediaItems: Media[], filter: EpisodesDescriptor): Media[] {
+  return mediaItems
+  .map(media => {
+    if (media.type === 'tv') {
+      media.episodes = filterEpisodes(media.episodes, filter);
+    }
+    return media;
+  })
+  .filter(media => media.type === 'movie' || media.episodes.length > 0);
 }
 
 export function sortEpisodes(episodes: Episode[]): Episode[] {
@@ -89,6 +110,8 @@ export function getFileSafeTitle(video: Video): string {
 export function getDescription(anyMedia: Movie|Show|Episode): string {
   if (anyMedia.type === 'episode') {
     return `${anyMedia.show.title} S${padZeros(anyMedia.seasonNum)}E${padZeros(anyMedia.episodeNum)}`;
+  } else if (anyMedia.type === 'tv') {
+    return `${anyMedia.title} ${getExpandedEpisodeStr(anyMedia.episodes)}`;
   } else {
     return anyMedia.title;
   }
@@ -103,4 +126,37 @@ export function getVideo(media: Media): Video|null {
   } else {
     return null;
   }
+}
+
+/**
+ * Returns a string giving all seasons and episodes for a show already fetched from TVDB.
+ */
+function getExpandedEpisodeStr(episodes: Episode[]): string {
+  let str = "";
+  let chain = 0;
+  let lastEpisode = -1;
+  let lastSeason = -1;
+  episodes.forEach((episode: Episode, i: number) => {
+    const si = episode.seasonNum;
+    const ei = episode.episodeNum;
+    if (lastSeason === -1 && lastEpisode === -1) {
+      str += `S${padZeros(si)}E${padZeros(ei)}`;
+    } else if (si > lastSeason) {
+      // New season
+      str += `-${padZeros(lastEpisode)}, S${padZeros(si)}E${padZeros(ei)}`;
+      chain = 0;
+    } else if (si === lastSeason && (ei > lastEpisode + 1)) {
+      // Same season, later episode
+      str += `${chain > 0 ? `-${padZeros(lastEpisode)}` : ``} & E${padZeros(ei)}`;
+      chain = 0;
+    } else if (i === episodes.length - 1) {
+      // Last episode
+      str += `-${padZeros(ei)}`;
+    } else {
+      chain++;
+    }
+    lastSeason = si;
+    lastEpisode = ei;
+  });
+  return str;
 }

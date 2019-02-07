@@ -13,6 +13,14 @@ export const commands: {[command: string]: CommandDescriptor} = {
     args: ['CONTENT'],
     desc: "Returns a list of torrents for a show or movie."
   },
+  reassign: {
+    args: ['CONTENT'],
+    desc: "Reassigns the torrent for a downloading or previously downloaded video."
+  },
+  blacklist: {
+    args: ['CONTENT'],
+    desc: "Blacklists and reassigns the torrent for a downloading or previously downloaded video."
+  },
   monitor: {
     args: ['CONTENT'],
     desc: "Adds an item to check on intermittently until it's found."
@@ -37,16 +45,20 @@ export const commands: {[command: string]: CommandDescriptor} = {
     args: [],
     desc: "Aborts any downloads started by you."
   },
-  cancel: {
+  random: {
     args: [],
-    desc: "Ends the current conversation."
+    desc: "Downloads a random movie from a list of favorites."
   },
   status: {
     args: [],
-    desc: 'Shows items being monitored, queued, and downloaded.'
+    desc: "Shows items being monitored, queued, and downloaded."
   },
   help: {
-    args: ['[COMMAND]'],
+    args: ['COMMAND'],
     desc: "Returns the list of commands, or describes the given command."
+  },
+  cancel: {
+    args: [],
+    desc: "Ends the current conversation."
   }
 };

@@ -4,7 +4,7 @@ import {DownloadManager} from './DownloadManager';
 import {Episode, getDescription, Video} from './media';
 import {settings} from './settings';
 import {logSubProcess, logSubProcessError} from './terminal';
-import {getBestTorrent, Torrent, TorrentClient} from './torrent';
+import {getBestTorrent, SearchClient, Torrent} from './torrent';
 import {delay, getDaysUntil, getMorning, getMsUntil} from './util';
 
 interface CommandOptions {
@@ -14,7 +14,7 @@ interface CommandOptions {
 export class SwiperMonitor {
   constructor(
     private _dbManager: DBManager,
-    private _torrentClient: TorrentClient,
+    private _searchClient: SearchClient,
     private _downloadManager: DownloadManager
   ) {
     this._startMonitoring();
@@ -98,11 +98,12 @@ export class SwiperMonitor {
   private async _doSearch(video: Video, options: CommandOptions = {}): Promise<boolean> {
     logSubProcess(`Searching ${getDescription(video)}`);
     try {
-      const torrents: Torrent[] = await this._torrentClient.search(video);
-      const bestTorrent = getBestTorrent(video, torrents);
+      const torrents: Torrent[] = await this._searchClient.search(video);
+      const videoMeta = await this._dbManager.addMetadata(video);
+      const bestTorrent = getBestTorrent(videoMeta, torrents);
       if (bestTorrent !== null) {
         // Set the item in the database to queued.
-        await this._dbManager.moveToQueued(video, bestTorrent.magnet);
+        await this._dbManager.moveToQueued(video, bestTorrent);
         this._downloadManager.ping();
         return true;
       } else {

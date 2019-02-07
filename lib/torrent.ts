@@ -2,7 +2,7 @@ import * as ptn from 'parse-torrent-name';
 import * as path from 'path';
 import * as rmfr from 'rmfr';
 import * as WebTorrent from 'webtorrent';
-import {getFileSafeTitle, getSearchTerm, Video} from './media';
+import {getFileSafeTitle, getSearchTerm, Video, VideoMeta} from './media';
 import {settings} from './settings';
 import {logDebug, logSubProcessError} from './terminal';
 import {delay} from './util';
@@ -25,6 +25,8 @@ export interface Torrent {
   leechers: number;
   uploadTime: string;
   magnet: string;
+  quality: string;
+  resolution: string;
 }
 
 export interface DownloadProgress {
@@ -34,10 +36,8 @@ export interface DownloadProgress {
   peers: number;
 }
 
-export class TorrentClient {
-  private _searchClient: SearchClient;
-  private _downloadClient: DownloadClient;
-
+export class SearchClient {
+  private _client: GenericSearchClient;
   // Array of search delay promise resolvers.
   private _searchPendingQueue: Array<() => void> = [];
   private _activeSearchCount = 0;
@@ -45,8 +45,7 @@ export class TorrentClient {
 
   constructor() {
     // Create a TorrentSearchApi search implementation with 1 retry default.
-    this._searchClient = new TSA(1);
-    this._downloadClient = new WT();
+    this._client = new TSA(1);
   }
 
   // Perform the search, delaying searches so that no more than the maxActiveSearches count occur
@@ -69,25 +68,33 @@ export class TorrentClient {
     }
   }
 
+  private _doSearch(video: Video): Promise<Torrent[]> {
+    const searchTerm = getSearchTerm(video);
+    return this._client.search(searchTerm);
+  }
+}
+
+export class DownloadClient {
+  private _client: GenericDownloadClient;
+
+  constructor() {
+    this._client = new WT();
+  }
+
   public download(magnet: string): Promise<string[]> {
-    return this._downloadClient.download(magnet);
+    return this._client.download(magnet);
   }
 
   public getProgress(magnet: string): DownloadProgress {
-    return this._downloadClient.getProgress(magnet);
+    return this._client.getProgress(magnet);
   }
 
   public stopDownload(magnet: string): Promise<void> {
-    return this._downloadClient.stopDownload(magnet);
+    return this._client.stopDownload(magnet);
   }
 
   public deleteFiles(magnet: string): Promise<void> {
-    return this._downloadClient.deleteFiles(magnet);
-  }
-
-  private _doSearch(video: Video): Promise<Torrent[]> {
-    const searchTerm = getSearchTerm(video);
-    return this._searchClient.search(searchTerm);
+    return this._client.deleteFiles(magnet);
   }
 }
 
@@ -99,7 +106,7 @@ export function getTorrentString(torrent: Torrent): string {
 }
 
 // Get download quality tier. The tiers range from 0 <-> (2 * number of quality preferences)
-function getTorrentTier(video: Video, torrent: Torrent): number {
+function getTorrentTier(video: VideoMeta, torrent: Torrent): number {
   // Make sure the title matches.
   const wrongTitle = torrent.parsedTitle !== getFileSafeTitle(video);
   if (wrongTitle) {
@@ -122,13 +129,17 @@ function getTorrentTier(video: Video, torrent: Torrent): number {
   if (qualityIndex === -1) {
     return 0;
   }
+  // Check that the torrent isn't blacklisted.
+  if (video.blacklisted.includes(torrent.magnet)) {
+    return 0;
+  }
   // Prioritize minSeeders over having the best quality.
   const hasMinSeeders = torrent.seeders >= settings.minSeeders;
   return (hasMinSeeders ? qualityPrefOrder.length : 0) + (qualityPrefOrder.length - qualityIndex);
 }
 
 // Returns the best torrent as a match to the video. Returns null if none are decided as good.
-export function getBestTorrent(video: Video, torrents: Torrent[]): Torrent|null {
+export function getBestTorrent(video: VideoMeta, torrents: Torrent[]): Torrent|null {
   let bestTorrent = null;
   let bestTier = 0;
   torrents.forEach(t => {
@@ -144,7 +155,7 @@ export function getBestTorrent(video: Video, torrents: Torrent[]): Torrent|null 
 /**
  * Any search library should be made to extend SearchImpl then added to searchers.
  */
-abstract class SearchClient {
+abstract class GenericSearchClient {
   constructor(public readonly retries: number) {}
 
   public search(searchTerm: string): Promise<Torrent[]> {
@@ -172,7 +183,7 @@ interface TSAResult {
   magnet: string;
 }
 
-class TSA extends SearchClient {
+class TSA extends GenericSearchClient {
   constructor(retries: number = 3) {
     super(retries);
   }
@@ -188,19 +199,22 @@ class TSA extends SearchClient {
   }
 
   private _createTorrent(result: TSAResult): Torrent {
+    const parsed = ptn(result.title);
     return {
       title: result.title,
-      parsedTitle: ptn(result.title).title,
+      parsedTitle: parsed.title,
       size: getSizeInMB(result.size) || -1,
       seeders: result.seeds || 0,
       leechers: result.peers || 0,
       uploadTime: result.time,
-      magnet: result.magnet
+      magnet: result.magnet,
+      quality: parsed.quality || '',
+      resolution: parsed.resolution || ''
     };
   }
 }
 
-abstract class DownloadClient {
+abstract class GenericDownloadClient {
   // Returns the download directory.
   public abstract async download(magnet: string): Promise<string[]>;
   public abstract getProgress(magnet: string): DownloadProgress;
@@ -208,7 +222,7 @@ abstract class DownloadClient {
   public abstract async deleteFiles(magnet: string): Promise<void>;
 }
 
-class WT extends DownloadClient {
+class WT extends GenericDownloadClient {
   private _client: WebTorrent.Instance;
 
   constructor() {

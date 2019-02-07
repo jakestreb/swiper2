@@ -1,7 +1,7 @@
 import {get} from 'http';
 import * as TVDB from 'node-tvdb';
 
-import {Episode, Media, Show, sortEpisodes} from './media';
+import {Episode, Media, Movie, Show, sortEpisodes} from './media';
 import {MediaQuery} from './Swiper';
 import {logDebug, logError} from './terminal';
 import {getDateFromStr} from './util';
@@ -34,6 +34,15 @@ interface TVDB {
   seriesName: string;
 }
 
+interface TMDB {
+  vote_count: number;
+  vote_average: number;
+  title: string;
+  popularity: number;
+  adult: boolean;
+  release_date: string;
+}
+
 interface TVDBEpisode {
   airedEpisodeNumber: number;
   airedSeason: number;
@@ -54,7 +63,7 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
   const url = `http://www.omdbapi.com/?apikey=${process.env.OMDB_ID}&t=${title}` + year + type;
   try {
     // Escape all ampersands in the title for searching via web API
-    omdbResult = await getJSONResponse(url) as OMDB;
+    omdbResult = await _getJSONResponse(url) as OMDB;
     logDebug(`OMDB Response: ${JSON.stringify(omdbResult)}`);
   } catch (err) {
     return { err: `Can't access the Open Movie Database` };
@@ -72,8 +81,7 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
         title: omdbResult.Title,
         year: omdbResult.Year,
         release: getDateFromStr(omdbResult.Released),
-        dvd: getDateFromStr(omdbResult.DVD),
-        magnet: null
+        dvd: getDateFromStr(omdbResult.DVD)
       }
     };
   } else {
@@ -96,14 +104,37 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
       type: 'episode' as 'episode',
       seasonNum: ep.airedSeason,
       episodeNum: ep.airedEpisodeNumber,
-      airDate: ep.firstAired ? new Date(`${ep.firstAired} ${tvdbResult.airsTime}`) : null,
-      magnet: null
+      airDate: ep.firstAired ? new Date(`${ep.firstAired} ${tvdbResult.airsTime}`) : null
     }));
     show.episodes.push(...sortEpisodes(episodes));
     return {
       data: show
     };
   }
+}
+
+export async function getPopularReleasedBetween(startDate: Date, endDate: Date): Promise<Movie[]> {
+  // Vote count is a weird arbitrary metric that helps indicate how popular a movie is.
+  const minVoteCount = 250;
+  const startDateStr = getYMDString(startDate);
+  const endDateStr = getYMDString(endDate);
+  const url = 'http://api.themoviedb.org/3/discover/movie';
+  const queryStr = `?primary_release_date.gte=${startDateStr}&primary_release_date.lte=${endDateStr}` +
+    `&vote_count.gte=${minVoteCount}&api_key=${process.env.TMDB_ID}`;
+  const tmdbResult = await _getJSONResponse(url + queryStr);
+  // Filter out any adult movies just in case.
+  const tmdbArray: TMDB[] = tmdbResult.results.filter((tmdb: TMDB) => !tmdb.adult);
+  console.warn('TMDB', tmdbArray);
+  // Identify each TMDB movie.
+  const requestArray = tmdbArray.map(tmdb => identifyMedia({
+    title: tmdb.title,
+    type: 'movie',
+    episodes: null,
+    year: (new Date(tmdb.release_date)).getFullYear().toString()
+  }))
+  const responses: Array<DataResponse<Media>> = await Promise.all(requestArray);
+  const movies = responses.filter(r => r.data).map(r => r.data) as Movie[];
+  return movies;
 }
 
 function convertImdbId(imdbId: string): number {
@@ -125,7 +156,7 @@ async function _searchTVDB(imdbId: string, isRetryAttempt: boolean = false): Pro
   }
 }
 
-async function getJSONResponse(url: string): Promise<{[key: string]: any}> {
+async function _getJSONResponse(url: string): Promise<{[key: string]: any}> {
   return new Promise((resolve, reject) => {
     get(url, res => {
       res.setEncoding("utf8");
@@ -138,4 +169,8 @@ async function getJSONResponse(url: string): Promise<{[key: string]: any}> {
       reject(err);
     });
   });
+}
+
+function getYMDString(date: Date): string {
+  return `${date.getFullYear()}-${(date.getMonth() + 1)}-${date.getDate()}`;
 }

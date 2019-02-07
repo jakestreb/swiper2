@@ -4,11 +4,12 @@ import * as path from 'path';
 import * as rmfr from 'rmfr';
 import {promisify} from 'util';
 import {DBManager} from './DBManager';
-import {getDescription, getFileSafeTitle, Video} from './media';
+import {getDescription, getFileSafeTitle, Video, VideoMeta} from './media';
+import {getPopularReleasedBetween} from './request';
 import {settings} from './settings';
 import {logDebug, logSubProcess, logSubProcessError} from './terminal';
-import {DownloadProgress, getBestTorrent, TorrentClient} from './torrent';
-import {delay, getMsUntil} from './util';
+import {DownloadClient, DownloadProgress, getBestTorrent, SearchClient} from './torrent';
+import {delay, getMorning, getMsUntil, getMsUntilWeekday} from './util';
 const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
 
@@ -16,13 +17,18 @@ const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../d
 const EXPORT_ROOT = process.env.EXPORT_ROOT || path.resolve(__dirname, '../media');
 
 export class DownloadManager {
-  private _downloading: Video[] = [];
+  private _downloadClient: DownloadClient;
+  private _downloading: VideoMeta[] = [];
   private _pinged: boolean = false;
   private _inProgress: boolean = false;
 
-  constructor(private _dbManager: DBManager, private _torrentClient: TorrentClient) {
+  constructor(private _dbManager: DBManager, private _searchClient: SearchClient) {
+    this._downloadClient = new DownloadClient();
     this._startRemovingFailed().catch(err => {
-      logSubProcessError(`DownloadManager _startRemovingFailed first call failed with error: ${err}`);
+      logSubProcessError(`DownloadManager _startRemovingFailed first call failed: ${err}`);
+    });
+    this._startAddingUpcomingToMonitored().catch(err => {
+      logSubProcessError(`DownloadManager _startAddingUpcomingToMonitored first call failed: ${err}`);
     });
     this.ping();
   }
@@ -34,8 +40,8 @@ export class DownloadManager {
     });
   }
 
-  public getProgress(video: Video): DownloadProgress {
-    return this._torrentClient.getProgress(video.magnet || '');
+  public getProgress(video: VideoMeta): DownloadProgress {
+    return this._downloadClient.getProgress(video.magnet || '');
   }
 
   // This function should NOT be awaited.
@@ -79,7 +85,7 @@ export class DownloadManager {
   }
 
   private async _startRemovingFailed(): Promise<void> {
-    logSubProcess(`Download Manager started`);
+    logSubProcess(`Download Manager cleanup process started`);
     try {
       while (true) {
         await this._removeFailed();
@@ -89,11 +95,34 @@ export class DownloadManager {
     } catch (err) {
       logSubProcessError(`Failed item removal process failed with error: ${err}`);
       setTimeout(() => {
-        this._startRemovingFailed().catch(err => {
-          logSubProcessError(`DownloadManager _startRemovingFailed failed with error: ${err}`);
-        });
+        this._startRemovingFailed();
       }, 5000);
     }
+  }
+
+  private async _startAddingUpcomingToMonitored(): Promise<void> {
+    logSubProcess(`Download Manager add upcoming process started`);
+    try {
+      while (true) {
+        await this._addUpcomingToMonitored();
+        // Wait until the daily time given in settings to remove failed items.
+        await delay(getMsUntilWeekday(settings.addUpcomingWeekday, settings.monitorAt));
+      }
+    } catch (err) {
+      logSubProcessError(`Add upcoming to monitored process failed with error: ${err}`);
+      setTimeout(() => {
+        this._startAddingUpcomingToMonitored();
+      }, 5000);
+    }
+  }
+
+  private async _addUpcomingToMonitored(): Promise<void> {
+    logDebug(`DownloadManager: _addUpcomingToMonitored()`);
+    const morn = getMorning();
+    const twoWeeksAgoMs = morn.getTime() - (2 * 7 * 24 * 60 * 60 * 1000);
+    const movies = await getPopularReleasedBetween(new Date(twoWeeksAgoMs), morn);
+    const addActions = movies.map(m => this._dbManager.addToMonitored(m, -1));
+    await Promise.all(addActions);
   }
 
   private async _removeFailed(): Promise<void> {
@@ -103,13 +132,14 @@ export class DownloadManager {
     await this._dbManager.removeFailed(cutoff);
   }
 
-  private async _startDownload(video: Video): Promise<void> {
+  private async _startDownload(video: VideoMeta): Promise<void> {
     logDebug(`DownloadManager: _startDownload(${getDescription(video)})`);
     try {
       // Assign the torrent if it isn't already.
       if (!video.magnet) {
-        const torrents = await this._torrentClient.search(video);
-        const best = getBestTorrent(video, torrents);
+        const torrents = await this._searchClient.search(video);
+        const videoMeta = await this._dbManager.addMetadata(video);
+        const best = getBestTorrent(videoMeta, torrents);
         if (!best) {
           logDebug(`DownloadManager: _startDownload(${getDescription(video)}) failed (no torrent found)`);
           // If no good torrent was found, add the video to failed.
@@ -118,16 +148,16 @@ export class DownloadManager {
         } else {
           logDebug(`DownloadManager: _startDownload(${getDescription(video)}) magnet added`);
           video.magnet = best.magnet;
-          await this._dbManager.addMagnet(video, best.magnet);
+          await this._dbManager.setTorrent(video.id, best);
         }
       }
 
       // Run the download
-      const downloadPaths = await this._torrentClient.download(video.magnet);
+      const downloadPaths = await this._downloadClient.download(video.magnet);
 
       // On completion, remove the item from the database.
       const removeFn = video.type === 'movie' ? (id: number) => this._dbManager.removeMovie(id) :
-        (id: number) => this._dbManager.removeEpisode(id);
+        (id: number) => this._dbManager.removeEpisodes([id]);
       await removeFn(video.id);
 
       // Remove from downloading
@@ -148,10 +178,10 @@ export class DownloadManager {
     }
   }
 
-  private async _stopDownload(video: Video): Promise<void> {
+  private async _stopDownload(video: VideoMeta): Promise<void> {
     try {
       if (video.magnet) {
-        await this._torrentClient.stopDownload(video.magnet);
+        await this._downloadClient.stopDownload(video.magnet);
       }
     } catch (err) {
       logSubProcessError(`_stopDownload err: ${err}`);
