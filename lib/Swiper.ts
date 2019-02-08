@@ -12,6 +12,7 @@ import {getBestTorrent, getTorrentString, SearchClient, Torrent} from './torrent
 import {execCapture, getAiredStr, getMorning} from './util';
 import {matchNumber, matchYesNo, padZeros, removePrefix, splitFirst} from './util';
 
+// TODO: MAKE SURE FIRST TORRENT ATTACHMENT (for download) HOLDS
 // TODO: Allow remove all/monitored/downloads/failed
 
 // TODO: Test re-adding, adding episodes to an existing show, searching something in monitored, etc
