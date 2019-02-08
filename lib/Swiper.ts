@@ -411,7 +411,6 @@ export class Swiper {
       return reply;
     }
     const storedMedia: Media[]|null = convo.storedMedia || null;
-    console.warn('storedMedia', storedMedia);
 
     if (!storedMedia) {
       // No matches.

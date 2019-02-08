@@ -97,7 +97,7 @@ export function getSearchTerm(video: Video): string {
 }
 
 export function getFileSafeTitle(video: Video): string {
-  const regex = /[\\/:*?"<>|']/g;
+  const regex = /[\\/:*?"<>|'\.]/g;
   if (video.type === 'movie') {
     return video.title.replace(regex, '');
   } else if (video.type === 'episode') {

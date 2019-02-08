@@ -41,7 +41,6 @@ export class DownloadManager {
   }
 
   public getProgress(video: VideoMeta): DownloadProgress {
-    console.warn('GET PROGRESS!!!!', video);
     return this._downloadClient.getProgress(video.magnet || '');
   }
 
@@ -140,7 +139,6 @@ export class DownloadManager {
       // Assign the torrent if it isn't already.
       if (!video.magnet) {
         const torrents = await this._searchClient.search(video);
-        console.warn('VIDEO AFTER SEARCH', video);
         const videoMeta = await this._dbManager.addMetadata(video);
         const best = getBestTorrent(videoMeta, torrents);
         if (!best) {
@@ -150,11 +148,8 @@ export class DownloadManager {
           return;
         } else {
           logDebug(`DownloadManager: _startDownload(${getDescription(video)}) magnet added`);
-          console.warn('VIDEO BEFORE ASSIGNED META', video);
-          console.warn('TORRENT!!', best);
           await this._dbManager.setTorrent(video.id, best);
           video = assignMeta(video, best);
-          console.warn('VIDEO W ASSIGNED META', video);
         }
       }
 

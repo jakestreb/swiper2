@@ -124,7 +124,6 @@ export async function getPopularReleasedBetween(startDate: Date, endDate: Date):
   const tmdbResult = await _getJSONResponse(url + queryStr);
   // Filter out any adult movies just in case.
   const tmdbArray: TMDB[] = tmdbResult.results.filter((tmdb: TMDB) => !tmdb.adult);
-  console.warn('TMDB', tmdbArray);
   // Identify each TMDB movie.
   const requestArray = tmdbArray.map(tmdb => identifyMedia({
     title: tmdb.title,
