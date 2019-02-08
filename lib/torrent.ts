@@ -98,6 +98,15 @@ export class DownloadClient {
   }
 }
 
+export function assignMeta(video: Video|VideoMeta, torrent: Torrent): VideoMeta {
+  return Object.assign(video, {
+    magnet: torrent.magnet,
+    quality: torrent.quality,
+    resolution: torrent.resolution,
+    blacklisted: []
+  });
+}
+
 export function getTorrentString(torrent: Torrent): string {
   const seed = torrent.seeders ? `${torrent.seeders} seed | ` : '';
   const leech = torrent.leechers ? `${torrent.leechers} leech | ` : '';

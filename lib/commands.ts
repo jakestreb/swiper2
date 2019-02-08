@@ -38,7 +38,7 @@ export const commands: {[command: string]: CommandDescriptor} = {
     desc: "Removes the given item from monitored, queued, or downloading."
   },
   reorder: {
-    args: ['CONTENT', 'first/last'],
+    args: ['CONTENT'],
     desc: "Moves the given item in the queue to download first or last."
   },
   abort: {
@@ -54,7 +54,7 @@ export const commands: {[command: string]: CommandDescriptor} = {
     desc: "Shows items being monitored, queued, and downloaded."
   },
   help: {
-    args: ['COMMAND'],
+    args: ['[COMMAND]'],
     desc: "Returns the list of commands, or describes the given command."
   },
   cancel: {

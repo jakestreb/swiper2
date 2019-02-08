@@ -12,6 +12,7 @@ interface AddOptions {
   queue: boolean;
   addedBy: number;
   torrent?: Torrent|null;
+  isPredictive?: boolean;  // Set to true if the item is predictively added.
 }
 
 interface SearchOptions {
@@ -83,13 +84,16 @@ export class DBManager {
       isDownloading INTEGER DEFAULT 0,
       failedAt INTEGER DEFAULT 0
     )`);
-    // Blacklisted is a JSON array of torrent names.
+    // blacklisted is a JSON array of torrent names.
+    // predictive indicates if the item was last added as a prediction by Swiper. It is reset to 0 only
+    // if manually or non-predictively re-added
     await this._run(`CREATE TABLE IF NOT EXISTS VideoData (
       videoId INTEGER PRIMARY KEY ON CONFLICT REPLACE,
       magnet TEXT,
       quality TEXT,
       resolution TEXT,
-      blacklisted TEXT DEFAULT "[]"
+      blacklisted TEXT DEFAULT "[]",
+      isPredictive INTEGER DEFAULT 0
     )`);
     // Create a table for movies that will be downloaded randomly.
     await this._run(`CREATE TABLE IF NOT EXISTS MoviePicks (
@@ -146,15 +150,15 @@ export class DBManager {
 
   // Adds the item if it is not already in the database and sets it to monitored.
   // Limited to media since only media should be added to
-  public async addToMonitored(media: Media, addedBy: number): Promise<void> {
+  public async addToMonitored(media: Media, addedBy: number, isPredictive: boolean = false): Promise<void> {
     logDebug(`DBManager: addToMonitored(${media.title}, ${addedBy})`);
-    await this._add(media, {addedBy, queue: false});
+    await this._add(media, {addedBy, queue: false, isPredictive});
   }
 
   // Adds the item if it is not already in the database and sets it to queued.
   public async addToQueued(media: Media, addedBy: number, torrent?: Torrent|null): Promise<void> {
     logDebug(`DBManager: addToQueued(${media.title}, ${addedBy})`);
-    await this._add(media, {addedBy, queue: true, torrent});
+    await this._add(media, {addedBy, queue: true, torrent, isPredictive: false});
   }
 
   // Move to queued, and set the optional torrent magnet on the video.
@@ -245,7 +249,7 @@ export class DBManager {
     }
     if (options.type !== 'movie') {
       // Search Shows
-      rows.push(...await this._all(`SELECT * FROM Shows LEFT JOIN Shows ON ` +
+      rows.push(...await this._all(`SELECT * FROM Shows LEFT JOIN Episodes ON ` +
         `Episodes.show = Shows.id WHERE title LIKE ?`, [`%${input}%`]));
     }
     return createMedia(rows);
@@ -278,7 +282,7 @@ export class DBManager {
 
   public async setTorrent(videoId: number, torrent: Torrent): Promise<void> {
     logDebug(`DBManager: addTorrent(${videoId}, ${torrent.parsedTitle})`);
-    return this._run(`UPDATE VideoData SET magnet=?, quality=?, resolution=? WHERE videoId=?`,
+    await this._run(`UPDATE VideoData SET magnet=?, quality=?, resolution=? WHERE videoId=?`,
       [torrent.magnet, torrent.quality, torrent.resolution, videoId]);
   }
 
@@ -312,10 +316,7 @@ export class DBManager {
 
   public async addMetadata(video: Video): Promise<VideoMeta> {
     const metadata = await this._get(`SELECT * FROM VideoData WHERE videoId=?`, [video.id]);
-    if (!metadata) {
-      throw new Error(`DBManager addMetadata error: invalid video argument`);
-    }
-    return _addMeta(video, metadata);
+    return _addMeta(video, metadata || undefined);
   }
 
   // Result rows should be Movie or EpisodeShow rows. Sets isDownloading to true for the videos given by the rows
@@ -350,9 +351,15 @@ export class DBManager {
     if (options.torrent) {
       await this.setTorrent(movie.id, options.torrent);
     }
-    await this._run(`INSERT INTO Movies (id, type, title, year, addedBy, queuePos) `
-      + `VALUES (?, ?, ?, ?, ?, ?)`,
-      [movie.id, movie.type, movie.title, movie.year, options.addedBy, queuePos]);
+    // Do NOT do the add if this is a predictive add of something that was already predictively added.
+    const metadata = await this._get(`SELECT * FROM VideoData WHERE videoId=?`, [movie.id]) || {};
+    if (!options.isPredictive || !metadata.isPredictive) {
+      await this._run(`INSERT INTO Movies (id, type, title, year, addedBy, queuePos) `
+        + `VALUES (?, ?, ?, ?, ?, ?)`,
+        [movie.id, movie.type, movie.title, movie.year, options.addedBy, queuePos]);
+      await this._run(`INSERT INTO VideoData (videoId, isPredictive) VALUES (?, ?)`,
+        [movie.id, options.isPredictive]);
+    }
   }
 
   private async _addShow(show: Show, options: AddOptions): Promise<void> {
@@ -369,6 +376,7 @@ export class DBManager {
       insertions.push(this._run(`INSERT INTO Episodes (episodeId, seasonNum, episodeNum, airDate, ` +
         `show, addedBy, queuePos) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [ep.id, ep.seasonNum, ep.episodeNum, airDate, show.id, options.addedBy, queuePos]));
+      insertions.push(this._run(`INSERT INTO VideoData (videoId) VALUES (?)`, [ep.id]));
     });
     await Promise.all(insertions);
   }
@@ -485,12 +493,12 @@ function _createPickedMovie(row: MoviePick): Movie {
   };
 }
 
-function _addMeta(video: Video, row: ResultRow): VideoMeta {
+function _addMeta(video: Video, row?: ResultRow): VideoMeta {
   return Object.assign(video, {
-    magnet: row.magnet,
-    quality: row.quality,
-    resolution: row.resolution,
-    blacklisted: JSON.parse(row.blacklisted)
+    magnet: row ? row.magnet : null,
+    quality: row ? row.quality : null,
+    resolution: row ? row.resolution : null,
+    blacklisted: row ? JSON.parse(row.blacklisted) : []
   });
 }
 

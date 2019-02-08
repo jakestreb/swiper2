@@ -12,7 +12,7 @@ import {getBestTorrent, getTorrentString, SearchClient, Torrent} from './torrent
 import {execCapture, getAiredStr, getMorning} from './util';
 import {matchNumber, matchYesNo, padZeros, removePrefix, splitFirst} from './util';
 
-// TODO: Automatically add upcoming popular movies to monitored.
+// TODO: Allow remove all/monitored/downloads/failed
 
 // TODO: Test re-adding, adding episodes to an existing show, searching something in monitored, etc
 // TODO: Add enhanced terminal features like enhanced status menu.
@@ -411,6 +411,7 @@ export class Swiper {
       return reply;
     }
     const storedMedia: Media[]|null = convo.storedMedia || null;
+    console.warn('storedMedia', storedMedia);
 
     if (!storedMedia) {
       // No matches.
@@ -426,10 +427,11 @@ export class Swiper {
         if (match === 'yes') {
           await this._doRemove(media);
         }
-      } else {
-        // If the match failed or if there are still more tasks, ask about the next one.
-        return { data: getConfirmRemovalString(storedMedia[0]) };
       }
+    }
+    // If there are still items or the match failed, send a confirm string.
+    if (storedMedia.length > 0) {
+      return { data: getConfirmRemovalString(storedMedia[0]) };
     }
 
     return {
@@ -453,11 +455,11 @@ export class Swiper {
       const splitStr = (convo.input || '').split(' ');
       const lastStr = splitStr.pop();
       if (!lastStr) {
-        return { data: `Specify the new position: "first" or "last"` };
+        return { data: `Specify new position: "first" or "last"` };
       }
       const [first, last] = execCapture(lastStr, /(first)|(last)/);
       if (!first && !last) {
-        return { data: `Specify the new position: "first" or "last"` };
+        return { data: `Specify new position: "first" or "last"` };
       }
       convo.position = first ? 'first' : 'last';
       convo.input = splitStr.join(' ');
@@ -694,12 +696,12 @@ function createDecorator(
 ): void {
   // Saving a reference to the original method so we can call it after updating the conversation.
   const origFn = descriptor.value;
-  descriptor.value = async (convo: Conversation) => {
+  descriptor.value = async function(convo: Conversation) {
     const reply = await modifier(convo);
     if (reply) {
       return reply;
     }
-    origFn.call(target, convo);
+    return origFn.call(this, convo);
   };
 }
 
@@ -737,7 +739,7 @@ function addMediaQuery(convo: Conversation, options: RequireOptions = {}): Swipe
     }
 
     // If the type is tv and a video is required, send a prompt to get a single episode
-    if (options.requireVideo) {
+    if (type === 'tv' && options.requireVideo) {
       if (!episodes) {
         return { data: `Specify episode:\nex: S03E02` };
       } else if (!describesSingleEpisode(episodes)) {

@@ -8,7 +8,7 @@ import {getDescription, getFileSafeTitle, Video, VideoMeta} from './media';
 import {getPopularReleasedBetween} from './request';
 import {settings} from './settings';
 import {logDebug, logSubProcess, logSubProcessError} from './terminal';
-import {DownloadClient, DownloadProgress, getBestTorrent, SearchClient} from './torrent';
+import {assignMeta, DownloadClient, DownloadProgress, getBestTorrent, SearchClient} from './torrent';
 import {delay, getMorning, getMsUntil, getMsUntilWeekday} from './util';
 const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
@@ -41,6 +41,7 @@ export class DownloadManager {
   }
 
   public getProgress(video: VideoMeta): DownloadProgress {
+    console.warn('GET PROGRESS!!!!', video);
     return this._downloadClient.getProgress(video.magnet || '');
   }
 
@@ -121,7 +122,8 @@ export class DownloadManager {
     const morn = getMorning();
     const twoWeeksAgoMs = morn.getTime() - (2 * 7 * 24 * 60 * 60 * 1000);
     const movies = await getPopularReleasedBetween(new Date(twoWeeksAgoMs), morn);
-    const addActions = movies.map(m => this._dbManager.addToMonitored(m, -1));
+    // Add the movies to monitored predictively.
+    const addActions = movies.map(m => this._dbManager.addToMonitored(m, -1, true));
     await Promise.all(addActions);
   }
 
@@ -138,6 +140,7 @@ export class DownloadManager {
       // Assign the torrent if it isn't already.
       if (!video.magnet) {
         const torrents = await this._searchClient.search(video);
+        console.warn('VIDEO AFTER SEARCH', video);
         const videoMeta = await this._dbManager.addMetadata(video);
         const best = getBestTorrent(videoMeta, torrents);
         if (!best) {
@@ -147,13 +150,16 @@ export class DownloadManager {
           return;
         } else {
           logDebug(`DownloadManager: _startDownload(${getDescription(video)}) magnet added`);
-          video.magnet = best.magnet;
+          console.warn('VIDEO BEFORE ASSIGNED META', video);
+          console.warn('TORRENT!!', best);
           await this._dbManager.setTorrent(video.id, best);
+          video = assignMeta(video, best);
+          console.warn('VIDEO W ASSIGNED META', video);
         }
       }
 
       // Run the download
-      const downloadPaths = await this._downloadClient.download(video.magnet);
+      const downloadPaths = await this._downloadClient.download(video.magnet!);
 
       // On completion, remove the item from the database.
       const removeFn = video.type === 'movie' ? (id: number) => this._dbManager.removeMovie(id) :
@@ -173,7 +179,6 @@ export class DownloadManager {
     } catch (err) {
       logSubProcessError(`_startDownload err: ${err}`);
       // When downloading fails, remove the magnet and mark the video as failed.
-      video.magnet = null;
       await this._dbManager.markAsFailed(video);
     }
   }
@@ -196,7 +201,7 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   const dirs = video.type === 'movie' ? ['movies', safeTitle] :
     ['tv', safeTitle, `Season ${video.seasonNum}`];
 
-  logDebug(`exportVideo: Create missing folders in export directory`);
+  logDebug(`exportVideo: Creating missing folders in export directory`);
   // Create any directories needed to store the video file.
   let filepath = EXPORT_ROOT;
   for (const pathElem of dirs) {
