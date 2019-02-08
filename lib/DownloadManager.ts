@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import {ncp} from 'ncp';
+// import {ncp} from 'ncp';
 import * as path from 'path';
 import * as rmfr from 'rmfr';
 import {promisify} from 'util';
@@ -228,15 +228,33 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   await Promise.all(deleteActions);
 }
 
-// Copys a file from the src path to the dst path, returns a promise.
 function copy(src: string, dst: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    ncp(src, dst, (err: Error) => {
-     if (err) {
-       reject(err);
-     } else {
-       resolve();
-     }
+    var rd = fs.createReadStream(src);
+    rd.on("error", err => {
+      reject(err);
     });
+    var wr = fs.createWriteStream(dst);
+    wr.on("error", err => {
+      reject(err);
+    });
+    wr.on("close", () => {
+      resolve();
+    });
+    rd.pipe(wr);
   });
 }
+
+
+// // Copys a file from the src path to the dst path, returns a promise.
+// function copy(src: string, dst: string): Promise<void> {
+//   return new Promise((resolve, reject) => {
+//     ncp(src, dst, (err: Error) => {
+//      if (err) {
+//        reject(err);
+//      } else {
+//        resolve();
+//      }
+//     });
+//   });
+// }
