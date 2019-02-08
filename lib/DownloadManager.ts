@@ -221,10 +221,8 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   // Remove the download directories (Remove the first directory of each downloaded file).
   logDebug(`exportVideo: Removing download directory`);
   const deleteActions = downloadPaths.map(downloadPath => {
-    console.warn('WHOLE', downloadPath);
-    console.warn('DIRNAME', path.dirname(downloadPath));
-    console.warn('JOINED?', path.join(DOWNLOAD_ROOT, path.dirname(downloadPath)));
-    return rmfr(path.dirname(downloadPath));
+    const abs = path.join(DOWNLOAD_ROOT, path.dirname(downloadPath));
+    return rmfr(abs);
   });
   await Promise.all(deleteActions);
 }
