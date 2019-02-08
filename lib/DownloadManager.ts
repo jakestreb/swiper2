@@ -212,8 +212,12 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   // Move the files to the final directory.
   logDebug(`exportVideo: Copying videos to ${filepath}`);
   const copyActions = downloadPaths.map(downloadPath => {
+    console.warn('FROM...');
     const from = path.join(DOWNLOAD_ROOT, downloadPath);
-    const to = path.join(filepath, downloadPath.split('/').pop()!);
+    console.warn('TO...');
+    const to = filepath;
+    console.warn('FROM', from);
+    console.warn('TO', to);
     return copy(from, to);
   });
   await Promise.all(copyActions);
