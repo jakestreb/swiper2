@@ -8,7 +8,7 @@ import {identifyMedia} from './request';
 import {settings} from './settings';
 import {SwiperMonitor} from './SwiperMonitor';
 import {log, logDebug} from './terminal';
-import {getBestTorrent, getTorrentString, SearchClient, Torrent} from './torrent';
+import {assignMeta, getBestTorrent, getTorrentString, SearchClient, Torrent} from './torrent';
 import {execCapture, getAiredStr, getMorning} from './util';
 import {matchNumber, matchYesNo, padZeros, removePrefix, splitFirst} from './util';
 
@@ -187,8 +187,12 @@ export class Swiper {
         convo.torrents = torrents;
         convo.commandFn = () => this._search(convo);
         return this._search(convo);
+      } else {
+        logDebug(`Swiper: _download best torrent found`);
+        // Set the torrent and assign the meta so it doesn't have to be searched again.
+        await this._dbManager.setTorrent(video.id, best);
+        assignMeta(video, best);
       }
-      logDebug(`Swiper: _download best torrent found`);
     }
 
     // Queue the download.

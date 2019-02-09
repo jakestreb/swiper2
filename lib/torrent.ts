@@ -116,35 +116,36 @@ export function getTorrentString(torrent: Torrent): string {
 
 // Get download quality tier. The tiers range from 0 <-> (2 * number of quality preferences)
 function getTorrentTier(video: VideoMeta, torrent: Torrent): number {
-  // Make sure the title matches.
-  const wrongTitle = torrent.parsedTitle !== getFileSafeTitle(video);
-  if (wrongTitle) {
-    return 0;
-  }
+  let score = 0;
   // Check if any insta-reject strings match (ex. CAMRip).
   const rejected = settings.reject.find(r => Boolean(torrent.title.match(r)));
-  if (rejected) {
-    return 0;
-  }
+  if (rejected) return score;
+
   // Check if the size is too big or too small.
   const sizeBounds = settings.size[video.type];
   const goodSize = torrent.size >= sizeBounds.min && torrent.size <= sizeBounds.max;
-  if (!goodSize) {
-    return 0;
-  }
+  if (!goodSize) return score;
+
   // Get the quality preference index.
   const qualityPrefOrder = settings.quality[video.type];
   const qualityIndex = qualityPrefOrder.findIndex(q => Boolean(torrent.title.match(q)));
-  if (qualityIndex === -1) {
-    return 0;
-  }
+  if (qualityIndex === -1) return score;
+
   // Check that the torrent isn't blacklisted.
-  if (video.blacklisted.includes(torrent.magnet)) {
-    return 0;
-  }
+  if (video.blacklisted.includes(torrent.magnet)) return score;
+
+  // Make sure the title matches.
+  const wrongTitle = torrent.parsedTitle !== getFileSafeTitle(video);
+  if (!wrongTitle) score += 1;
+
   // Prioritize minSeeders over having the best quality.
   const hasMinSeeders = torrent.seeders >= settings.minSeeders;
-  return (hasMinSeeders ? qualityPrefOrder.length : 0) + (qualityPrefOrder.length - qualityIndex);
+  if (hasMinSeeders) score += 2;
+
+  // Add a point relative to the index in the quality preference array.
+  score += qualityPrefOrder.length - qualityIndex - 1;
+
+  return score;
 }
 
 // Returns the best torrent as a match to the video. Returns null if none are decided as good.
