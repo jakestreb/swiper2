@@ -122,6 +122,10 @@ export async function getPopularReleasedBetween(startDate: Date, endDate: Date):
   const queryStr = `?primary_release_date.gte=${startDateStr}&primary_release_date.lte=${endDateStr}` +
     `&vote_count.gte=${minVoteCount}&api_key=${process.env.TMDB_ID}`;
   const tmdbResult = await _getJSONResponse(url + queryStr);
+  // If the query fails or returns no movies, return no movies.
+  if (!tmdbResult || !tmdbResult.results) {
+    return [];
+  }
   // Filter out any adult movies just in case.
   const tmdbArray: TMDB[] = tmdbResult.results.filter((tmdb: TMDB) => !tmdb.adult);
   // Identify each TMDB movie.
