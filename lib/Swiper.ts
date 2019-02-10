@@ -210,7 +210,6 @@ export class Swiper {
   @requireVideo
   private async _search(convo: Conversation, options: SearchOptions = {}): Promise<SwiperReply> {
     logDebug(`Swiper: _search`);
-    console.warn('OPTIONS', options);
 
     const media = convo.media as Media;
     const video = media.type === 'tv' ? media.episodes[0] : media;
@@ -268,16 +267,13 @@ export class Swiper {
       }
       // Stop downloading and ping the download manager so it's able to start up the download
       // again afterward.
-      console.warn('stopping download!!', video.id);
       await this._dbManager.markAsFailed(video);
-      console.warn('ping and wait!!');
       await this._downloadManager.pingAndWait();
       if (options.blacklist) {
         await this._dbManager.blacklistMagnet(video.id);
       }
       await this._dbManager.setTorrent(video.id, torrent);
     }
-    console.warn('adding to queued!!', video.id);
     await this._dbManager.addToQueued(media, convo.id);
     this._downloadManager.ping();
 
@@ -931,9 +927,9 @@ function showTorrents(
   const next = (startIndex + settings.torrentsPerPage) < torrents.length;
   const someTorrents = torrents.slice(startIndex, startIndex + settings.torrentsPerPage);
   const torrentRows = someTorrents.map((t, i) => {
-    const repeatStr = t.magnet === lastMagnet ? ' | Previously selected' : '';
+    const repeatStr = t.magnet === lastMagnet ? '(Previously selected) ' : '';
     const blacklistStr = blacklisted.includes(t.magnet) ? '(BLACKLISTED) ' : '';
-    return `${startIndex + i + 1} - ${blacklistStr}${getTorrentString(t)}${repeatStr}`;
+    return `${startIndex + i + 1} - ${blacklistStr || repeatStr}${getTorrentString(t)}`;
   });
   const respStr = prev && next ? `"prev" or "next"` : (next ? `"next"` : (prev ? `"prev"` : ``));
   const str = torrentRows.join(`\n`);

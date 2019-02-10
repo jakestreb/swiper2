@@ -70,7 +70,6 @@ export class DownloadManager {
     try {
       // Manage which videos are downloading in the queue.
       const downloads = await this._dbManager.manageDownloads();
-      console.warn('DOWNLOADS', downloads);
 
       // Determine which downloads to start and stop.
       const start = downloads.filter(v => !this._downloading.find(_v => _v.id === v.id));

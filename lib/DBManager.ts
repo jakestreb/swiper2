@@ -269,7 +269,6 @@ export class DBManager {
 
     // Combine and sort.
     const all = sortQueued(movies.concat(episodes));
-    console.warn('ALL!!!!', all);
 
     // Get top n.
     const top = all.slice(0, settings.maxDownloads);
