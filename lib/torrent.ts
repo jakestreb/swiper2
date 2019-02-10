@@ -103,6 +103,7 @@ export function assignMeta(video: Video|VideoMeta, torrent: Torrent): VideoMeta 
     magnet: torrent.magnet,
     quality: torrent.quality,
     resolution: torrent.resolution,
+    size: torrent.size,
     blacklisted: []
   });
 }
@@ -139,8 +140,9 @@ function getTorrentTier(video: VideoMeta, torrent: Torrent): number {
   if (!wrongTitle) score += 1;
 
   // Prioritize minSeeders over having the best quality.
-  const hasMinSeeders = torrent.seeders >= settings.minSeeders;
-  if (hasMinSeeders) score += 2;
+  const seederRule = settings.seeders.find(_sr => torrent.seeders >= _sr.min);
+  const points = seederRule ? seederRule.points : 0;
+  score += points;
 
   // Add a point relative to the index in the quality preference array.
   score += qualityPrefOrder.length - qualityIndex - 1;

@@ -3,6 +3,9 @@ export const settings = {
     episode: [/1080p/gi, /720p/gi], // keyword preference order
     movie: [/1080p/gi, /720p/gi]
   },
+  // Low seeder tier to determine download pick quality. Things with fewer seeders than this
+  // will still be downloaded, but as a last priority.
+  seeders: [{min: 30, points: 3.5}, {min: 20, points: 3}, {min: 12, points: 2}],
   reject: [
     /\bHDCAM\b/gi,
     /\bCAMRip\b/gi,
@@ -24,20 +27,17 @@ export const settings = {
   // Maximum and minimum sizes in Mb to automatically download content
   size: {
     episode: {
-      min: 150,
-      max: 2800
+      min: 200,
+      max: 5000
     },
     movie: {
-      min: 500,
-      max: 5000
+      min: 600,
+      max: 8000
     }
   },
   maxDownloads: 5,
   failedUpTime: 6, // Min number of hours for which failed items should remain in the failed list.
   clearFailedAt: 2, // 0-23, hour at which failed items should be cleared.
-  // Low seeder tier to determine download pick quality. Things with fewer seeders than this
-  // will still be downloaded, but as a last priority.
-  minSeeders: 10,
   monitorAt: 2, // 0-23, hour at which monitored should be searched for all items.
   daysBeforeDVD: 21, // Days before the DVD release day until monitoring searches for a movie.
   // Minutes in each repeat interval after release to search for a new episode. Stops retrying

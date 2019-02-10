@@ -33,6 +33,7 @@ export interface Metadata {
   magnet: string|null;
   quality: string|null;
   resolution: string|null;
+  size: number|null;
   blacklisted: string[]; // Array of blacklisted magnets
 }
 

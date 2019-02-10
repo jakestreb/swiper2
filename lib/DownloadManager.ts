@@ -19,7 +19,7 @@ const EXPORT_ROOT = process.env.EXPORT_ROOT || path.resolve(__dirname, '../media
 export class DownloadManager {
   private _downloadClient: DownloadClient;
   private _downloading: VideoMeta[] = [];
-  private _pinged: boolean = false;
+  private _managingPromise: Promise<void>;
   private _inProgress: boolean = false;
 
   constructor(private _dbManager: DBManager, private _searchClient: SearchClient) {
@@ -33,11 +33,15 @@ export class DownloadManager {
     this.ping();
   }
 
-  // A non-async public wrapper is used to prevent waiting on the ping function.
+  // A non-async public wrapper is used to prevent accidental waiting on the ping function.
   public ping(): void {
     this._ping().catch(err => {
       logSubProcessError(`DownloadManager _ping failed with error: ${err}`);
     });
+  }
+
+  public async pingAndWait(): Promise<void> {
+    await this._ping();
   }
 
   public getProgress(video: VideoMeta): DownloadProgress {
@@ -47,13 +51,13 @@ export class DownloadManager {
   // This function should NOT be awaited.
   private async _ping(): Promise<void> {
     logDebug(`DownloadManager: _ping()`);
-    this._pinged = true;
+    await this._managingPromise;
+    // If after waiting, the downloads are already being managed again, the goal of the ping
+    // is already being accomplished, so this ping can return.
     if (!this._inProgress) {
       this._inProgress = true;
-      while (this._pinged) {
-        this._pinged = false;
-        await this._manageDownloads();
-      }
+      this._managingPromise = this._manageDownloads();
+      await this._managingPromise;
       this._inProgress = false;
     }
   }
@@ -66,6 +70,7 @@ export class DownloadManager {
     try {
       // Manage which videos are downloading in the queue.
       const downloads = await this._dbManager.manageDownloads();
+      console.warn('DOWNLOADS', downloads);
 
       // Determine which downloads to start and stop.
       const start = downloads.filter(v => !this._downloading.find(_v => _v.id === v.id));

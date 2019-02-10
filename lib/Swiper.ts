@@ -1,4 +1,5 @@
 import range = require('lodash/range');
+import repeat = require('lodash/repeat');
 import {commands} from './commands';
 import {DBManager} from './DBManager';
 import {DownloadManager} from './DownloadManager';
@@ -41,6 +42,7 @@ interface RequireOptions {
 
 interface SearchOptions {
   reassignTorrent?: boolean; // When true, does not begin a new download but just reassigns the torrent.
+  blacklist?: boolean; // When true and reassign is true, the reassigned torrent is also blacklisted.
 }
 
 interface ReassignOptions {
@@ -196,7 +198,7 @@ export class Swiper {
     }
 
     // Queue the download.
-    await this._dbManager.addToQueued(media, convo.id, best);
+    await this._dbManager.addToQueued(media, convo.id);
     this._downloadManager.ping();
 
     return {
@@ -208,6 +210,7 @@ export class Swiper {
   @requireVideo
   private async _search(convo: Conversation, options: SearchOptions = {}): Promise<SwiperReply> {
     logDebug(`Swiper: _search`);
+    console.warn('OPTIONS', options);
 
     const media = convo.media as Media;
     const video = media.type === 'tv' ? media.episodes[0] : media;
@@ -260,12 +263,22 @@ export class Swiper {
     if (options.reassignTorrent) {
       const video = getVideo(media);
       if (!video) {
+        // This shouldn't be possible with the decorator.
         throw new Error(`_search error: reassignTorrent option only permitted for single videos`);
       }
+      // Stop downloading and ping the download manager so it's able to start up the download
+      // again afterward.
+      console.warn('stopping download!!', video.id);
+      await this._dbManager.markAsFailed(video);
+      console.warn('ping and wait!!');
+      await this._downloadManager.pingAndWait();
+      if (options.blacklist) {
+        await this._dbManager.blacklistMagnet(video.id);
+      }
       await this._dbManager.setTorrent(video.id, torrent);
-    } else {
-      await this._dbManager.addToQueued(media, convo.id, torrent);
     }
+    console.warn('adding to queued!!', video.id);
+    await this._dbManager.addToQueued(media, convo.id);
     this._downloadManager.ping();
 
     return {
@@ -276,6 +289,7 @@ export class Swiper {
 
   @requireVideoQuery
   private async _reassign(convo: Conversation, options: ReassignOptions = {}): Promise<SwiperReply> {
+    logDebug(`Swiper _reassign`);
     const reply = await this._addStoredMediaIfFound(convo);
     if (reply) {
       return reply;
@@ -289,24 +303,19 @@ export class Swiper {
       return this._reassignIdentify(convo);
     }
 
-    if (convo.input) {
+    // Ask the user about a media item if they are not all dealt with.
+    if (storedMedia.length > 0 && convo.input) {
       const match = matchYesNo(convo.input);
       if (match) {
         // If yes or no, shift the task to 'complete' it, then remove it from the database.
         const media: Media = storedMedia.shift()!;
         if (match === 'yes') {
-          if (options.blacklist) {
-            // Blacklist the torrent
-            const video = getVideo(media);
-            if (!video) {
-              throw new Error(`_blacklist error: media item should represent a single video`);
-            }
-            await this._dbManager.blacklistMagnet(video.id);
-          }
+          logDebug(`Swiper _reassign: Reassigning stored video`);
           // Change the command function to search on the yes-matched media item.
           convo.media = media;
-          convo.commandFn = () => this._search(convo, {reassignTorrent: true});
-          return this._search(media, {reassignTorrent: true});
+          const searchOptions = {reassignTorrent: true, blacklist: options.blacklist};
+          convo.commandFn = () => this._search(convo, searchOptions);
+          return this._search(convo, searchOptions);
         }
       }
     }
@@ -320,27 +329,24 @@ export class Swiper {
     const media = convo.media as Media;
     if (convo.input) {
       const match = matchYesNo(convo.input);
-      if (match) {
-        // If yes or no, shift the task to 'complete' it, then remove it from the database.
-        if (match === 'yes') {
-          if (options.blacklist) {
-            // Blacklist the torrent
-            const video = getVideo(media);
-            if (!video) {
-              throw new Error(`_blacklist error: media item should represent a single video`);
-            }
-            await this._dbManager.blacklistMagnet(video.id);
+      if (match && match === 'yes') {
+        if (options.blacklist) {
+          // Blacklist the torrent
+          const video = getVideo(media);
+          if (!video) {
+            throw new Error(`_blacklist error: media item should represent a single video`);
           }
-          // Change the command function to doReassignSearch on the yes-matched media item.
-          convo.commandFn = () => this._search(convo, {reassignTorrent: true});
-          return this._search(media, {reassignTorrent: true});
-        } else {
-          // If the client says no, complete
-          return {
-            data: 'Ok',
-            final: true
-          };
+          await this._dbManager.blacklistMagnet(video.id);
         }
+        // Change the command function to doReassignSearch on the yes-matched media item.
+        convo.commandFn = () => this._search(convo, {reassignTorrent: true});
+        return this._search(media, {reassignTorrent: true});
+      } else if (match) {
+        // If the client says no, complete
+        return {
+          data: 'Ok',
+          final: true
+        };
       }
     }
     // Ask about the media item.
@@ -537,11 +543,17 @@ export class Swiper {
 
     const downloading = status.downloading.map((video, i) => {
       const {progress, remaining, speed, peers} = this._downloadManager.getProgress(video);
+      let sizeStr = '';
+      if (video.size) {
+        const sizeGb = video.size / 1000;
+        sizeStr = `${sizeGb.toFixed(1)}GB `
+      }
       const resStr = video.resolution ? `${video.resolution} ` : ``;
       const qualStr = video.quality ? `${video.quality} ` : ``;
       const remainingStr = remaining && parseInt(remaining, 10) ? `${remaining} min left at ` : '';
-      return ` ${i + 1} | ${getDescription(video)} ${resStr}${qualStr}${progress}% ` +
-        `(${remainingStr}${speed}MB/s with ${peers} peers)`;
+      const numSpacer = repeat(' ', (i + 1).toString().length);
+      return ` ${i + 1} | ${getDescription(video)} - ${sizeStr}${resStr}${qualStr}${progress}%\n` +
+        ` ${numSpacer} | (${remainingStr}${speed}MB/s with ${peers} peers)`;
     });
 
     const numDownloads = status.downloading.length;
@@ -700,12 +712,12 @@ function createDecorator(
 ): void {
   // Saving a reference to the original method so we can call it after updating the conversation.
   const origFn = descriptor.value;
-  descriptor.value = async function(convo: Conversation) {
+  descriptor.value = async function(convo: Conversation, ...args: any) {
     const reply = await modifier(convo);
     if (reply) {
       return reply;
     }
-    return origFn.call(this, convo);
+    return origFn.call(this, convo, ...args);
   };
 }
 
@@ -782,8 +794,9 @@ async function addMedia(convo: Conversation, options: RequireOptions = {}): Prom
     convo.input = '';
   }
 
-  // If the media is a tv show and the episodes weren't specified, ask about them.
-  if (convo.media.type === 'tv') {
+
+  // If the media isn't a single video and the episodes weren't specified, ask about them.
+  if (!getVideo(convo.media)) {
     mediaQuery.episodes = mediaQuery.episodes || getEpisodesIdentifier(convo.input || '');
     if (!mediaQuery.episodes && options.requireVideo) {
       return { data: `Specify episode:\nex: S03E02` };

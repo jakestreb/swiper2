@@ -11,7 +11,6 @@ import {Torrent} from './torrent';
 interface AddOptions {
   queue: boolean;
   addedBy: number;
-  torrent?: Torrent|null;
   isPredictive?: boolean;  // Set to true if the item is predictively added.
 }
 
@@ -88,10 +87,11 @@ export class DBManager {
     // predictive indicates if the item was last added as a prediction by Swiper. It is reset to 0 only
     // if manually or non-predictively re-added
     await this._run(`CREATE TABLE IF NOT EXISTS VideoData (
-      videoId INTEGER PRIMARY KEY ON CONFLICT REPLACE,
+      videoId INTEGER PRIMARY KEY ON CONFLICT IGNORE,
       magnet TEXT,
       quality TEXT,
       resolution TEXT,
+      size INTEGER,
       blacklisted TEXT DEFAULT "[]",
       isPredictive INTEGER DEFAULT 0
     )`);
@@ -156,15 +156,14 @@ export class DBManager {
   }
 
   // Adds the item if it is not already in the database and sets it to queued.
-  public async addToQueued(media: Media, addedBy: number, torrent?: Torrent|null): Promise<void> {
+  public async addToQueued(media: Media, addedBy: number): Promise<void> {
     logDebug(`DBManager: addToQueued(${media.title}, ${addedBy})`);
-    await this._add(media, {addedBy, queue: true, torrent, isPredictive: false});
+    await this._add(media, {addedBy, queue: true, isPredictive: false});
   }
 
   // Move to queued, and set the optional torrent magnet on the video.
-  public async moveToQueued(video: Video, torrent: Torrent) {
+  public async moveToQueued(video: Video) {
     logDebug(`DBManager: moveToQueued(${getDescription(video)})`);
-    await this.setTorrent(video.id, torrent);
     if (video.type === 'movie') {
       const movie = video as Movie;
       await this._run(`UPDATE Movies SET queuePos=? WHERE id=?`, [this._nextLow--, movie.id]);
@@ -270,6 +269,7 @@ export class DBManager {
 
     // Combine and sort.
     const all = sortQueued(movies.concat(episodes));
+    console.warn('ALL!!!!', all);
 
     // Get top n.
     const top = all.slice(0, settings.maxDownloads);
@@ -282,8 +282,8 @@ export class DBManager {
 
   public async setTorrent(videoId: number, torrent: Torrent): Promise<void> {
     logDebug(`DBManager: addTorrent(${videoId}, ${torrent.parsedTitle})`);
-    await this._run(`UPDATE VideoData SET magnet=?, quality=?, resolution=? WHERE videoId=?`,
-      [torrent.magnet, torrent.quality, torrent.resolution, videoId]);
+    await this._run(`UPDATE VideoData SET magnet=?, quality=?, resolution=?, size=? WHERE videoId=?`,
+      [torrent.magnet, torrent.quality, torrent.resolution, torrent.size, videoId]);
   }
 
   public async getMoviePicks(n: number): Promise<Movie[]> {
@@ -348,9 +348,6 @@ export class DBManager {
 
   private async _addMovie(movie: Movie, options: AddOptions): Promise<void> {
     const queuePos = options.queue ? this._nextHigh++ : 0;
-    if (options.torrent) {
-      await this.setTorrent(movie.id, options.torrent);
-    }
     // Do NOT do the add if this is a predictive add of something that was already predictively added.
     const metadata = await this._get(`SELECT * FROM VideoData WHERE videoId=?`, [movie.id]) || {};
     if (!options.isPredictive || !metadata.isPredictive) {
@@ -370,13 +367,10 @@ export class DBManager {
     const queuePos = options.queue ? this._nextHigh++ : 0;
     show.episodes.forEach(ep => {
       const airDate = ep.airDate ? ep.airDate.getTime() : 0;
-      if (options.torrent) {
-        insertions.push(this.setTorrent(ep.id, options.torrent));
-      }
+      insertions.push(this._run(`INSERT INTO VideoData (videoId) VALUES (?)`, [ep.id]));
       insertions.push(this._run(`INSERT INTO Episodes (episodeId, seasonNum, episodeNum, airDate, ` +
         `show, addedBy, queuePos) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [ep.id, ep.seasonNum, ep.episodeNum, airDate, show.id, options.addedBy, queuePos]));
-      insertions.push(this._run(`INSERT INTO VideoData (videoId) VALUES (?)`, [ep.id]));
     });
     await Promise.all(insertions);
   }
@@ -498,6 +492,7 @@ function _addMeta(video: Video, row?: ResultRow): VideoMeta {
     magnet: row ? row.magnet : null,
     quality: row ? row.quality : null,
     resolution: row ? row.resolution : null,
+    size: row ? row.size : null,
     blacklisted: row ? JSON.parse(row.blacklisted) : []
   });
 }
