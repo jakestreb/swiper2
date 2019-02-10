@@ -13,7 +13,7 @@ export function delay(ms: number): Promise<void> {
   });
 }
 
-// Returns a Date representing 12AM of the day it is in the current timezone.
+// Returns a Date representing 12AM of the local timezone day in UTC.
 export function getMorning(): Date {
   const offset = (new Date()).getTimezoneOffset();
   const now = Date.now();
@@ -29,25 +29,28 @@ export function getMorning(): Date {
 export function getMsUntil(hour: number): number {
   const now = new Date();
   const searchTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour);
-  const msUntil = searchTime.valueOf() - now.valueOf();
+  const msUntil = searchTime.getTime() - now.getTime();
   // If the time has passed, add a full day.
   return msUntil < 0 ? msUntil + 86400000 : msUntil;
 }
 
 // Given a weekday number (0 - 6) and hour (0 - 23), returns the time until that hour in ms.
 export function getMsUntilWeekday(weekday: number, hour: number): number {
+  const oneDayMs = 24 * 60 * 60 * 1000;
   const now = new Date();
   const daysTil = weekday - now.getDay();
   const daysTilMod = ((daysTil % 7) + 7) % 7;
-  const searchTime = new Date(getMorning().getTime() + (daysTilMod * 24 * 60 * 60 * 1000));
+  const searchTime = new Date(now.getTime() + (daysTilMod * oneDayMs));
   searchTime.setHours(hour);
-  return searchTime.valueOf() - now.valueOf();
+  const msTil = searchTime.getTime() - now.getTime();
+  // If the time has passed, add a week.
+  return msTil < 0 ? msTil + (oneDayMs * 7) : msTil;
 }
 
 // Given the number of days until the given date (rounded down).
 export function getDaysUntil(date: Date): number {
   const now = new Date();
-  const msUntil = date.valueOf() - now.valueOf();
+  const msUntil = date.getTime() - now.getTime();
   return Math.floor(msUntil / 86400000);
 }
 
