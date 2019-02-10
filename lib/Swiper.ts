@@ -13,7 +13,6 @@ import {assignMeta, getBestTorrent, getTorrentString, SearchClient, Torrent} fro
 import {execCapture, getAiredStr, getMorning} from './util';
 import {matchNumber, matchYesNo, padZeros, removePrefix, splitFirst} from './util';
 
-// TODO: MAKE SURE FIRST TORRENT ATTACHMENT (for download) HOLDS
 // TODO: Allow remove all/monitored/downloads/failed
 
 // TODO: Test re-adding, adding episodes to an existing show, searching something in monitored, etc
@@ -840,12 +839,17 @@ function getEpisodesPerSeasonStr(episodes: Episode[]): string {
   let str = '';
   order.forEach((s: number, i: number) => {
     if (i > 0 && counts[s] !== counts[s - 1]) {
-      str += _getStreakStr('S', streakStart, s - 1) + `: ${counts[s - 1]} episodes, `;
+      const eachStr = streakStart === s - 1 ? '' : ' each';
+      str += _getStreakStr('S', streakStart, s - 1) + `: ${counts[s - 1]} episodes${eachStr}, \n`;
       streakStart = s;
+    }
+    if (i === order.length - 1) {
+      const eachStr = streakStart === s ? '' : ' each';
+      str += _getStreakStr('S', streakStart, s) + `: ${counts[s]} episodes${eachStr}, \n`;
     }
   });
   // Remove ending comma.
-  return str.slice(0, str.length - 2);
+  return str.slice(0, str.length - 3);
 }
 
 // Indicates whether the EpisodesDescriptor describes a single episode.
