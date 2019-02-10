@@ -121,7 +121,12 @@ export async function getPopularReleasedBetween(startDate: Date, endDate: Date):
   const url = 'http://api.themoviedb.org/3/discover/movie';
   const queryStr = `?primary_release_date.gte=${startDateStr}&primary_release_date.lte=${endDateStr}` +
     `&vote_count.gte=${minVoteCount}&api_key=${process.env.TMDB_ID}`;
-  const tmdbResult = await _getJSONResponse(url + queryStr);
+  let tmdbResult;
+  try {
+    tmdbResult = await _getJSONResponse(url + queryStr);
+  } catch (err) {
+    logError(`TMDB is not responding to requests`);
+  }
   // If the query fails or returns no movies, return no movies.
   if (!tmdbResult || !tmdbResult.results) {
     return [];
