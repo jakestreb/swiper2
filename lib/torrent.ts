@@ -264,7 +264,7 @@ class WT extends GenericDownloadClient {
     return {
       progress: wtTorrent ? (wtTorrent.progress * 100).toPrecision(3) : '0',
       speed: wtTorrent ? (wtTorrent.downloadSpeed / (1000 * 1000)).toPrecision(3) : '0',
-      remaining: wtTorrent ? (wtTorrent.timeRemaining / (60 * 1000)).toPrecision(3) : '',
+      remaining: wtTorrent ? Math.round(wtTorrent.timeRemaining / (60 * 1000)).toString() : '',
       peers: wtTorrent ? wtTorrent.numPeers : 0
     };
   }

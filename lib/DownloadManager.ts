@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-// import {ncp} from 'ncp';
 import * as path from 'path';
 import * as rmfr from 'rmfr';
 import {promisify} from 'util';
@@ -247,17 +246,3 @@ function copy(src: string, dst: string): Promise<void> {
     rd.pipe(wr);
   });
 }
-
-
-// // Copys a file from the src path to the dst path, returns a promise.
-// function copy(src: string, dst: string): Promise<void> {
-//   return new Promise((resolve, reject) => {
-//     ncp(src, dst, (err: Error) => {
-//      if (err) {
-//        reject(err);
-//      } else {
-//        resolve();
-//      }
-//     });
-//   });
-// }

@@ -161,7 +161,7 @@ export class DBManager {
     await this._add(media, {addedBy, queue: true, isPredictive: false});
   }
 
-  // Move to queued, and set the optional torrent magnet on the video.
+  // Move to queued.
   public async moveToQueued(video: Video) {
     logDebug(`DBManager: moveToQueued(${getDescription(video)})`);
     if (video.type === 'movie') {

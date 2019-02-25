@@ -221,6 +221,13 @@ export class Swiper {
       convo.pageNum = 0;
     }
 
+    if (convo.torrents.length === 0) {
+      return {
+        data: `No torrents found`,
+        final: true
+      };
+    }
+
     // Display the torrents to the user.
     convo.pageNum = convo.pageNum || 0;
 
@@ -255,6 +262,8 @@ export class Swiper {
       // Invalid number - show torrents again.
       return showPage();
     }
+    console.warn('CONVO.TORRENTS', convo.torrents);
+    console.warn('TORRENT NUM', torrentNum);
     const torrent = convo.torrents[torrentNum - 1];
 
     // Assign the torrent magnet to the video and queue it for download.
