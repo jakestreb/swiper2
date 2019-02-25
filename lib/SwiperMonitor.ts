@@ -103,7 +103,8 @@ export class SwiperMonitor {
       const bestTorrent = getBestTorrent(videoMeta, torrents);
       if (bestTorrent !== null) {
         // Set the item in the database to queued.
-        await this._dbManager.moveToQueued(video, bestTorrent);
+        await this._dbManager.setTorrent(video.id, bestTorrent);
+        await this._dbManager.moveToQueued(video);
         this._downloadManager.ping();
         return true;
       } else {
