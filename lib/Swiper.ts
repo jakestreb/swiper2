@@ -262,17 +262,10 @@ export class Swiper {
       // Invalid number - show torrents again.
       return showPage();
     }
-    console.warn('CONVO.TORRENTS', convo.torrents);
-    console.warn('TORRENT NUM', torrentNum);
     const torrent = convo.torrents[torrentNum - 1];
 
     // Assign the torrent magnet to the video and queue it for download.
     if (options.reassignTorrent) {
-      const video = getVideo(media);
-      if (!video) {
-        // This shouldn't be possible with the decorator.
-        throw new Error(`_search error: reassignTorrent option only permitted for single videos`);
-      }
       // Stop downloading and ping the download manager so it's able to start up the download
       // again afterward.
       await this._dbManager.markAsFailed(video);
@@ -280,8 +273,9 @@ export class Swiper {
       if (options.blacklist) {
         await this._dbManager.blacklistMagnet(video.id);
       }
-      await this._dbManager.setTorrent(video.id, torrent);
     }
+    await this._dbManager.setTorrent(video.id, torrent);
+    assignMeta(video, torrent);
     await this._dbManager.addToQueued(media, convo.id);
     this._downloadManager.ping();
 
