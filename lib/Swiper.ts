@@ -736,8 +736,9 @@ function addMediaQuery(convo: Conversation, options: RequireOptions = {}): Swipe
     if (!title) {
       return { err: `Can't parse content` };
     }
-    const rem = removePrefix(input, title);
+    let rem = removePrefix(input, title);
     const [year] = execCapture(rem, yearFinder);
+    rem = removePrefix(rem, year || '');
 
     const seasonEpisodeStr = rem.trim();
     // If the seasonEpisode string was included and the type is still unknown, set it to 'tv'.
