@@ -1,3 +1,4 @@
+import * as path from 'path';
 import range = require('lodash/range');
 import repeat = require('lodash/repeat');
 import {commands} from './commands';
@@ -87,7 +88,7 @@ export class Swiper {
   private _conversations: {[id: number]: Conversation} = {};
   private _checkInProgress: boolean = false;
 
-  // Should NOT be called publicly. User Swiper.create for building a Swiper instance.
+  // Should NOT be called publicly. Uses Swiper.create for building a Swiper instance.
   // Note that _dbManager should be initialized when passed in.
   constructor(
     private _sendMsg: (id: number, msg: SwiperReply) => Promise<void>,

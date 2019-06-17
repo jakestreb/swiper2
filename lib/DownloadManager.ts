@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as Client from 'ftp';
 import * as path from 'path';
 import * as rmfr from 'rmfr';
 import {promisify} from 'util';
@@ -217,7 +218,7 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   const copyActions = downloadPaths.map(downloadPath => {
     const from = path.join(DOWNLOAD_ROOT, downloadPath);
     const to = path.join(filepath, path.basename(downloadPath));
-    return copy(from, to);
+    return ftpCopy(from, to);
   });
   await Promise.all(copyActions);
 
@@ -230,19 +231,43 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   await Promise.all(deleteActions);
 }
 
-function copy(src: string, dst: string): Promise<void> {
+function ftpCopy(src: string, dst: string): Promise<void> {
+  const c = new Client();
+  const directory = path.dirname(dst);
   return new Promise((resolve, reject) => {
-    var rd = fs.createReadStream(src);
-    rd.on("error", err => {
-      reject(err);
+    c.on('ready', async () => {
+      // Make the necessary directories
+      c.mkdir(directory, true, (_mkDirErr: Error) => {
+        if (_mkDirErr) { reject(`FTP mkDir error: ` + _mkDirErr); }
+        // Copy the file
+        c.put(src, dst, (_putErr: Error) => {
+          if (_putErr) { reject(`FTP put error: ` + _putErr); }
+          c.end();
+          resolve();
+        });
+      });
     });
-    var wr = fs.createWriteStream(dst);
-    wr.on("error", err => {
-      reject(err);
+    c.connect({
+      host: process.env.FTP_HOST_IP,
+      user: process.env.FTP_USER,
+      password: process.env.FTP_PASS
     });
-    wr.on("close", () => {
-      resolve();
-    });
-    rd.pipe(wr);
   });
 }
+
+// function copy(src: string, dst: string): Promise<void> {
+//   return new Promise((resolve, reject) => {
+//     var rd = fs.createReadStream(src);
+//     rd.on("error", err => {
+//       reject(err);
+//     });
+//     var wr = fs.createWriteStream(dst);
+//     wr.on("error", err => {
+//       reject(err);
+//     });
+//     wr.on("close", () => {
+//       resolve();
+//     });
+//     rd.pipe(wr);
+//   });
+// }
