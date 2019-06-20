@@ -10,6 +10,7 @@ import {delay} from './util';
 const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../downloads');
 
 // Typescript doesn't recognize the default export of TSA.
+// tslint:disable-next-line
 const torrentSearchApi = require('torrent-search-api');
 torrentSearchApi.enableProvider('ThePirateBay');
 torrentSearchApi.enableProvider('Rarbg');
@@ -120,24 +121,24 @@ function getTorrentTier(video: VideoMeta, torrent: Torrent): number {
   let score = 0;
   // Check if any insta-reject strings match (ex. CAMRip).
   const rejected = settings.reject.find(r => Boolean(torrent.title.match(r)));
-  if (rejected) return score;
+  if (rejected) { return score; }
 
   // Check if the size is too big or too small.
   const sizeBounds = settings.size[video.type];
   const goodSize = torrent.size >= sizeBounds.min && torrent.size <= sizeBounds.max;
-  if (!goodSize) return score;
+  if (!goodSize) { return score; }
 
   // Get the quality preference index.
   const qualityPrefOrder = settings.quality[video.type];
   const qualityIndex = qualityPrefOrder.findIndex(q => Boolean(torrent.title.match(q)));
-  if (qualityIndex === -1) return score;
+  if (qualityIndex === -1) { return score; }
 
   // Check that the torrent isn't blacklisted.
-  if (video.blacklisted.includes(torrent.magnet)) return score;
+  if (video.blacklisted.includes(torrent.magnet)) { return score; }
 
   // Make sure the title matches.
   const wrongTitle = torrent.parsedTitle !== getFileSafeTitle(video);
-  if (!wrongTitle) score += 1;
+  if (!wrongTitle) { score += 1; }
 
   // Prioritize minSeeders over having the best quality.
   const seederRule = settings.seeders.find(_sr => torrent.seeders >= _sr.min);

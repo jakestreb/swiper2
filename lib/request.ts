@@ -139,7 +139,7 @@ export async function getPopularReleasedBetween(startDate: Date, endDate: Date):
     type: 'movie',
     episodes: null,
     year: (new Date(tmdb.release_date)).getFullYear().toString()
-  }))
+  }));
   const responses: Array<DataResponse<Media>> = await Promise.all(requestArray);
   const movies = responses.filter(r => r.data).map(r => r.data) as Movie[];
   return movies;

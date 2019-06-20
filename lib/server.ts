@@ -46,7 +46,7 @@ async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
       uri: `${gatewayUrl}/swiper`,
       method: 'POST',
       json: {
-        id: id,
+        id,
         message: msg.data ? msg.data : msg.err,
         destination: commType
       }

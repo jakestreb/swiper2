@@ -1,4 +1,3 @@
-import * as path from 'path';
 import range = require('lodash/range');
 import repeat = require('lodash/repeat');
 import {commands} from './commands';
@@ -545,7 +544,7 @@ export class Swiper {
       let sizeStr = '';
       if (video.size) {
         const sizeGb = video.size / 1000;
-        sizeStr = `${sizeGb.toFixed(1)}GB `
+        sizeStr = `${sizeGb.toFixed(1)}GB `;
       }
       const resStr = video.resolution ? `${video.resolution} ` : ``;
       const qualStr = video.quality ? `${video.quality} ` : ``;
