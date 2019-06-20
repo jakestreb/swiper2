@@ -15,6 +15,7 @@ const mkdir = promisify(fs.mkdir);
 
 const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../downloads');
 const EXPORT_ROOT = process.env.EXPORT_ROOT || path.resolve(__dirname, '../media');
+const USE_FTP = Boolean(parseInt(process.env.USE_FTP || "0", 10));
 
 export class DownloadManager {
   private _downloadClient: DownloadClient;
@@ -218,7 +219,7 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   const copyActions = downloadPaths.map(downloadPath => {
     const from = path.join(DOWNLOAD_ROOT, downloadPath);
     const to = path.join(filepath, path.basename(downloadPath));
-    return ftpCopy(from, to);
+    return USE_FTP ? ftpCopy(from, to) : copy(from, to);
   });
   await Promise.all(copyActions);
 
@@ -255,19 +256,19 @@ function ftpCopy(src: string, dst: string): Promise<void> {
   });
 }
 
-// function copy(src: string, dst: string): Promise<void> {
-//   return new Promise((resolve, reject) => {
-//     var rd = fs.createReadStream(src);
-//     rd.on("error", err => {
-//       reject(err);
-//     });
-//     var wr = fs.createWriteStream(dst);
-//     wr.on("error", err => {
-//       reject(err);
-//     });
-//     wr.on("close", () => {
-//       resolve();
-//     });
-//     rd.pipe(wr);
-//   });
-// }
+function copy(src: string, dst: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    var rd = fs.createReadStream(src);
+    rd.on("error", err => {
+      reject(err);
+    });
+    var wr = fs.createWriteStream(dst);
+    wr.on("error", err => {
+      reject(err);
+    });
+    wr.on("close", () => {
+      resolve();
+    });
+    rd.pipe(wr);
+  });
+}
