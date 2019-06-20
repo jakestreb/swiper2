@@ -2,3 +2,4 @@ memory.db
 .env
 media/
 downloads/
+node_modules/
