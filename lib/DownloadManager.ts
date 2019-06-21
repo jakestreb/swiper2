@@ -202,12 +202,12 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
     ['tv', safeTitle, `Season ${video.seasonNum}`];
 
   let exportPath = EXPORT_ROOT;
-  if (!USE_FTP) {
-    logDebug(`exportVideo: Creating missing folders in export directory`);
-    // The FTP copy process creates any folders needed in the FTP directory, but the
-    // normal copy process does not.
-    for (const pathElem of dirs) {
-      exportPath = path.join(exportPath, pathElem);
+  if (!USE_FTP) { logDebug(`exportVideo: Creating missing folders in export directory`); }
+  for (const pathElem of dirs) {
+    exportPath = path.join(exportPath, pathElem);
+    if (!USE_FTP) {
+      // The FTP copy process creates any folders needed in the FTP directory, but the
+      // normal copy process does not.
       try {
         await access(exportPath, fs.constants.F_OK);
       } catch {
