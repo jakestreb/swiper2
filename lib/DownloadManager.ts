@@ -201,24 +201,27 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   const dirs = video.type === 'movie' ? ['movies', safeTitle] :
     ['tv', safeTitle, `Season ${video.seasonNum}`];
 
-  logDebug(`exportVideo: Creating missing folders in export directory`);
-  // Create any directories needed to store the video file.
-  let filepath = EXPORT_ROOT;
-  for (const pathElem of dirs) {
-    filepath = path.join(filepath, pathElem);
-    try {
-      await access(filepath, fs.constants.F_OK);
-    } catch {
-      // Throws when path does not exist
-      await mkdir(filepath);
+  let exportPath = EXPORT_ROOT;
+  if (!USE_FTP) {
+    logDebug(`exportVideo: Creating missing folders in export directory`);
+    // The FTP copy process creates any folders needed in the FTP directory, but the
+    // normal copy process does not.
+    for (const pathElem of dirs) {
+      exportPath = path.join(exportPath, pathElem);
+      try {
+        await access(exportPath, fs.constants.F_OK);
+      } catch {
+        // Throws when path does not exist
+        await mkdir(exportPath);
+      }
     }
   }
 
   // Move the files to the final directory.
-  logDebug(`exportVideo: Copying videos to ${USE_FTP ? 'FTP Server' : filepath}`);
+  logDebug(`exportVideo: Copying videos to ${USE_FTP ? 'FTP server at ' : ''}${exportPath}`);
   const copyActions = downloadPaths.map(downloadPath => {
     const from = path.join(DOWNLOAD_ROOT, downloadPath);
-    const to = path.join(filepath, path.basename(downloadPath));
+    const to = path.join(exportPath, path.basename(downloadPath));
     console.warn('FROM', from);
     console.warn('TO', to);
     return USE_FTP ? ftpCopy(from, to) : copy(from, to);
