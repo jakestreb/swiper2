@@ -215,10 +215,12 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   }
 
   // Move the files to the final directory.
-  logDebug(`exportVideo: Copying videos to ${filepath}`);
+  logDebug(`exportVideo: Copying videos to ${USE_FTP ? 'FTP Server' : filepath}`);
   const copyActions = downloadPaths.map(downloadPath => {
     const from = path.join(DOWNLOAD_ROOT, downloadPath);
     const to = path.join(filepath, path.basename(downloadPath));
+    console.warn('FROM', from);
+    console.warn('TO', to);
     return USE_FTP ? ftpCopy(from, to) : copy(from, to);
   });
   await Promise.all(copyActions);
