@@ -245,7 +245,12 @@ function ftpCopy(src: string, dst: string): Promise<void> {
       // Make the necessary directories
       c.mkdir(directory, true, (_mkDirErr: Error) => {
         console.warn('MKDIR', directory);
-        if (_mkDirErr) { reject(`FTP mkDir error: ` + _mkDirErr); }
+        if (_mkDirErr && !/already exists/.exec(_mkDirErr.message)) {
+          reject(`FTP mkDir error: ` + _mkDirErr);
+        }
+        if (/already exists/.exec(_mkDirErr.message)) {
+          console.warn('yoo', _mkDirErr);
+        }
         // Copy the file
         c.put(src, dst, (_putErr: Error) => {
           console.warn('PUT', src);
