@@ -89,6 +89,7 @@ function startComms(swiper: Swiper): void {
 
   // Message from telegram.
   app.post("/telegram", (req, res) => {
+    console.warn('GOT MSG!');
     acceptMsgFromClient('telegram', req.body.id, req.body.message)
     .catch(err => {
       logError(`Error handling telegram request "${req.body.message}": ${err}`);
