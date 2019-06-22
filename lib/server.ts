@@ -73,9 +73,10 @@ function startComms(swiper: Swiper): void {
       sendMsgToClient(CLI_ID, {err: `Something went wrong`});
     });
   });
-  terminal.on('close', () => {
-    process.exit(0);
-  });
+  // terminal.on('close', () => {
+  //   logError(`Process exiting on terminal close`);
+  //   process.exit(0);
+  // });
 
   // Start the app.
   app.listen(PORT, () => {
