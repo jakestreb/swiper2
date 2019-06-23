@@ -5,7 +5,7 @@ export type Media = Movie|Show;
 export type Video = Movie|Episode;
 
 export interface Movie {
-  id: number;
+  id: number;         // Imdb id
   type: 'movie';
   title: string;
   year: string;
@@ -14,14 +14,14 @@ export interface Movie {
 }
 
 export interface Show {
-  id: number;
+  id: number;         // Imdb id
   type: 'tv';
   title: string;
   episodes: Episode[];
 }
 
 export interface Episode {
-  id: number;
+  id: number;         // Hashed id using show imdb id, season num and episode num
   type: 'episode';
   show: Show;
   seasonNum: number;

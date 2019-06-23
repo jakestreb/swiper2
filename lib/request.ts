@@ -98,9 +98,9 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
       title: omdbResult.Title,
       episodes: ([] as Episode[])
     };
-    const episodes = tvdbResult.episodes.filter(ep => ep.imdbId).map(ep => ({
+    const episodes = tvdbResult.episodes.map(ep => ({
       show,
-      id: convertImdbId(ep.imdbId),
+      id: hashEpisodeId(show.id, ep.airedSeason, ep.airedEpisodeNumber),
       type: 'episode' as 'episode',
       seasonNum: ep.airedSeason,
       episodeNum: ep.airedEpisodeNumber,
@@ -177,6 +177,10 @@ async function _getJSONResponse(url: string): Promise<{[key: string]: any}> {
       reject(err);
     });
   });
+}
+
+function hashEpisodeId(showId: number, seasonNum: number, episodeNum: number) {
+  return (showId * 1000 * 1000) + (seasonNum * 1000) + episodeNum;
 }
 
 function getYMDString(date: Date): string {

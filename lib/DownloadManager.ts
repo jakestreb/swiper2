@@ -222,8 +222,6 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   const copyActions = downloadPaths.map(downloadPath => {
     const from = path.join(DOWNLOAD_ROOT, downloadPath);
     const to = path.join(exportPath, path.basename(downloadPath));
-    console.warn('FROM', from);
-    console.warn('TO', to);
     return USE_FTP ? ftpCopy(from, to) : copy(from, to);
   });
   await Promise.all(copyActions);
@@ -244,17 +242,12 @@ function ftpCopy(src: string, dst: string): Promise<void> {
     c.on('ready', async () => {
       // Make the necessary directories
       c.mkdir(directory, true, (_mkDirErr: Error|undefined) => {
-        console.warn('MKDIR', directory);
+        // Suppress errors thrown because the directory already exists.
         if (_mkDirErr && !/already exists/.exec(_mkDirErr.message)) {
           reject(`FTP mkDir error: ` + _mkDirErr);
         }
-        if (_mkDirErr && /already exists/.exec(_mkDirErr.message)) {
-          console.warn('yoo', _mkDirErr);
-        }
         // Copy the file
         c.put(src, dst, (_putErr: Error) => {
-          console.warn('PUT', src);
-          console.warn('TO', dst);
           if (_putErr) { reject(`FTP put error: ` + _putErr); }
           c.end();
           resolve();
