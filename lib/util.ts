@@ -42,6 +42,9 @@ export function getMsUntilWeekday(weekday: number, hour: number): number {
   const daysTilMod = ((daysTil % 7) + 7) % 7;
   const searchTime = new Date(now.getTime() + (daysTilMod * oneDayMs));
   searchTime.setHours(hour);
+  searchTime.setMinutes(0);
+  searchTime.setSeconds(0);
+  searchTime.setMilliseconds(0);
   const msTil = searchTime.getTime() - now.getTime();
   // If the time has passed, add a week.
   return msTil < 0 ? msTil + (oneDayMs * 7) : msTil;

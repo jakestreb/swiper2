@@ -1,15 +1,17 @@
 import {get} from 'http';
 import * as TVDB from 'node-tvdb';
+import * as rp from 'request-promise';
 
 import {Episode, Media, Movie, Show, sortEpisodes} from './media';
 import {MediaQuery} from './Swiper';
 import {logDebug, logError} from './terminal';
 import {getDateFromStr} from './util';
 
-let tvdb = new TVDB(process.env.TVDB_ID);
+// TVDB temporary token cache.
+let tvdbToken = '';
+let tvdbTokenTimestamp = 0;
 
 // Implements all requests to web libraries as individual utility functions.
-
 interface DataResponse<T> {
   data?: T;
   err?: string;
@@ -150,18 +152,53 @@ function convertImdbId(imdbId: string): number {
 }
 
 // Helper function to search TVDB and retry with a refreshed API token on error.
-async function _searchTVDB(imdbId: string, isRetryAttempt: boolean = false): Promise<TVDB> {
-  const entries = await tvdb.getSeriesByImdbId(imdbId);
-  try {
-    return tvdb.getSeriesAllById(entries[0].id);
-  } catch (err) {
-    if (isRetryAttempt) {
-      throw err;
-    }
-    // On initial failure, refresh authentication.
-    tvdb = new TVDB(process.env.TVDB_ID);
-    return _searchTVDB(imdbId, true);
+async function _searchTVDB(imdbId: string): Promise<TVDB> {
+  // Token lasts for 24 hours - refresh if necessary.
+  const now = new Date().getTime();
+  const day = 24 * 60 * 60 * 1000;
+  if (now - tvdbTokenTimestamp > day) {
+    // Needs refresh.
+    logDebug(`_searchTVDB: Refreshing token`);
+    const {token} = await rp({
+      uri: 'https://api.thetvdb.com/login',
+      method: 'POST',
+      json: { apikey: process.env.TVDB_ID }
+    });
+    tvdbToken = token;
+    tvdbTokenTimestamp = now;
   }
+
+  // Get the TVDB series ID from the imdbID.
+  logDebug(`_searchTVDB: Fetching TVDB ID from IMDB ID`);
+  const entriesJson = await rp({
+    uri: 'https://api.thetvdb.com/search/series',
+    headers: { 'Authorization': `Bearer ${tvdbToken}` },
+    method: 'GET',
+    qs: { imdbId }
+  });
+  const entries = JSON.parse(entriesJson).data;
+  if (entries.length === 0) { throw new Error('Series not found in TVDB'); }
+  const seriesId = entries[0].id;
+
+  // Retrieved the ID, now fetch the series and episodes.
+  logDebug(`_searchTVDB: Fetching series`);
+  const seriesJson = await rp({
+    uri: `https://api.thetvdb.com/series/${seriesId}`,
+    headers: { 'Authorization': `Bearer ${tvdbToken}` },
+    method: 'GET'
+  })
+  logDebug(`_searchTVDB: Fetching episodes`);
+  const episodesJson = await rp({
+    uri: `https://api.thetvdb.com/series/${seriesId}/episodes`,
+    headers: { 'Authorization': `Bearer ${tvdbToken}` },
+    method: 'GET'
+  });
+
+  // Convert and return.
+  const series = JSON.parse(seriesJson).data;
+  const episodes = JSON.parse(episodesJson).data;
+  series.episodes = episodes;
+  return series;
 }
 
 async function _getJSONResponse(url: string): Promise<{[key: string]: any}> {
