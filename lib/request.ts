@@ -1,3 +1,4 @@
+// TODO: Consider replacing TVDB with TMDB.
 import * as TVDB from 'node-tvdb';
 import * as rp from 'request-promise';
 
@@ -14,14 +15,6 @@ let tvdbTokenTimestamp = 0;
 interface DataResponse<T> {
   data?: T;
   err?: string;
-}
-
-// Return type of the TVDB database, with only fields we need defined.
-interface TVDB {
-  episodes: TVDBEpisode[];
-  airsDayOfWeek: string;
-  airsTime: string;
-  seriesName: string;
 }
 
 interface TMDBPopularity {
@@ -43,9 +36,18 @@ interface TMDBMovie {
 interface TMDBShow {
   id: number;
   media_type: string;
+  first_air_date: string;
 }
 
 type TMDBMedia = TMDBMovie | TMDBShow;
+
+// Return type of the TVDB database, with only fields we need defined.
+interface TVDB {
+  episodes: TVDBEpisode[];
+  airsDayOfWeek: string;
+  airsTime: string;
+  seriesName: string;
+}
 
 interface TVDBEpisode {
   airedEpisodeNumber: number;
@@ -67,29 +69,22 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
   }
 }
 
-
-
-
 export async function getPopularReleasedBetween(startDate: Date, endDate: Date): Promise<Movie[]> {
   // Vote count is a weird arbitrary metric that helps indicate how popular a movie is.
   const minVoteCount = 250;
   const startDateStr = getYMDString(startDate);
   const endDateStr = getYMDString(endDate);
-  const uri = `https://api.themoviedb.org/4/discover/movie?api_key=${process.env.TMDB_ID}`
-    + `&primary_release_date.gte=${startDateStr}`
+  const uri = `https://api.themoviedb.org/4/discover/movie?primary_release_date.gte=${startDateStr}`
     + `&primary_release_date.lte=${endDateStr}&vote_count.gte=${minVoteCount}`;
   let tmdbResult;
   try {
     tmdbResult = await rp({
       uri,
-      headers: {
-        Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}`,
-        'Content-Type': 'application/json;charset=utf-8'
-      }
+      headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
+      json: true
     });
   } catch (err) {
-    logError(err);
-    logError(`TMDB is not responding to requests`);
+    logError(`TMDB is not responding to requests: ${err}`);
   }
   // If the query fails or returns no movies, return no movies.
   if (!tmdbResult || !tmdbResult.results) {
@@ -102,7 +97,7 @@ export async function getPopularReleasedBetween(startDate: Date, endDate: Date):
     title: tmdb.title,
     type: 'movie',
     episodes: null,
-    year: (new Date(tmdb.release_date)).getFullYear().toString()
+    year: getTMDBYear(tmdb.release_date)
   }));
   const responses: Array<DataResponse<Media>> = await Promise.all(requestArray);
   const movies = responses.filter(r => r.data).map(r => r.data) as Movie[];
@@ -118,39 +113,43 @@ async function _searchTMDB(info: MediaQuery): Promise<Media> {
   const title = encodeURIComponent(info.title);
   if (info.type === 'movie') {
     // Searching for movie
-    const uri = `https://api.themoviedb.org/4/search/movie?api_key=${process.env.TMDB_ID}`
-      + `&query=${title}&primary_release_year=${info.year}`;
-    mediaResult = await _makeTMDBMediaRequest(uri, 'movie');
+    const uri = `https://api.themoviedb.org/4/search/movie?query=${title}`
+      + `&primary_release_year=${info.year}`;
+    mediaResult = await _makeTMDBMediaRequest(uri, info.year);
     return _convertTMDBMovie(mediaResult as TMDBMovie);
   } else if (info.type === 'tv') {
     // Searching for tv series
-    const uri = `https://api.themoviedb.org/4/search/tv?api_key=${process.env.TMDB_ID}`
-      + `&query=${title}&first_air_date_year=${info.year}`;
-    mediaResult = await _makeTMDBMediaRequest(uri, 'tv');
+    const uri = `https://api.themoviedb.org/4/search/tv?query=${title}`
+      + `&first_air_date_year=${info.year}`;
+    mediaResult = await _makeTMDBMediaRequest(uri, info.year);
     return _convertTMDBShow(mediaResult as TMDBShow);
   } else {
     // Searching for either
-    const uri = `https://api.themoviedb.org/4/search/multi?api_key=${process.env.TMDB_ID}`;
-    mediaResult = await _makeTMDBMediaRequest(uri) as TMDBMedia;
+    const uri = `https://api.themoviedb.org/4/search/multi?&query=${title}`;
+    mediaResult = await _makeTMDBMediaRequest(uri, info.year) as TMDBMedia;
     if (mediaResult.media_type === 'movie') {
       return _convertTMDBMovie(mediaResult as TMDBMovie);
-    } else {
+    } else if (mediaResult.media_type === 'tv') {
       return _convertTMDBShow(mediaResult as TMDBShow);
+    } else {
+      throw new Error(`Result not a movie or tv show`);
     }
   }
 }
 
 async function _convertTMDBMovie(info: TMDBMovie): Promise<Movie> {
   const imdbId = await _getTMDBImdbId(info, 'movie');
-  console.warn('GET YEAR FROM THIS:', info.release_date);
   let digitalRelease;
   try {
-    const tmdbRelease = await rp({
-      uri: `https://api.themoviedb.org/4/movie/${info.id}/release_dates?api_key=${process.env.TMDB_ID}`,
-      headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` }
+    const {results} = await rp({
+      // TODO: Convert to v4 when supported.
+      uri: `https://api.themoviedb.org/3/movie/${info.id}/release_dates?api_key=${process.env.TMDB_ID}`,
+      headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
+      json: true
     });
-    if (tmdbRelease.status_code) {
-      throw new Error(tmdbRelease.status_message);
+    const usaResult = results.find((_res: any) => _res.iso_3166_1 === 'US');
+    if (!usaResult) {
+      throw new Error('No results for the US');
     }
     // Release types:
     // 1. Premiere
@@ -159,11 +158,11 @@ async function _convertTMDBMovie(info: TMDBMovie): Promise<Movie> {
     // 4. Digital
     // 5. Physical
     // 6. TV
-    const relevant = tmdbRelease.release_dates.filter((_release: any) => _release.type === 4);
+    const relevant = usaResult.release_dates.filter((_release: any) => _release.type === 4);
     if (relevant.length === 0) {
       throw new Error('No results');
     }
-    digitalRelease = relevant[0];
+    digitalRelease = relevant[0].release_date;
   } catch (err) {
     logError(`_convertTMDBMovie find release date failed: ${err}`);
   }
@@ -171,7 +170,7 @@ async function _convertTMDBMovie(info: TMDBMovie): Promise<Movie> {
     id: convertImdbId(imdbId),
     type: 'movie',
     title: info.title,
-    year: info.release_date,
+    year: getTMDBYear(info.release_date),
     release: getDateFromStr(info.release_date),
     dvd: digitalRelease ? getDateFromStr(digitalRelease) : null
   };
@@ -206,42 +205,31 @@ async function _convertTMDBShow(info: TMDBShow): Promise<Show> {
 
 async function _getTMDBImdbId(info: TMDBMedia, type: 'movie'|'tv'): Promise<string> {
   const idsResp = await rp({
-    uri: `https://api.themoviedb.org/4/${type}/${info.id}/external_ids?api_key=${process.env.TMDB_ID}`,
-    headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` }
+    // TODO: Convert to v4 when supported.
+    uri: `https://api.themoviedb.org/3/${type}/${info.id}/external_ids?api_key=${process.env.TMDB_ID}`,
+    headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
+    json: true
   });
-  if (idsResp.status_code) {
-    throw new Error(idsResp.status_message);
-  }
   return idsResp.imdb_id;
 }
 
-async function _makeTMDBMediaRequest(uri: string, year?: string|null, type?: 'movie'|'tv'): Promise<TMDBMedia> {
+async function _makeTMDBMediaRequest(uri: string, year?: string|null): Promise<TMDBMedia> {
   try {
     let tmdbResp = await rp({
       uri,
-      headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` }
+      headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
+      json: true
     });
-    if (tmdbResp.status_code) {
-      throw new Error(tmdbResp.status_message);
-    }
     let results = tmdbResp.results;
-    console.warn('!!!!! FIX YEAR FILTER');
     if (year) {
-      // results = results.filter((_media: TMDBMedia) =>
-      //   _media.release_date && _media.release_date === year ||
-      //   _media.first_air_date && _media.first_air_date === year);
-    }
-    if (type) {
-      results = results.filter((_media: TMDBMedia) => _media.media_type === type);
+      results = results.filter((_media: TMDBMedia) =>
+        (_media as TMDBMovie).release_date && getTMDBYear((_media as TMDBMovie).release_date) === year ||
+        (_media as TMDBShow).first_air_date && getTMDBYear((_media as TMDBShow).first_air_date) === year);
     }
     if (results.length === 0) {
       throw new Error(`No results`);
     }
-    const result = results[0];
-    if (result.media_type !== 'movie' && result.media_type !== 'tv') {
-      throw new Error(`Not a movie or tv show`);
-    }
-    return result;
+    return results[0];
   } catch (err) {
     logError(err);
     throw `Failed The Movie Database search: ${err}`;
@@ -298,7 +286,12 @@ async function _searchTVDB(imdbId: string): Promise<TVDB> {
   return series;
 }
 
-function hashEpisodeId(showId: number, seasonNum: number, episodeNum: number) {
+function getTMDBYear(tmdbDate: string): string {
+  const date = getDateFromStr(tmdbDate);
+  return date ? `${date.getFullYear()}` : '';
+}
+
+function hashEpisodeId(showId: number, seasonNum: number, episodeNum: number): number {
   return (showId * 1000 * 1000) + (seasonNum * 1000) + episodeNum;
 }
 

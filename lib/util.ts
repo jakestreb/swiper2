@@ -115,8 +115,7 @@ export function matchNumber(input: string = '', other: Response[] = []): string|
   }].concat(other));
 }
 
-// Parses date strings of the form "02 Nov 2018".
-// Note that null dates in OMDB are represented by "N/A" and should give null.
+// Parses date strings of the form "02 Nov 2018" (and other common forms).
 export function getDateFromStr(dateStr: string): Date|null {
   if (!dateStr || !dateStr.match(/\d/g)) {
     return null;

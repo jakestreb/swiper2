@@ -2,7 +2,6 @@ Environment variables with example values:
 
 GATEWAY_URL=https://limitless-island-56260.herokuapp.com
 PORT=8250
-OMDB_ID=d4914d87
 TVDB_ID=4B4DF40E7F46F41F
 TMDB_ID=221b5586ea4c733bf3de91f13fed32b8
 DB_PATH=/memory.db
