@@ -272,18 +272,34 @@ async function _searchTVDB(imdbId: string): Promise<TVDB> {
     headers: { 'Authorization': `Bearer ${tvdbToken}` },
     method: 'GET'
   })
-  logDebug(`_searchTVDB: Fetching episodes`);
-  const episodesJson = await rp({
-    uri: `https://api.thetvdb.com/series/${seriesId}/episodes`,
-    headers: { 'Authorization': `Bearer ${tvdbToken}` },
-    method: 'GET'
-  });
 
   // Convert and return.
   const series = JSON.parse(seriesJson).data;
-  const episodes = JSON.parse(episodesJson).data;
-  series.episodes = episodes;
+  series.episodes = await fetchEpisodes(seriesId);
   return series;
+}
+
+// Episodes sometimes need to be fetched in multiple requests if there are a lot.
+// This function facilitates that.
+async function fetchEpisodes(seriesId: number): Promise<TVDBEpisode[]> {
+  logDebug(`_searchTVDB: Fetching episodes`);
+  const doFetch = async (pageNum: number) => {
+    const episodesJson = await rp({
+      uri: `https://api.thetvdb.com/series/${seriesId}/episodes`,
+      headers: { 'Authorization': `Bearer ${tvdbToken}` },
+      method: 'GET',
+      qs: { page: pageNum }
+    });
+    return JSON.parse(episodesJson);
+  };
+  const firstResult = await doFetch(1);
+  const episodes = firstResult.data;
+  if (firstResult.links.last > 1) {
+    const fetchArray = [...Array(firstResult.links.last - 1)].map((_, idx) => idx + 2);
+    const moreResults = await Promise.all(fetchArray.map(async pageNum => doFetch(pageNum)));
+    moreResults.forEach((res: any) => { episodes.push(...res.data); });
+  }
+  return episodes;
 }
 
 function getTMDBYear(tmdbDate: string): string {
