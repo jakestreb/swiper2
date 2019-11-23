@@ -530,10 +530,10 @@ export class Swiper {
       if (media.type === 'movie') {
         const dvd = media.dvd && (media.dvd > getMorning());
         const dvdStr = dvd ? ` _Digital ${media.dvd!.toDateString()}_` : ` _${media.year}_`;
-        return `${media.title}${dvdStr}`;
+        return `\`   \`_*${media.title}*_${dvdStr}`;
       } else {
         const next = getNextToAir(media.episodes);
-        return `${getDescription(media)}` +
+        return `\`   \`${getDescription(media)}` +
           ((next && next.airDate) ? ` _${getAiredStr(next!.airDate!)}_` : '');
       }
     }).join('\n');
@@ -547,33 +547,34 @@ export class Swiper {
       }
       const resStr = video.resolution ? `${video.resolution} ` : ``;
       const qualStr = video.quality ? `${video.quality} ` : ``;
-      const remainingStr = remaining && parseInt(remaining, 10) ? `${remaining} min left at ` : '';
-      return `${i + 1} ${getDescription(video)} \`${progress}%\` _${remainingStr}${speed}MB/s_\n` +
-        `_${sizeStr}${resStr}${qualStr}${peers}x_`;
+      const remainingStr = remaining && parseInt(remaining, 10) ? `${remaining} min at ` : '';
+      return `\`${i + 1}) \` ${getDescription(video)} _${progress}%_\n` +
+        `\`   \`_${sizeStr}${resStr}${qualStr}_` +
+        `\`   \`_${remainingStr}${speed}MB/s with ${peers} peers_`;
     });
 
     const numDownloads = status.downloading.length;
     const queued = status.queued.map((media, i) => {
       const desc = media.type === 'movie' ? media.title :
         `${getDescription(media)}`;
-      return `${i + numDownloads + 1} ${desc} (_pending_)`;
+      return `\`${i + numDownloads + 1}) \` ${desc} _pending_`;
     });
 
     const downloadStr = [...downloading, ...queued].join('\n');
 
     const failedStr = status.failed.map(video => {
-      return ` - ${getDescription(video)}`;
+      return `\`   \`${getDescription(video)}`;
     }).join('\n');
 
     const strs = [];
     if (monitoredStr) {
-      strs.push(`Monitoring\n${monitoredStr}`);
+      strs.push(`\`MONITORING\`\n${monitoredStr}`);
     }
     if (downloadStr) {
-      strs.push(`Downloading\n${downloadStr}`);
+      strs.push(`\`DOWNLOADING\`\n${downloadStr}`);
     }
     if (failedStr) {
-      strs.push(`Failed\n${failedStr}`);
+      strs.push(`\`FAILED\`\n${failedStr}`);
     }
     const str = strs.join('\n');
     return {
