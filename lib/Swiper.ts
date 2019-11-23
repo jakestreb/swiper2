@@ -1,5 +1,4 @@
 import range = require('lodash/range');
-import repeat = require('lodash/repeat');
 import {commands} from './commands';
 import {DBManager} from './DBManager';
 import {DownloadManager} from './DownloadManager';
@@ -530,12 +529,12 @@ export class Swiper {
     const monitoredStr = status.monitored.map(media => {
       if (media.type === 'movie') {
         const dvd = media.dvd && (media.dvd > getMorning());
-        const dvdStr = dvd ? ` (Digital: ${media.dvd!.toDateString()})` : ` (${media.year})`;
-        return ` - ${media.title}${dvdStr}`;
+        const dvdStr = dvd ? ` (__Digital ${media.dvd!.toDateString()}__)` : ` (__${media.year}__)`;
+        return `${media.title}${dvdStr}`;
       } else {
         const next = getNextToAir(media.episodes);
-        return ` - ${getDescription(media)}` +
-          ((next && next.airDate) ? ` (${getAiredStr(next!.airDate!)})` : '');
+        return `${getDescription(media)}` +
+          ((next && next.airDate) ? ` (__${getAiredStr(next!.airDate!)}__)` : '');
       }
     }).join('\n');
 
@@ -549,16 +548,15 @@ export class Swiper {
       const resStr = video.resolution ? `${video.resolution} ` : ``;
       const qualStr = video.quality ? `${video.quality} ` : ``;
       const remainingStr = remaining && parseInt(remaining, 10) ? `${remaining} min left at ` : '';
-      const numSpacer = repeat(' ', (i + 1).toString().length);
-      return ` ${i + 1} | ${getDescription(video)} - ${sizeStr}${resStr}${qualStr}${progress}%\n` +
-        ` ${numSpacer} | (${remainingStr}${speed}MB/s with ${peers} peers)`;
+      return `${i + 1} ${getDescription(video)} - \`${progress}%\` \`${remainingStr}${speed}MB/s\`\n` +
+        `${sizeStr}${resStr}${qualStr}(${peers} peers)`;
     });
 
     const numDownloads = status.downloading.length;
     const queued = status.queued.map((media, i) => {
       const desc = media.type === 'movie' ? media.title :
         `${getDescription(media)}`;
-      return ` ${i + numDownloads + 1} | ${desc} (pending)`;
+      return `${i + numDownloads + 1} ${desc} (__pending__)`;
     });
 
     const downloadStr = [...downloading, ...queued].join('\n');
@@ -569,13 +567,13 @@ export class Swiper {
 
     const strs = [];
     if (monitoredStr) {
-      strs.push(`Monitoring:\n${monitoredStr}`);
+      strs.push(`Monitoring\n${monitoredStr}`);
     }
     if (downloadStr) {
-      strs.push(`Downloading:\n${downloadStr}`);
+      strs.push(`Downloading\n${downloadStr}`);
     }
     if (failedStr) {
-      strs.push(`Failed:\n${failedStr}`);
+      strs.push(`Failed\n${failedStr}`);
     }
     const str = strs.join('\n');
     return {

@@ -3,9 +3,8 @@ interface Response {
   value: string;
 }
 
-const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
-  'September', 'October', 'November', 'December'];
+const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function delay(ms: number): Promise<void> {
   return new Promise(resolve => {
@@ -130,7 +129,6 @@ export function padZeros(int: number): string {
 
 export function getAiredStr(date: Date): string {
   const oneDay = 86400000;
-  const twoDays = 2 * oneDay;
   const oneWeek = 7 * oneDay;
   const sixMonths = 182 * oneDay;
   const weekday = weekdays[date.getDay()];
@@ -139,34 +137,33 @@ export function getAiredStr(date: Date): string {
   const year = date.getFullYear();
   const diff = date.getTime() - getMorning().getTime();
   if (diff < -sixMonths) {
-    return `Last aired ${month} ${calDay}, ${year}`;
+    return `Last ${month} ${calDay}, ${year}`;
   } else if (diff < -oneWeek) {
     // Over a week ago
-    return `Last aired ${weekday}, ${month} ${calDay}`;
+    return `Last ${weekday}, ${month} ${calDay}`;
   } else if (diff < -oneDay) {
     // In the week
-    return `Last aired ${weekday}`;
+    return `Last ${weekday}`;
   } else if (diff < 0) {
-    return `Last aired yesterday`;
+    return `Yesterday`;
   } else if (diff < oneDay) {
-    return `Airs today at ${_getTimeString(date)}`;
-  } else if (diff < twoDays) {
-    return `Airs tomorrow at ${_getTimeString(date)}`;
+    return `Today ${_getTimeString(date)}`;
   } else if (diff < oneWeek) {
     // In the next week
-    return `Next airs ${weekday} at ${_getTimeString(date)}`;
+    return `${weekday} ${_getTimeString(date)}`;
   } else if (diff < sixMonths) {
     // More than a week ahead
-    return `Next airs ${weekday}, ${month} ${calDay}`;
+    return `${weekday}, ${month} ${calDay}`;
   } else {
     // More than 6 months ahead
-    return `Next airs ${month} ${calDay}, ${year}`;
+    return `${month} ${calDay}, ${year}`;
   }
 }
 
 function _getTimeString(date: Date): string {
   const hours = date.getHours();
-  const minutesStr = (date.getMinutes() + '0').slice(0, 2);
-  const ampm = hours < 12 ? 'am' : 'pm';
-  return `${hours % 12 || 12}:${minutesStr}${ampm}`;
+  const minutes = `0${date.getMinutes()}`.slice(-2);
+  const minutesStr = minutes === '00' ? '' : `:${minutes}`;
+  const ampm = hours < 12 ? 'a' : 'p';
+  return `${hours % 12 || 12}${minutesStr}${ampm}`;
 }
