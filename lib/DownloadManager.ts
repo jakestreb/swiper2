@@ -84,6 +84,7 @@ export class DownloadManager {
 
       // Update downloading array.
       this._downloading = downloads;
+      if (downloads.length === 0) { this._downloadClient.allDownloadsCompleted(); }
     } catch (err) {
       logSubProcessError(`_manageDownloads err: ${err}`);
     }

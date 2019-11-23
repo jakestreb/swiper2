@@ -97,6 +97,10 @@ export class DownloadClient {
   public deleteFiles(magnet: string): Promise<void> {
     return this._client.deleteFiles(magnet);
   }
+
+  public allDownloadsCompleted(): void {
+    this._client.allDownloadsCompleted();
+  }
 }
 
 export function assignMeta(video: Video|VideoMeta, torrent: Torrent): VideoMeta {
@@ -233,21 +237,23 @@ abstract class GenericDownloadClient {
   public abstract getProgress(magnet: string): DownloadProgress;
   public abstract async stopDownload(magnet: string): Promise<void>;
   public abstract async deleteFiles(magnet: string): Promise<void>;
+  // Indicates that all of the queued downloads have completed. Added to allow removing
+  // WebTorrent instance until another download starts to avoid the library's memory leak.
+  public abstract allDownloadsCompleted(): void;
 }
 
 class WT extends GenericDownloadClient {
-  private _client: WebTorrent.Instance;
+  private _client: WebTorrent.Instance|null;
 
   constructor() {
     super();
-    this._startClient();
   }
 
   // Returns the download directory.
   public async download(magnet: string): Promise<string[]> {
     logDebug(`WT: download(${magnet})`);
     return new Promise((resolve, reject) => {
-      this._client.add(magnet, {path: DOWNLOAD_ROOT}, wtTorrent => {
+      this.client.add(magnet, {path: DOWNLOAD_ROOT}, wtTorrent => {
         wtTorrent.on('done', () => {
           resolve(wtTorrent.files.map(f => f.path));
         });
@@ -261,7 +267,7 @@ class WT extends GenericDownloadClient {
 
   public getProgress(magnet: string): DownloadProgress {
     logDebug(`WT: getProgress(${magnet})`);
-    const wtTorrent = this._client.get(magnet);
+    const wtTorrent = this.client.get(magnet);
     return {
       progress: wtTorrent ? (wtTorrent.progress * 100).toPrecision(3) : '0',
       speed: wtTorrent ? (wtTorrent.downloadSpeed / (1000 * 1000)).toPrecision(3) : '0',
@@ -272,7 +278,7 @@ class WT extends GenericDownloadClient {
 
   public async stopDownload(magnet: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      this._client.remove(magnet, err => {
+      this.client.remove(magnet, err => {
         if (err) {
           reject(err);
         } else {
@@ -284,7 +290,7 @@ class WT extends GenericDownloadClient {
 
   public async deleteFiles(magnet: string): Promise<void> {
     try {
-      const wtTorrent = this._client.get(magnet);
+      const wtTorrent = this.client.get(magnet);
       if (!wtTorrent) {
         throw new Error(`torrent not found from magnet`);
       }
@@ -304,6 +310,17 @@ class WT extends GenericDownloadClient {
     } catch (err) {
       logSubProcessError(`Error deleting torrent files: ${err}`);
     }
+  }
+
+  public allDownloadsCompleted(): void {
+    this._client = null;
+  }
+
+  // Getter ensures the existence of the WebTorrent instance
+  private get client(): WebTorrent.Instance {
+    // If the client has shut down, restart it.
+    if (!this._client) { this._startClient(); }
+    return this._client!;
   }
 
   private _startClient(): void {
