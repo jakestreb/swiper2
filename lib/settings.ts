@@ -37,7 +37,7 @@ export const settings = {
   },
   maxDownloads: 5,
   failedUpTime: 6, // Min number of hours for which failed items should remain in the failed list.
-  clearFailedAt: 2, // 0-23, hour at which failed items should be cleared.
+  clearFailedInterval: 60, // Interval in minutes to attempt to remove failed items.
   monitorAt: 2, // 0-23, hour at which monitored should be searched for all items.
   daysBeforeDVD: 21, // Days before the DVD release day until monitoring searches for a movie.
   // Minutes in each repeat interval after release to search for a new episode. Stops retrying

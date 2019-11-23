@@ -120,7 +120,7 @@ export class Swiper {
         `\`  download game of thrones s04e05-8\`\n` +
         `\`  status\`\n` +
         `\`  remove game of thrones\`\n` +
-        `\`  cancel\`\n` +
+        `\`  cancel\`\n\n` +
         `Use \`help\` for a full command list`;
       reply = { data: basic };
     }

@@ -9,7 +9,7 @@ import {getPopularReleasedBetween} from './request';
 import {settings} from './settings';
 import {logDebug, logSubProcess, logSubProcessError} from './terminal';
 import {assignMeta, DownloadClient, DownloadProgress, getBestTorrent, SearchClient} from './torrent';
-import {delay, getMorning, getMsUntil, getMsUntilWeekday} from './util';
+import {delay, getMorning, getMsUntilWeekday} from './util';
 const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
 
@@ -95,8 +95,11 @@ export class DownloadManager {
     try {
       while (true) {
         await this._removeFailed();
-        // Wait until the daily time given in settings to remove failed items.
-        await delay(getMsUntil(settings.clearFailedAt));
+        // Wait for the specified interval.
+        await delay(settings.clearFailedInterval * 60 * 1000);
+        // Do not remove lost files on startup, since often an in-progress download
+        // may be continued after an app reboot.
+        await this._removeLostFiles();
       }
     } catch (err) {
       logSubProcessError(`Failed item removal process failed with error: ${err}`);
@@ -137,6 +140,13 @@ export class DownloadManager {
     const failedUpTimeMs = settings.failedUpTime * 60 * 60 * 1000;
     const cutoff = Date.now() - failedUpTimeMs;
     await this._dbManager.removeFailed(cutoff);
+  }
+
+  private async _removeLostFiles(): Promise<void> {
+    logDebug(`DownloadManager: _removeLostFiles()`);
+    // Skip if any downloads are in progress.
+    if (this._downloading.length > 0) { return; }
+    await rmfr(path.join(DOWNLOAD_ROOT, '*'), {glob: true} as any);
   }
 
   private async _startDownload(video: VideoMeta): Promise<void> {
