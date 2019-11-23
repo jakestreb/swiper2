@@ -530,7 +530,7 @@ export class Swiper {
       if (media.type === 'movie') {
         const dvd = media.dvd && (media.dvd > getMorning());
         const dvdStr = dvd ? ` _Digital ${media.dvd!.toDateString()}_` : ` _${media.year}_`;
-        return `\`   \`_*${media.title}*_${dvdStr}`;
+        return `\`   \`*${media.title}*${dvdStr}`;
       } else {
         const next = getNextToAir(media.episodes);
         return `\`   \`${getDescription(media)}` +
@@ -549,8 +549,8 @@ export class Swiper {
       const qualStr = video.quality ? `${video.quality} ` : ``;
       const remainingStr = remaining && parseInt(remaining, 10) ? `${remaining} min at ` : '';
       return `\`${i + 1}) \` ${getDescription(video)} _${progress}%_\n` +
-        `\`   \`_${sizeStr}${resStr}${qualStr}_` +
-        `\`   \`_${remainingStr}${speed}MB/s with ${peers} peers_`;
+        `\`\ \ \ \`_${sizeStr}${resStr}${qualStr}_\n` +
+        `\`\t\`_${remainingStr}${speed}MB/s with ${peers} peers_`;
     });
 
     const numDownloads = status.downloading.length;
