@@ -110,11 +110,11 @@ export function getFileSafeTitle(video: Video): string {
 
 export function getDescription(anyMedia: Movie|Show|Episode): string {
   if (anyMedia.type === 'episode') {
-    return `**${anyMedia.show.title}** S${padZeros(anyMedia.seasonNum)}E${padZeros(anyMedia.episodeNum)}`;
+    return `*${anyMedia.show.title}* S${padZeros(anyMedia.seasonNum)}E${padZeros(anyMedia.episodeNum)}`;
   } else if (anyMedia.type === 'tv') {
-    return `**${anyMedia.title}** ${getExpandedEpisodeStr(anyMedia.episodes)}`;
+    return `*${anyMedia.title}* ${getExpandedEpisodeStr(anyMedia.episodes)}`;
   } else {
-    return `**${anyMedia.title}**`;
+    return `*${anyMedia.title}*`;
   }
 }
 
