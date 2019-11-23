@@ -530,10 +530,10 @@ export class Swiper {
       if (media.type === 'movie') {
         const dvd = media.dvd && (media.dvd > getMorning());
         const dvdStr = dvd ? ` _Digital ${media.dvd!.toDateString()}_` : ` _${media.year}_`;
-        return `\`    \`*${media.title}*${dvdStr}`;
+        return `\`       \`*${media.title}*${dvdStr}`;
       } else {
         const next = getNextToAir(media.episodes);
-        return `\`    \`${getDescription(media)}` +
+        return `\`       \`${getDescription(media)}` +
           ((next && next.airDate) ? ` _${getAiredStr(next!.airDate!)}_` : '');
       }
     }).join('\n');
@@ -550,7 +550,7 @@ export class Swiper {
       const remainingStr = remaining && parseInt(remaining, 10) ? `${remaining} min at ` : '';
       return `\` ${i + 1} \`${getDescription(video)} _${progress}%_\n` +
         `\`       \`_${sizeStr}${resStr}${qualStr}_\n` +
-        `\`      \`_${remainingStr}${speed}MB/s with ${peers} peers_`;
+        `\`       \`_${remainingStr}${speed}MB/s with ${peers} peers_`;
     });
 
     const numDownloads = status.downloading.length;
@@ -563,7 +563,7 @@ export class Swiper {
     const downloadStr = [...downloading, ...queued].join('\n');
 
     const failedStr = status.failed.map(video => {
-      return `\`   \`${getDescription(video)}`;
+      return `\`       \`${getDescription(video)}`;
     }).join('\n');
 
     const strs = [];
