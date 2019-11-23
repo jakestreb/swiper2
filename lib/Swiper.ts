@@ -549,8 +549,8 @@ export class Swiper {
       const qualStr = video.quality ? `${video.quality} ` : ``;
       const remainingStr = remaining && parseInt(remaining, 10) ? `${remaining} min at ` : '';
       return `\` ${i + 1} \`${getDescription(video)} _${progress}%_\n` +
-        `\`    \`_${sizeStr}${resStr}${qualStr}_\n` +
-        `\`    \`_${remainingStr}${speed}MB/s with ${peers} peers_`;
+        `\`       \`_${sizeStr}${resStr}${qualStr}_\n` +
+        `\`      \`_${remainingStr}${speed}MB/s with ${peers} peers_`;
     });
 
     const numDownloads = status.downloading.length;
