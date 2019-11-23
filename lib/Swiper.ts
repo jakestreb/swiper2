@@ -114,7 +114,14 @@ export class Swiper {
       this._updateConversation(id, {input: msg});
       reply = await existingCommandFn();
     } else {
-      reply = { data: `Use 'help' to see what I can do` };
+      const basic = `Try the examples below\n` +
+        `\`    download pulp fiction\`\n` +
+        `\`    download batman 1989\`\n` +
+        `\`    download game of thrones s04e05-8\`\n` +
+        `\`    status\`\n` +
+        `\`    remove game of thrones\`\n` +
+        `Use \`help\` for a full command list`;
+      reply = { data: basic };
     }
 
     // If the reply is marked as final, clear the conversation state.
@@ -462,11 +469,11 @@ export class Swiper {
       const splitStr = (convo.input || '').split(' ');
       const lastStr = splitStr.pop();
       if (!lastStr) {
-        return { data: `Specify new position: "first" or "last"` };
+        return { data: `Specify new position: \`first\` or \`last\`` };
       }
       const [first, last] = execCapture(lastStr, /(first)|(last)/);
       if (!first && !last) {
-        return { data: `Specify new position: "first" or "last"` };
+        return { data: `Specify new position: \`first\` or \`last\`` };
       }
       convo.position = first ? 'first' : 'last';
       convo.input = splitStr.join(' ');
@@ -586,9 +593,9 @@ export class Swiper {
   private _help(convo: Conversation): SwiperReply {
     if (!convo.input) {
       return {
-        data: `Commands:\n` +
-          `${Object.keys(commands).join(', ')}\n` +
-          `"help COMMAND" for details`,
+        data: `\`COMMANDS\`\n` +
+          `${Object.keys(commands).map(cmd => `\`${cmd}\``).join(', ')}\n` +
+          `\`help COMMAND\` for details`,
         final: true
       };
     } else {
@@ -600,12 +607,12 @@ export class Swiper {
         };
       } else {
         const argStr = ` ` + cmdInfo.args.join(' ');
-        const contentDesc = !cmdInfo.args.includes('CONTENT') ? '' : `Where CONTENT is of the form:\n` +
-          `    [movie/tv] TITLE [YEAR] [EPISODES]\n` +
+        const contentDesc = !cmdInfo.args.includes('CONTENT') ? '' : `Where \`CONTENT\` is of the form:\n` +
+          `\`       [movie/tv] TITLE [YEAR] [EPISODES]\`\n` +
           `Ex:\n` +
-          `    game of thrones\n` +
-          `    tv game of thrones 2011 s02\n` +
-          `    game of thrones s01-03, s04e05 & e08`;
+          `\`       game of thrones\`\n` +
+          `\`       tv game of thrones 2011 s02\`\n` +
+          `\`       game of thrones s01-03, s04e05 & e08\``;
         return {
           data: `${convo.input}${argStr}: ${cmdInfo.desc}\n${contentDesc}`,
           final: true
@@ -934,14 +941,14 @@ function showTorrents(
   const next = (startIndex + settings.torrentsPerPage) < torrents.length;
   const someTorrents = torrents.slice(startIndex, startIndex + settings.torrentsPerPage);
   const torrentRows = someTorrents.map((t, i) => {
-    const repeatStr = t.magnet === lastMagnet ? '(Previously selected) ' : '';
+    const repeatStr = t.magnet === lastMagnet ? '(Prev selection) ' : '';
     const blacklistStr = blacklisted.includes(t.magnet) ? '(BLACKLISTED) ' : '';
-    return `${startIndex + i + 1} - ${blacklistStr || repeatStr}${getTorrentString(t)}`;
+    return `\` ${startIndex + i + 1} \`_${blacklistStr || repeatStr}_${getTorrentString(t)}`;
   });
-  const respStr = prev && next ? `"prev" or "next"` : (next ? `"next"` : (prev ? `"prev"` : ``));
+  const respStr = prev && next ? `\`prev\` or \`next\`` : (next ? `\`next\`` : (prev ? `\`prev\`` : ``));
   const str = torrentRows.join(`\n`);
   return {
-    data: `${str}\nGive number to download` + (respStr ? ` - ${respStr} to see more` : ``)
+    data: `${str}\n\nGive \`num\` to download` + (respStr ? ` or ${respStr} to see more` : ``)
   };
 }
 

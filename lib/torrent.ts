@@ -114,10 +114,11 @@ export function assignMeta(video: Video|VideoMeta, torrent: Torrent): VideoMeta 
 }
 
 export function getTorrentString(torrent: Torrent): string {
-  const seed = torrent.seeders ? `${torrent.seeders} seed | ` : '';
-  const leech = torrent.leechers ? `${torrent.leechers} leech | ` : '';
-  return `${torrent.title.replace(/\./g, ' ')} (${torrent.size}MB)\n` +
-    `      ${seed}${leech}${torrent.uploadTime}`;
+  const seed = torrent.seeders ? `${torrent.seeders} peers ` : '';
+  // const leech = torrent.leechers ? `${torrent.leechers} leech ` : '';
+  return `_${torrent.title.replace(/\./g, ' ')}_\n` +
+    `\`       \`_${torrent.size}MB with ${seed}_\n` +
+    `\`       \`_${torrent.uploadTime}_`;
 }
 
 // Get download quality tier. The tiers range from 0 <-> (2 * number of quality preferences)
