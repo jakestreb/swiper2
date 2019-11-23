@@ -22,6 +22,8 @@ export class DownloadManager {
   private _downloading: VideoMeta[] = [];
   private _managingPromise: Promise<void>;
   private _inProgress: boolean = false;
+  // Used to determine when the downloads folder can be cleaned up
+  private _wasDownloading: boolean = false;
 
   constructor(private _dbManager: DBManager, private _searchClient: SearchClient) {
     this._downloadClient = new DownloadClient();
@@ -84,7 +86,11 @@ export class DownloadManager {
 
       // Update downloading array.
       this._downloading = downloads;
-      if (downloads.length === 0) { this._downloadClient.allDownloadsCompleted(); }
+      if (downloads.length === 0) {
+        this._downloadClient.allDownloadsCompleted();
+      } else {
+        this._wasDownloading = true;
+      }
     } catch (err) {
       logSubProcessError(`_manageDownloads err: ${err}`);
     }
@@ -144,8 +150,12 @@ export class DownloadManager {
 
   private async _removeLostFiles(): Promise<void> {
     logDebug(`DownloadManager: _removeLostFiles()`);
-    // Skip if any downloads are in progress.
-    if (this._downloading.length > 0) { return; }
+    // Skip if any downloads are or were in progress in the past interval.
+    if (this._wasDownloading) {
+      // Clear the indicator if downloads are not currently occurring.
+      this._wasDownloading = this._downloading.length > 0;
+      return;
+    }
     await rmfr(path.join(DOWNLOAD_ROOT, '*'), {glob: true} as any);
   }
 
