@@ -116,7 +116,7 @@ export function assignMeta(video: Video|VideoMeta, torrent: Torrent): VideoMeta 
 export function getTorrentString(torrent: Torrent): string {
   const seed = torrent.seeders ? `${torrent.seeders} peers ` : '';
   // const leech = torrent.leechers ? `${torrent.leechers} leech ` : '';
-  return `_${torrent.title.replace(/\./g, ' ')}_\n` +
+  return `*${torrent.title.replace(/\./g, ' ')}*\n` +
     `\`       \`_${torrent.size}MB with ${seed}_\n` +
     `\`       \`_${torrent.uploadTime}_`;
 }
