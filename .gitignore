@@ -3,3 +3,5 @@ memory.db
 media/
 downloads/
 node_modules/
+debug.log
+npm-debug.log

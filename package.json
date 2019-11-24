@@ -45,6 +45,7 @@
     "sqlite3": "^4.0.6",
     "terminal-kit": "^1.26.10",
     "torrent-search-api": "^2.0.4",
-    "webtorrent": "^0.103.0"
+    "webtorrent": "^0.103.0",
+    "winston": "^3.2.1"
   }
 }

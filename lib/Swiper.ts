@@ -15,8 +15,6 @@ import {matchNumber, matchYesNo, padZeros, removePrefix, splitFirst} from './uti
 // TODO: Allow remove all/monitored/downloads/failed
 
 // TODO: Test re-adding, adding episodes to an existing show, searching something in monitored, etc
-// TODO: Add enhanced terminal features like enhanced status menu.
-// TODO: Figure out why there are so many listeners on client.add.
 // TODO: Create readme (heroku address, how to check ips, etc).
 
 type CommandFn = (input?: string) => Promise<SwiperReply>|SwiperReply;
@@ -114,7 +112,7 @@ export class Swiper {
       this._updateConversation(id, {input: msg});
       reply = await existingCommandFn();
     } else {
-      const basic = `Some basics to get started\n\n` +
+      const basic = `Everything you need to know\n\n` +
         `\`  download pulp fiction\`\n` +
         `\`  download batman 1989\`\n` +
         `\`  download game of thrones s04e05-8\`\n` +
