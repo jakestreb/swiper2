@@ -256,10 +256,13 @@ class WT extends GenericDownloadClient {
     return new Promise((resolve, reject) => {
       this.client.add(magnet, {path: DOWNLOAD_ROOT}, wtTorrent => {
         wtTorrent.on('done', () => {
-          resolve(wtTorrent.files.map(f => f.path));
+          const filePaths = wtTorrent.files.map(f => f.path);
+          wtTorrent.destroy();
+          resolve(filePaths);
         });
         wtTorrent.on('error', async (err) => {
           this.deleteFiles(magnet);
+          wtTorrent.destroy();
           reject(err);
         });
       });
