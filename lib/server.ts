@@ -12,6 +12,17 @@ import {Swiper, SwiperReply} from './Swiper';
 import {log, logError, logForeignInputError, logForeignResponse, logInputError} from './terminal';
 import {logSubProcess, prompt} from './terminal';
 
+import * as heapProfile from 'heap-profile';
+
+heapProfile.start();
+
+// Write a snapshot to disk every 30 minutes
+setInterval(() => {
+  heapProfile.write((err, filename) => {
+    console.log(`heapProfile.write. err: ${err} filename: ${filename}`);
+  });
+}, 30 * 60 * 1000).unref();
+
 type CommType = 'cli'|'telegram';
 
 const app = express();
