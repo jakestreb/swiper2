@@ -193,18 +193,18 @@ export class Swiper {
         convo.torrents = torrents;
         convo.commandFn = () => this._search(convo);
         return this._search(convo);
-      } else {
-        logDebug(`Swiper: _download best torrent found`);
-        // Set the torrent and assign the meta so it doesn't have to be searched again.
-        await this._dbManager.setTorrent(video.id, best);
-        assignMeta(video, best);
       }
+      logDebug(`Swiper: _download best torrent found`);
+      // Queue and set the torrent / assign the meta so it doesn't have to be searched again.
+      await this._dbManager.addToQueued(media, convo.id);
+      await this._dbManager.setTorrent(video.id, best);
+      assignMeta(video, best);
+    } else {
+      // Queue the download.
+      await this._dbManager.addToQueued(media, convo.id);
     }
 
-    // Queue the download.
-    await this._dbManager.addToQueued(media, convo.id);
     this._downloadManager.ping();
-
     return {
       data: `Queued ${getDescription(media)} for download`,
       final: true
@@ -279,9 +279,9 @@ export class Swiper {
         await this._dbManager.blacklistMagnet(video.id);
       }
     }
+    await this._dbManager.addToQueued(media, convo.id);
     await this._dbManager.setTorrent(video.id, torrent);
     assignMeta(video, torrent);
-    await this._dbManager.addToQueued(media, convo.id);
     this._downloadManager.ping();
 
     return {

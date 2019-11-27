@@ -24,16 +24,23 @@ export const settings = {
     /\bKOR\b/gi,
     /\bTS-?RIP\b/gi
   ],
-  // Maximum and minimum sizes in Mb to automatically download content
+  // Sizes in MB - anything giving 0 points will not be downloaded
   size: {
-    episode: {
-      min: 200,
-      max: 5000
-    },
-    movie: {
-      min: 600,
-      max: 8000
-    }
+    episode: [
+      {min: 8000, points: 0},
+      {min: 5000, points: 0.5},
+      {min: 3000, points: 1},
+      {min: 800, points: 1.5},
+      {min: 200, points: 1}
+    ],
+    movie: [
+      {min: 10000, points: 0},
+      {min: 8000, points: 0.5},
+      {min: 3000, points: 1},
+      {min: 1600, points: 1.5},
+      {min: 1000, points: 1},
+      {min: 600, points: 0.5}
+    ]
   },
   maxDownloads: 5,
   failedUpTime: 6, // Min number of hours for which failed items should remain in the failed list.
