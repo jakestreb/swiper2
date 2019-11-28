@@ -16,12 +16,12 @@ import * as heapProfile from 'heap-profile';
 
 heapProfile.start();
 
-// Write a snapshot to disk every 30 minutes
+// Write a snapshot to disk every 6 hours
 setInterval(() => {
   heapProfile.write((err, filename) => {
     console.log(`heapProfile.write. err: ${err} filename: ${filename}`);
   });
-}, 30 * 60 * 1000).unref();
+}, 6 * 60 * 60 * 1000).unref();
 
 type CommType = 'cli'|'telegram';
 
