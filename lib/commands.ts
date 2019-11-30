@@ -57,6 +57,10 @@ export const commands: {[command: string]: CommandDescriptor} = {
     args: ['[COMMAND]'],
     desc: "returns the list of commands, or describes the given command"
   },
+  reboot: {
+    args: [],
+    desc: "restarts swiper"
+  },
   cancel: {
     args: [],
     desc: "ends the current conversation"

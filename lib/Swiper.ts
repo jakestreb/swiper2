@@ -167,6 +167,8 @@ export class Swiper {
       case "help":
       case "commands":
         return () => this._help(convo);
+      case "reboot":
+        return () => this._reboot(convo);
       case "cancel":
         return () => this._cancel(convo);
       default:
@@ -618,6 +620,14 @@ export class Swiper {
         };
       }
     }
+  }
+
+  private _reboot(convo: Conversation): SwiperReply {
+    setTimeout(() => process.kill(process.pid, 'SIGINT'), 2000);
+    return {
+      data: `Rebooting`,
+      final: true
+    };
   }
 
   private _cancel(convo: Conversation): SwiperReply {

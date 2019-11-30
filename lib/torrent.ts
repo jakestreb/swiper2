@@ -321,7 +321,10 @@ class WT extends GenericDownloadClient {
   }
 
   public allDownloadsCompleted(): void {
-    this._client = null;
+    if (this._client) {
+      this._client.destroy();
+      this._client = null;
+    }
   }
 
   // Getter ensures the existence of the WebTorrent instance

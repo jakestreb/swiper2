@@ -30,9 +30,10 @@ export class DownloadManager {
     this._startRemovingFailed().catch(err => {
       logSubProcessError(`DownloadManager _startRemovingFailed first call failed: ${err}`);
     });
-    this._startAddingUpcomingToMonitored().catch(err => {
-      logSubProcessError(`DownloadManager _startAddingUpcomingToMonitored first call failed: ${err}`);
-    });
+    // TODO: Improve or remove this feature.
+    // this._startAddingUpcomingToMonitored().catch(err => {
+    //   logSubProcessError(`DownloadManager _startAddingUpcomingToMonitored first call failed: ${err}`);
+    // });
     this.ping();
   }
 
