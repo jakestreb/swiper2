@@ -14,14 +14,14 @@ import {logSubProcess, prompt} from './terminal';
 
 import * as heapProfile from 'heap-profile';
 
-heapProfile.start();
-
-// Write a snapshot to disk every 6 hours
-setInterval(() => {
-  heapProfile.write((err, filename) => {
-    console.log(`heapProfile.write. err: ${err} filename: ${filename}`);
-  });
-}, 6 * 60 * 60 * 1000).unref();
+// Uncomment to enable heap profiling
+// heapProfile.start();
+// setInterval(() => {
+//   Write a snapshot to disk every 6 hours
+//   heapProfile.write((err, filename) => {
+//     console.log(`heapProfile.write. err: ${err} filename: ${filename}`);
+//   });
+// }, 6 * 60 * 60 * 1000).unref();
 
 type CommType = 'cli'|'telegram';
 
@@ -66,7 +66,7 @@ async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
 }
 
 function escapeChars(msg: string): string {
-  return msg.replace("&", "\\&");
+  return msg.replace("&", "");
 }
 
 function startComms(swiper: Swiper): void {
