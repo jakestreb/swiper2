@@ -58,11 +58,15 @@ async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
       method: 'POST',
       json: {
         id,
-        message: msg.data ? msg.data : msg.err,
+        message: escapeChars(msg.data ? msg.data : msg.err),
         destination: commType
       }
     });
   }
+}
+
+function escapeChars(msg: string): string {
+  return msg.replace("&", "\\&");
 }
 
 function startComms(swiper: Swiper): void {
