@@ -58,7 +58,7 @@ async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
       method: 'POST',
       json: {
         id,
-        message: escapeChars(msg.data ? msg.data : msg.err),
+        message: escapeChars((msg.data ? msg.data : msg.err) || ""),
         destination: commType
       }
     });
