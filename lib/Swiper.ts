@@ -113,12 +113,12 @@ export class Swiper {
       reply = await existingCommandFn();
     } else {
       const basic = `Everything you need to know\n\n` +
-        `\`  download pulp fiction\`\n` +
-        `\`  download batman 1989\`\n` +
-        `\`  download game of thrones s04e05-8\`\n` +
-        `\`  status\`\n` +
-        `\`  remove game of thrones\`\n` +
-        `\`  cancel\`\n\n` +
+        `\` download pulp fiction\`\n` +
+        `\` download batman 1989\`\n` +
+        `\` download game of thrones s04e05-8\`\n` +
+        `\` status\`\n` +
+        `\` remove game of thrones\`\n` +
+        `\` cancel\`\n\n` +
         `Use \`help\` for a full command list`;
       reply = { data: basic };
     }
@@ -538,10 +538,10 @@ export class Swiper {
       if (media.type === 'movie') {
         const dvd = media.dvd && (media.dvd > getMorning());
         const dvdStr = dvd ? ` _Digital ${media.dvd!.toDateString()}_` : ` _${media.year}_`;
-        return `\`     \`*${media.title}*${dvdStr}`;
+        return `\`  \`*${media.title}*${dvdStr}`;
       } else {
         const next = getNextToAir(media.episodes);
-        return `\`     \`${getDescription(media)}` +
+        return `\`  \`${getDescription(media)}` +
           ((next && next.airDate) ? ` _${getAiredStr(next!.airDate!)}_` : '');
       }
     }).join('\n');
@@ -571,7 +571,7 @@ export class Swiper {
     const downloadStr = [...downloading, ...queued].join('\n');
 
     const failedStr = status.failed.map(video => {
-      return `\`       \`${getDescription(video)}`;
+      return `\`  \`${getDescription(video)}`;
     }).join('\n');
 
     const strs = [];
