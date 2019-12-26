@@ -12,7 +12,7 @@ import {Swiper, SwiperReply} from './Swiper';
 import {log, logError, logForeignInputError, logForeignResponse, logInputError} from './terminal';
 import {logSubProcess, prompt} from './terminal';
 
-import * as heapProfile from 'heap-profile';
+// import * as heapProfile from 'heap-profile';
 
 // Uncomment to enable heap profiling
 // heapProfile.start();
