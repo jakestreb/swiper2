@@ -75,7 +75,8 @@ export async function getPopularReleasedBetween(startDate: Date, endDate: Date):
   const startDateStr = getYMDString(startDate);
   const endDateStr = getYMDString(endDate);
   const uri = `https://api.themoviedb.org/4/discover/movie?primary_release_date.gte=${startDateStr}`
-    + `&primary_release_date.lte=${endDateStr}&vote_count.gte=${minVoteCount}`;
+    + `&primary_release_date.lte=${endDateStr}&vote_count.gte=${minVoteCount}`
+    + `&sort_by=release_date.desc&include_adult=false`;
   let tmdbResult;
   try {
     tmdbResult = await rp({
@@ -91,7 +92,7 @@ export async function getPopularReleasedBetween(startDate: Date, endDate: Date):
     return [];
   }
   // Filter out any adult movies just in case.
-  const tmdbArray: TMDBPopularity[] = tmdbResult.results.filter((tmdb: TMDBPopularity) => !tmdb.adult);
+  const tmdbArray: TMDBPopularity[] = tmdbResult.results;
   // Identify each TMDB movie.
   const requestArray = tmdbArray.map(tmdb => identifyMedia({
     title: tmdb.title,
@@ -312,5 +313,7 @@ function hashEpisodeId(showId: number, seasonNum: number, episodeNum: number): n
 }
 
 function getYMDString(date: Date): string {
-  return `${date.getFullYear()}-${(date.getMonth() + 1)}-${date.getDate()}`;
+  const month = ('0' + (date.getMonth() + 1)).slice(-2);
+  const day = ('0' + date.getDate()).slice(-2);
+  return `${date.getFullYear()}-${month}-${day}`;
 }

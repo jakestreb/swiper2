@@ -28,20 +28,14 @@ export async function suggest(this: Swiper, convo: Conversation): Promise<Swiper
 }
 
 async function getNextSuggestion(dbManager: DBManager): Promise<Movie|null> {
-  const week = 7 * 24 * 60 * 60 * 1000;
-  let windowEnd = getMorning().getTime();
-  let windowStart = windowEnd - week;
-  const min = windowStart - (52 * week);
-  while (windowStart >= min) {
-    const movies = await getPopularReleasedBetween(new Date(windowStart), new Date(windowEnd));
-    while (movies.length > 0) {
-      const m = movies.pop()!;
-      if (await isUnsuggested(dbManager, m)) {
-        return m;
-      }
+  const year = 52 * 7 * 24 * 60 * 60 * 1000;
+  const morn = getMorning().getTime();
+  const movies = await getPopularReleasedBetween(new Date(morn - year), new Date(morn));
+  while (movies.length > 0) {
+    const m = movies.pop()!;
+    if (await isUnsuggested(dbManager, m)) {
+      return m;
     }
-    windowStart -= week;
-    windowEnd -= week;
   }
   return null;
 }
