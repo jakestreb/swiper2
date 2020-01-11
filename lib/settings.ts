@@ -52,8 +52,6 @@ export const settings = {
   // the correct place. This is prevented from going past a day.
   newEpisodeBackoff: [30, 5, 5, 5, 10, 10, 10, 10, 15, 15, 30, 30, 30, 30, 60, 60, 120, 120, 240, 480],
   torrentsPerPage: 4, // Number of torrents to show at a time after searching.
-  // Sunday - Saturday number of random movies to download that day at the monitorAt time.
-  weeklyRandomMovies: [1, 0, 0, 0, 0, 2, 0],
   // Time before a random movie in the database is eligible to be downloaded again, in ms
   randomMovieTimeout: 365 * 24 * 60 * 60 * 1000,
   // Number 0 - 6 representing Sunday - Saturday, the weekday that upcoming movies should be added at

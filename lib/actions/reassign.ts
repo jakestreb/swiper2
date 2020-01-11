@@ -1,7 +1,11 @@
 import {getDescription, getVideo, Media} from '../media';
-import {Conversation, ReassignOptions, Swiper, SwiperReply} from '../Swiper';
+import {Conversation, Swiper, SwiperReply} from '../Swiper';
 import {logDebug} from '../terminal';
 import {matchYesNo} from '../util';
+
+export interface ReassignOptions {
+  blacklist?: boolean; // When true, the reassigned torrent is also blacklisted.
+}
 
 export async function reassign(
   this: Swiper,

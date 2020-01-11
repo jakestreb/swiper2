@@ -1,4 +1,3 @@
-import {commands} from './commands';
 import {DBManager} from './DBManager';
 import {requireFullMedia, requireMedia, requireMediaQuery} from './decorators'
 import {requireVideo, requireVideoQuery} from './decorators'
@@ -9,12 +8,16 @@ import {logDebug} from './terminal';
 import {SearchClient, Torrent} from './torrent';
 import {splitFirst} from './util';
 
+import {check} from './actions/check';
 import {download} from './actions/download';
+import {favorite} from './actions/favorite';
+import {help} from './actions/help';
 import {info} from './actions/info';
-import {reassign, reassignIdentify} from './actions/reassign';
+import {random} from './actions/random';
+import {reassign, reassignIdentify, ReassignOptions} from './actions/reassign';
 import {remove} from './actions/remove';
 import {reorder} from './actions/reorder';
-import {search} from './actions/search';
+import {search, SearchOptions} from './actions/search';
 import {status} from './actions/status';
 import {suggest} from './actions/suggest';
 
@@ -22,27 +25,6 @@ import {suggest} from './actions/suggest';
 // TODO: Create readme (heroku address, how to check ips, etc).
 
 type CommandFn = (input?: string) => Promise<SwiperReply>|SwiperReply;
-
-interface ConversationData {
-  id: number;
-  input?: string;
-  commandFn?: CommandFn;
-  mediaQuery?: MediaQuery;
-  media?: Media;
-  position?: 'first'|'last';
-  torrents?: Torrent[];
-  storedMedia?: Media[];
-  pageNum?: number;
-}
-
-export interface SearchOptions {
-  reassignTorrent?: boolean; // When true, does not begin a new download but just reassigns the torrent.
-  blacklist?: boolean; // When true and reassign is true, the reassigned torrent is also blacklisted.
-}
-
-export interface ReassignOptions {
-  blacklist?: boolean; // When true, the reassigned torrent is also blacklisted.
-}
 
 export interface SwiperReply {
   data?: string;
@@ -67,7 +49,17 @@ export interface SeasonEpisodes {
 
 export type EpisodesDescriptor = SeasonEpisodes|'new'|'all';
 
-export type Conversation = ConversationData & { id: number; };
+export interface Conversation {
+  id: number;
+  input?: string;
+  commandFn?: CommandFn;
+  mediaQuery?: MediaQuery;
+  media?: Media;
+  position?: 'first'|'last';
+  torrents?: Torrent[];
+  storedMedia?: Media[];
+  pageNum?: number;
+}
 
 export class Swiper {
   // Should be called to build a Swiper instance.
@@ -80,8 +72,8 @@ export class Swiper {
   public searchClient: SearchClient;
   public downloadManager: DownloadManager;
   public swiperMonitor: SwiperMonitor;
+
   private _conversations: {[id: number]: Conversation} = {};
-  private _checkInProgress: boolean = false;
 
   // Should NOT be called publicly. Uses Swiper.create for building a Swiper instance.
   // Note that dbManager should be initialized when passed in.
@@ -124,7 +116,7 @@ export class Swiper {
 
     // If the reply is marked as final, clear the conversation state.
     if (reply.final) {
-      this._deleteConversation(convo);
+      delete this._conversations[convo.id];
     }
 
     // Send a response to the client.
@@ -158,21 +150,7 @@ export class Swiper {
 
   public async check(convo: Conversation): Promise<SwiperReply> {
     logDebug(`Swiper: check`);
-    if (this._checkInProgress) {
-      return { err: `Check is already in progress` };
-    }
-    this._checkInProgress = true;
-    setImmediate(async () => {
-      try {
-        await this.swiperMonitor.doCheck();
-      } finally {
-        this._checkInProgress = false;
-      }
-    });
-    return {
-      data: `Checking for monitored content`,
-      final: true
-    };
+    return check.call(this, convo);
   }
 
   @requireMedia
@@ -183,34 +161,7 @@ export class Swiper {
 
   public help(convo: Conversation): SwiperReply {
     logDebug(`Swiper: help`);
-    if (!convo.input) {
-      return {
-        data: `\`COMMANDS\`\n` +
-          `${Object.keys(commands).map(cmd => `\`${cmd}\``).join(', ')}\n\n` +
-          `\`help COMMAND\` for details`,
-        final: true
-      };
-    } else {
-      const cmdInfo = commands[convo.input];
-      if (!cmdInfo) {
-        return {
-          data: `${convo.input} isn't a command`,
-          final: true
-        };
-      } else {
-        const argStr = cmdInfo.args.map(arg => ` ${arg}`).join('');
-        const contentDesc = !cmdInfo.args.includes('CONTENT') ? '' : `Where \`CONTENT\` is of the form\n` +
-          `\`  [movie/tv] TITLE [YEAR] [EPISODES]\`\n` +
-          `_Ex:_\n` +
-          `\`  game of thrones\`\n` +
-          `\`  tv game of thrones 2011 s02\`\n` +
-          `\`  game of thrones s01-03, s04e05 & e08\``;
-        return {
-          data: `\`${convo.input}${argStr}\` _${cmdInfo.desc}_\n${contentDesc}`,
-          final: true
-        };
-      }
-    }
+    return help.call(this, convo);
   }
 
   @requireVideoQuery
@@ -256,11 +207,13 @@ export class Swiper {
 
   public async random(convo: Conversation): Promise<SwiperReply> {
     logDebug(`Swiper: random`);
-    this.swiperMonitor.downloadRandomMovie();
-    return {
-      data: 'Ok',
-      final: true
-    };
+    return random.call(this, convo);
+  }
+
+  @requireVideo
+  public async favorite(convo: Conversation): Promise<SwiperReply> {
+    logDebug(`Swiper: favorite`);
+    return favorite.call(this, convo);
   }
 
   public async status(convo: Conversation): Promise<SwiperReply> {
@@ -335,6 +288,8 @@ export class Swiper {
         return () => this.abort(convo);
       case "random":
         return () => this.random(convo);
+      case "favorite":
+        return () => this.favorite(convo);
       case "status":
       case "progress":
       case "state":
@@ -359,10 +314,5 @@ export class Swiper {
       this._conversations[id] = {id};
     }
     return Object.assign(this._conversations[id], update || {});
-  }
-
-  // Updates and returns the updated conversation.
-  private _deleteConversation(convo: Conversation): void {
-    delete this._conversations[convo.id];
   }
 }

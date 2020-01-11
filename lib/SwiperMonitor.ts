@@ -1,11 +1,10 @@
-import sum = require('lodash/sum');
 import {DBManager} from './DBManager';
 import {DownloadManager} from './DownloadManager';
 import {Episode, getDescription, Video} from './media';
 import {settings} from './settings';
 import {logSubProcess, logSubProcessError} from './terminal';
 import {getBestTorrent, SearchClient, Torrent} from './torrent';
-import {delay, getDaysUntil, getMorning, getMsUntil} from './util';
+import {delay, getDaysUntil, getMsUntil} from './util';
 
 interface CommandOptions {
   catchErrors?: boolean; // Default false
@@ -48,25 +47,6 @@ export class SwiperMonitor {
     }
   }
 
-  // Downloads the number of random movies given by count. Picks new random movies for any
-  // that fail. Retries with a set of new movies up to 10 times.
-  public async downloadRandomMovie(count: number = 1, retries: number = 0): Promise<void> {
-    const movies = await this._dbManager.getMoviePicks(count);
-    const addActions = movies.map(m => this._dbManager.addToQueued(m, -1));
-    await Promise.all(addActions);
-    const searches = movies.map(async m => {
-      // Perform the search, and move the movie to failed if it doesnt work.
-      const success = await this._doSearch(m, {catchErrors: true});
-      if (!success) { await this._dbManager.markAsFailed(m); }
-      return success;
-    });
-    const results = await Promise.all(searches);
-    const numFailed = results.length - sum(results);
-    if (numFailed > 0 && retries < 10) {
-      await this.downloadRandomMovie(numFailed, retries + 1);
-    }
-  }
-
   private async _startMonitoring(): Promise<void> {
     this._doMonitor()
     .catch(err => {
@@ -89,7 +69,6 @@ export class SwiperMonitor {
       // Wait until the daily time given in settings to search for monitored items.
       await delay(getMsUntil(settings.monitorAt));
       await this.doCheck({catchErrors: true});
-      await this._downloadRandomMovies();
     }
   }
 
@@ -119,12 +98,6 @@ export class SwiperMonitor {
       }
       return false;
     }
-  }
-
-  private async _downloadRandomMovies(): Promise<void> {
-    const day = getMorning().getDay();
-    const count = settings.weeklyRandomMovies[day];
-    await this.downloadRandomMovie(count);
   }
 
   private async _scheduleEpisodeChecks(): Promise<void> {

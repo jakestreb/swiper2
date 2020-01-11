@@ -14,7 +14,7 @@ interface AddOptions {
   isPredictive?: boolean;  // Set to true if the item is predictively added.
 }
 
-interface SearchOptions {
+interface DBSearchOptions {
   type?: 'movie'|'tv'|null;
 }
 
@@ -46,7 +46,6 @@ export class DBManager {
     const dbPath = process.env.DB_PATH || path.resolve(__dirname, '../memory.db');
     this._db = new sqlite3.Database(dbPath);
   }
-
 
   // Only videos (not shows) can be queued. Everything that is not queued is monitored.
   // If a show contains any episodes that are not queued, its title with those episode nums
@@ -245,7 +244,7 @@ export class DBManager {
 
   // Searches movie and tv tables for titles that match the given input. If the type is
   // specified in the options, only that table is searched. Returns all matches as ResultRows.
-  public async searchTitles(input: string, options: SearchOptions): Promise<Media[]> {
+  public async searchTitles(input: string, options: DBSearchOptions): Promise<Media[]> {
     logDebug(`DBManager: searchTitles(${input})`);
     const rows: ResultRow[] = [];
     if (options.type !== 'tv') {
@@ -301,6 +300,12 @@ export class DBManager {
     await this._run(`UPDATE MoviePicks SET lastDownloaded=? WHERE imdbId IN ` +
       `(${picks.map(p => '?')})`, [nowMs, ...picks.map(p => p.imdbId)]);
     return picks.map(mp => _createPickedMovie(mp));
+  }
+
+  public async addToMoviePicks(movie: Movie): Promise<void> {
+    logDebug(`DBManager: addToMoviePicks(${movie})`);
+    await this._run(`INSERT INTO MoviePicks (imdbId, title, year) VALUES (?, ?, ?)`,
+      [movie.id, movie.title, movie.year]);
   }
 
   // Blacklists the torrent and returns a boolean indicating whether the video was ever downloaded.

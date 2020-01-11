@@ -1,9 +1,14 @@
 import {getDescription, Media} from '../media';
 import {settings} from '../settings';
-import {Conversation, Swiper, SwiperReply, SearchOptions} from '../Swiper';
+import {Conversation, Swiper, SwiperReply} from '../Swiper';
 import {log, logDebug} from '../terminal';
 import {assignMeta, getTorrentString, Torrent} from '../torrent';
 import {matchNumber} from '../util';
+
+export interface SearchOptions {
+  reassignTorrent?: boolean; // When true, does not begin a new download but just reassigns the torrent.
+  blacklist?: boolean; // When true and reassign is true, the reassigned torrent is also blacklisted.
+}
 
 export async function search(this: Swiper, convo: Conversation, options: SearchOptions = {}): Promise<SwiperReply> {
   logDebug(`Swiper: search`);

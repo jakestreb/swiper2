@@ -49,6 +49,10 @@ export const commands: {[command: string]: CommandDescriptor} = {
     args: [],
     desc: "downloads a random movie from a list of favorites"
   },
+  favorite: {
+    args: ['CONTENT'],
+    desc: "adds movie to list of movies to randomly download"
+  },
   status: {
     args: [],
     desc: "shows items being monitored, queued, and downloaded"

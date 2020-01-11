@@ -17,6 +17,12 @@ interface DataResponse<T> {
   err?: string;
 }
 
+interface TMDBResult {
+  movies: Movie[];
+  page: number;
+  total_pages: number;
+}
+
 interface TMDBPopularity {
   vote_count: number;
   vote_average: number;
@@ -69,14 +75,18 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
   }
 }
 
-export async function getPopularReleasedBetween(startDate: Date, endDate: Date): Promise<Movie[]> {
+export async function getPopularReleasedBetween(
+  startDate: Date,
+  endDate: Date,
+  page: number = 1
+): Promise<TMDBResult> {
   // Vote count is a weird arbitrary metric that helps indicate how popular a movie is.
   const minVoteCount = 100;
   const startDateStr = getYMDString(startDate);
   const endDateStr = getYMDString(endDate);
   const uri = `https://api.themoviedb.org/4/discover/movie?primary_release_date.gte=${startDateStr}`
     + `&primary_release_date.lte=${endDateStr}&vote_count.gte=${minVoteCount}`
-    + `&sort_by=release_date.desc&include_adult=false`;
+    + `&sort_by=release_date.desc&include_adult=false&page=${page}`;
   let tmdbResult;
   try {
     tmdbResult = await rp({
@@ -89,7 +99,11 @@ export async function getPopularReleasedBetween(startDate: Date, endDate: Date):
   }
   // If the query fails or returns no movies, return no movies.
   if (!tmdbResult || !tmdbResult.results) {
-    return [];
+    return {
+      movies: [],
+      total_pages: 0,
+      page: 1
+    };
   }
   // Filter out any adult movies just in case.
   const tmdbArray: TMDBPopularity[] = tmdbResult.results;
@@ -102,7 +116,11 @@ export async function getPopularReleasedBetween(startDate: Date, endDate: Date):
   }));
   const responses: Array<DataResponse<Media>> = await Promise.all(requestArray);
   const movies = responses.filter(r => r.data).map(r => r.data) as Movie[];
-  return movies;
+  return {
+    movies,
+    total_pages: tmdbResult.total_pages,
+    page: tmdbResult.page
+  };
 }
 
 function convertImdbId(imdbId: string): number {
@@ -165,7 +183,7 @@ async function _convertTMDBMovie(info: TMDBMovie): Promise<Movie> {
     }
     digitalRelease = relevant[0].release_date;
   } catch (err) {
-    logError(`_convertTMDBMovie find release date failed: ${err}`);
+    logDebug(`_convertTMDBMovie find release date failed: ${err}`);
   }
   return {
     id: convertImdbId(imdbId),
