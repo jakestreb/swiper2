@@ -26,8 +26,17 @@ export async function random(this: Swiper, convo: Conversation): Promise<SwiperR
   }
   // Add media if not present and ask to download
   if (!convo.media) {
-    const [movie] = await this.dbManager.getMoviePicks(1, TIMEOUT);
-    convo.media = movie;
+    let picks = await this.dbManager.getMoviePicks(1, TIMEOUT);
+    if (picks.length < 1) {
+      picks = await this.dbManager.getMoviePicks(1, 0);
+    }
+    if (picks.length < 1) {
+      return {
+        data: `No movies favorited`,
+        final: true
+      };
+    }
+    convo.media = picks[0];
   }
   return {
     data: `Download ${getDescription(convo.media)}?`,
