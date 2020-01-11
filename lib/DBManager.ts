@@ -164,6 +164,7 @@ export class DBManager {
   public async setSuggested(media: Media, addedBy: number): Promise<void> {
     await this._run(`INSERT INTO VideoData (videoId, isPredictive) VALUES (?, ?)`,
       [media.id, true]);
+    await this._run(`UPDATE VideoData SET isPredictive=? WHERE videoId=?`, [true, media.id]);
   }
 
   // Move to queued.
