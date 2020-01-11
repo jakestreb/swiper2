@@ -35,6 +35,7 @@ export interface Metadata {
   resolution: string|null;
   size: number|null;
   blacklisted: string[]; // Array of blacklisted magnets
+  isPredictive: boolean;
 }
 
 export type MovieMeta = Movie & Metadata;

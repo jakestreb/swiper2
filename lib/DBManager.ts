@@ -150,15 +150,20 @@ export class DBManager {
 
   // Adds the item if it is not already in the database and sets it to monitored.
   // Limited to media since only media should be added to
-  public async addToMonitored(media: Media, addedBy: number, isPredictive: boolean = false): Promise<void> {
+  public async addToMonitored(media: Media, addedBy: number): Promise<void> {
     logDebug(`DBManager: addToMonitored(${media.title}, ${addedBy})`);
-    await this._add(media, {addedBy, queue: false, isPredictive});
+    await this._add(media, {addedBy, queue: false, isPredictive: false});
   }
 
   // Adds the item if it is not already in the database and sets it to queued.
   public async addToQueued(media: Media, addedBy: number): Promise<void> {
     logDebug(`DBManager: addToQueued(${media.title}, ${addedBy})`);
     await this._add(media, {addedBy, queue: true, isPredictive: false});
+  }
+
+  public async setSuggested(media: Media, addedBy: number): Promise<void> {
+    await this._run(`INSERT INTO VideoData (videoId, isPredictive) VALUES (?, ?)`,
+      [media.id, true]);
   }
 
   // Move to queued.
@@ -347,15 +352,10 @@ export class DBManager {
 
   private async _addMovie(movie: Movie, options: AddOptions): Promise<void> {
     const queuePos = options.queue ? this._nextHigh++ : 0;
-    // Do NOT do the add if this is a predictive add of something that was already predictively added.
-    const metadata = await this._get(`SELECT * FROM VideoData WHERE videoId=?`, [movie.id]) || {};
-    if (!options.isPredictive || !metadata.isPredictive) {
-      await this._run(`INSERT INTO Movies (id, type, title, year, addedBy, queuePos) `
-        + `VALUES (?, ?, ?, ?, ?, ?)`,
-        [movie.id, movie.type, movie.title, movie.year, options.addedBy, queuePos]);
-      await this._run(`INSERT INTO VideoData (videoId, isPredictive) VALUES (?, ?)`,
-        [movie.id, options.isPredictive]);
-    }
+    await this._run(`INSERT INTO Movies (id, type, title, year, addedBy, queuePos) `
+      + `VALUES (?, ?, ?, ?, ?, ?)`,
+      [movie.id, movie.type, movie.title, movie.year, options.addedBy, queuePos]);
+    await this._run(`INSERT INTO VideoData (videoId) VALUES (?)`, [movie.id]);
   }
 
   private async _addShow(show: Show, options: AddOptions): Promise<void> {
@@ -492,7 +492,8 @@ function _addMeta(video: Video, row?: ResultRow): VideoMeta {
     quality: row ? row.quality : null,
     resolution: row ? row.resolution : null,
     size: row ? row.size : null,
-    blacklisted: row ? JSON.parse(row.blacklisted) : []
+    blacklisted: row ? JSON.parse(row.blacklisted) : [],
+    isPredictive: row ? row.isPredictive : false,
   });
 }
 

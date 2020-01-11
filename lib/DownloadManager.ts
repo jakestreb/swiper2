@@ -5,11 +5,10 @@ import * as rmfr from 'rmfr';
 import {promisify} from 'util';
 import {DBManager} from './DBManager';
 import {getDescription, getFileSafeTitle, Video, VideoMeta} from './media';
-import {getPopularReleasedBetween} from './request';
 import {settings} from './settings';
 import {logDebug, logSubProcess, logSubProcessError} from './terminal';
 import {assignMeta, DownloadClient, DownloadProgress, getBestTorrent, SearchClient} from './torrent';
-import {delay, getMorning, getMsUntilWeekday} from './util';
+import {delay} from './util';
 const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
 
@@ -30,10 +29,6 @@ export class DownloadManager {
     this._startRemovingFailed().catch(err => {
       logSubProcessError(`DownloadManager _startRemovingFailed first call failed: ${err}`);
     });
-    // TODO: Improve or remove this feature.
-    // this._startAddingUpcomingToMonitored().catch(err => {
-    //   logSubProcessError(`DownloadManager _startAddingUpcomingToMonitored first call failed: ${err}`);
-    // });
     this.ping();
   }
 
@@ -114,32 +109,6 @@ export class DownloadManager {
         this._startRemovingFailed();
       }, 5000);
     }
-  }
-
-  private async _startAddingUpcomingToMonitored(): Promise<void> {
-    logSubProcess(`Download Manager add upcoming process started`);
-    try {
-      while (true) {
-        await this._addUpcomingToMonitored();
-        // Wait until the daily time given in settings to remove failed items.
-        await delay(getMsUntilWeekday(settings.addUpcomingWeekday, settings.monitorAt));
-      }
-    } catch (err) {
-      logSubProcessError(`Add upcoming to monitored process failed with error: ${err}`);
-      setTimeout(() => {
-        this._startAddingUpcomingToMonitored();
-      }, 5000);
-    }
-  }
-
-  private async _addUpcomingToMonitored(): Promise<void> {
-    logDebug(`DownloadManager: _addUpcomingToMonitored()`);
-    const morn = getMorning();
-    const twoWeeksAgoMs = morn.getTime() - (2 * 7 * 24 * 60 * 60 * 1000);
-    const movies = await getPopularReleasedBetween(new Date(twoWeeksAgoMs), morn);
-    // Add the movies to monitored predictively.
-    const addActions = movies.map(m => this._dbManager.addToMonitored(m, -1, true));
-    await Promise.all(addActions);
   }
 
   private async _removeFailed(): Promise<void> {

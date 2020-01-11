@@ -71,7 +71,7 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
 
 export async function getPopularReleasedBetween(startDate: Date, endDate: Date): Promise<Movie[]> {
   // Vote count is a weird arbitrary metric that helps indicate how popular a movie is.
-  const minVoteCount = 250;
+  const minVoteCount = 100;
   const startDateStr = getYMDString(startDate);
   const endDateStr = getYMDString(endDate);
   const uri = `https://api.themoviedb.org/4/discover/movie?primary_release_date.gte=${startDateStr}`

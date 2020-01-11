@@ -109,7 +109,8 @@ export function assignMeta(video: Video|VideoMeta, torrent: Torrent): VideoMeta 
     quality: torrent.quality,
     resolution: torrent.resolution,
     size: torrent.size,
-    blacklisted: []
+    blacklisted: [],
+    isPredictive: false,
   });
 }
 

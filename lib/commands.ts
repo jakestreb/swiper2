@@ -53,6 +53,10 @@ export const commands: {[command: string]: CommandDescriptor} = {
     args: [],
     desc: "shows items being monitored, queued, and downloaded"
   },
+  suggest: {
+    args: [],
+    desc: "suggests upcoming and recent movies to monitor"
+  },
   help: {
     args: ['[COMMAND]'],
     desc: "returns the list of commands, or describes the given command"
