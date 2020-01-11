@@ -51,10 +51,4 @@ export const settings = {
   // when the end of the array is reached. When Swiper is started up, search begins starting in
   // the correct place. This is prevented from going past a day.
   newEpisodeBackoff: [30, 5, 5, 5, 10, 10, 10, 10, 15, 15, 30, 30, 30, 30, 60, 60, 120, 120, 240, 480],
-  torrentsPerPage: 4, // Number of torrents to show at a time after searching.
-  // Time before a random movie in the database is eligible to be downloaded again, in ms
-  randomMovieTimeout: 365 * 24 * 60 * 60 * 1000,
-  // Number 0 - 6 representing Sunday - Saturday, the weekday that upcoming movies should be added at
-  // the monitorAt time. Add movies from the past 2 weeks.
-  addUpcomingWeekday: 1
 };

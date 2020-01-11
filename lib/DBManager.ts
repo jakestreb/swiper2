@@ -290,12 +290,11 @@ export class DBManager {
       [torrent.magnet, torrent.quality, torrent.resolution, torrent.size, videoId]);
   }
 
-  public async getMoviePicks(n: number): Promise<Movie[]> {
-    logDebug(`DBManager: getMoviePicks(${n})`);
+  public async getMoviePicks(n: number, timeoutMs: number = 0): Promise<Movie[]> {
+    logDebug(`DBManager: getMoviePicks(${n}, ${timeoutMs})`);
     const nowMs = Date.now();
-    const oneYearAgoMs = nowMs - settings.randomMovieTimeout;
     const picks = await this._all(`SELECT * FROM MoviePicks WHERE lastDownloaded<? ` +
-      `ORDER BY RANDOM() LIMIT ?`, [oneYearAgoMs, n]) as MoviePick[];
+      `ORDER BY RANDOM() LIMIT ?`, [nowMs - timeoutMs, n]) as MoviePick[];
     // Update the last downloaded date for all picked movies.
     await this._run(`UPDATE MoviePicks SET lastDownloaded=? WHERE imdbId IN ` +
       `(${picks.map(p => '?')})`, [nowMs, ...picks.map(p => p.imdbId)]);

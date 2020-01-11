@@ -1,9 +1,11 @@
 import {getDescription, Media} from '../media';
-import {settings} from '../settings';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
 import {log, logDebug} from '../terminal';
 import {assignMeta, getTorrentString, Torrent} from '../torrent';
 import {matchNumber} from '../util';
+
+// Number of torrents to show per page
+const PER_PAGE = 4;
 
 export interface SearchOptions {
   reassignTorrent?: boolean; // When true, does not begin a new download but just reassigns the torrent.
@@ -37,12 +39,12 @@ export async function search(this: Swiper, convo: Conversation, options: SearchO
   const showPage = () => showTorrents(convo.torrents!, convo.pageNum!,
     videoMeta.magnet || undefined, videoMeta.blacklisted);
 
-  const startIndex = settings.torrentsPerPage * convo.pageNum;
+  const startIndex = PER_PAGE * convo.pageNum;
   const navs = [];
   if (startIndex > 0) {
     navs.push({value: 'prev', regex: /\bp(rev)?(ious)?\b/gi});
   }
-  if (startIndex + settings.torrentsPerPage < convo.torrents.length) {
+  if (startIndex + PER_PAGE < convo.torrents.length) {
     navs.push({value: 'next', regex: /\bn(ext)?\b/gi});
   }
   const match = matchNumber(convo.input, navs);
@@ -95,10 +97,10 @@ function showTorrents(
   lastMagnet: string = '',
   blacklisted: string[] = []
 ): SwiperReply {
-  const startIndex = settings.torrentsPerPage * pageNum;
+  const startIndex = PER_PAGE * pageNum;
   const prev = startIndex > 0;
-  const next = (startIndex + settings.torrentsPerPage) < torrents.length;
-  const someTorrents = torrents.slice(startIndex, startIndex + settings.torrentsPerPage);
+  const next = (startIndex + PER_PAGE) < torrents.length;
+  const someTorrents = torrents.slice(startIndex, startIndex + PER_PAGE);
   const torrentRows = someTorrents.map((t, i) => {
     const repeatStr = t.magnet === lastMagnet ? '(Prev selection) ' : '';
     const blacklistStr = blacklisted.includes(t.magnet) ? '(BLACKLISTED) ' : '';
