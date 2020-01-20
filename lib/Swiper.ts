@@ -21,9 +21,6 @@ import {search, SearchOptions} from './actions/search';
 import {status} from './actions/status';
 import {suggest} from './actions/suggest';
 
-// TODO: Allow remove all/monitored/downloads/failed
-// TODO: Create readme (heroku address, how to check ips, etc).
-
 type CommandFn = (input?: string) => Promise<SwiperReply>|SwiperReply;
 
 export interface SwiperReply {
