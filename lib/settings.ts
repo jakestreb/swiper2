@@ -42,7 +42,7 @@ export const settings = {
       {min: 600, points: 0.5}
     ]
   },
-  maxDownloads: 5,
+  maxDownloads: 3,
   failedUpTime: 6, // Min number of hours for which failed items should remain in the failed list.
   clearFailedInterval: 60, // Interval in minutes to attempt to remove failed items.
   monitorAt: 2, // 0-23, hour at which monitored should be searched for all items.
