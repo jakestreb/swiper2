@@ -1,33 +1,43 @@
-import {commands} from '../commands';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
+import * as commands from './_helpcommands.json'
+
+const ALL_CMDS = [...commands.basic, ...commands.monitoring, ...commands.advanced];
 
 export function help(this: Swiper, convo: Conversation): SwiperReply {
   if (!convo.input) {
     return {
       data: `\`COMMANDS\`\n` +
-        `${Object.keys(commands).map(cmd => `\`${cmd}\``).join(', ')}\n\n` +
-        `\`help COMMAND\` for details`,
+        `\`  \`${cmdGroup(commands.basic)}\n` +
+        `\`  \`${cmdGroup(commands.monitoring)}\n` +
+        `\`  \`${cmdGroup(commands.advanced)}\n\n` +
+        `help \`command\` for details`,
       final: true
     };
   } else {
-    const cmdInfo = commands[convo.input];
-    if (!cmdInfo) {
+    const cmd = ALL_CMDS.find(_cmd => _cmd.name === convo.input);
+    if (!cmd) {
       return {
-        data: `${convo.input} isn't a command`,
+        data: `command \`${convo.input}\` not recognized`,
         final: true
       };
     } else {
-      const argStr = cmdInfo.args.map(arg => ` ${arg}`).join('');
-      const contentDesc = !cmdInfo.args.includes('CONTENT') ? '' : `Where \`CONTENT\` is of the form\n` +
-        `\`  [movie/tv] TITLE [YEAR] [EPISODES]\`\n` +
-        `_Ex:_\n` +
-        `\`  game of thrones\`\n` +
-        `\`  tv game of thrones 2011 s02\`\n` +
-        `\`  game of thrones s01-03, s04e05 & e08\``;
+      let examples = '';
+      if (cmd.examples) {
+        examples = `\n_Ex:_\n` +
+          `${cmd.examples.map(ex => `\`  ${ex}\``).join('\n')}`;
+      }
       return {
-        data: `\`${convo.input}${argStr}\` _${cmdInfo.desc}_\n${contentDesc}`,
+        data: `\`${convo.input}\`\n_${cmd.description}_${examples}`,
         final: true
       };
     }
   }
+}
+
+function cmdGroup(group: any) {
+  return group.map((cmd: any) => cmdName(cmd)).join(', ');
+}
+
+function cmdName(cmd: any) {
+  return cmd.emphasize ? `*${cmd.name}*` : cmd.name;
 }

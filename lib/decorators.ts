@@ -81,7 +81,7 @@ async function addMedia(convo: Conversation, options: RequireOptions = {}): Prom
     if (!mediaQuery.episodes && options.requireVideo) {
       return { data: `Specify episode:\nex: S03E02` };
     } else if (!mediaQuery.episodes) {
-      return { data: `Specify episodes:\n ex: new | all | S1 | S03E02-06 | S02-04 | S04E06 & 7, S05E02` };
+      return { data: `Specify episodes:\n ex: new | S1 | S03E02-06 | S02-04 | S04E06 & 7, S05E02` };
     } else if (options.requireVideo && !describesSingleEpisode(mediaQuery.episodes)) {
       mediaQuery.episodes = null;
       return { err: `A single episode must be specified:\nex: S03E02` };
@@ -155,9 +155,9 @@ function describesSingleEpisode(episodes: EpisodesDescriptor): boolean {
 // Takes a human-entered input of seasons and episodes of the following form:
 //       'S01E01-04 & E06-E08, S03-S05, S06E02&6, S07 & S08'
 // Returns a SeasonEpisodes object.
-function getEpisodesIdentifier(input: string): SeasonEpisodes|'new'|'all'|null {
+function getEpisodesIdentifier(input: string): SeasonEpisodes|'new'|null {
   const numberStr = input.replace('season', 's').replace('episode', 'e');
-  if (input === 'all' || input === 'new') {
+  if (input === 'new') {
     return input;
   } else if (!input || input.match(/[^es\d\s-,&]/gi)) {
     // If there's no input or the input has unexpected characters, return null.

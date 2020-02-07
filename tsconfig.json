@@ -14,7 +14,8 @@
       "ignoreDefinitionFiles": true
     }],
     "emitDecoratorMetadata": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "resolveJsonModule": true
   },
   "exclude": ["node_modules"]
 }

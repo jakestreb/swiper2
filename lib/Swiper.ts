@@ -290,6 +290,9 @@ export class Swiper {
       case "status":
       case "progress":
       case "state":
+      case "downloads":
+      case "stat":
+      case "s":
         return () => this.status(convo);
       case "suggest":
         return () => this.suggest(convo);
