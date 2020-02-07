@@ -1,7 +1,7 @@
-import {getDescription, getVideo, Media} from '../media';
+import * as log from '../common/logger';
+import {getDescription, getVideo, Media} from '../common/media';
+import {matchYesNo} from '../common/util';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import {logDebug} from '../terminal';
-import {matchYesNo} from '../util';
 
 export interface ReassignOptions {
   blacklist?: boolean; // When true, the reassigned torrent is also blacklisted.
@@ -32,7 +32,7 @@ export async function reassign(
       // If yes or no, shift the task to 'complete' it, then remove it from the database.
       const media: Media = storedMedia.shift()!;
       if (match === 'yes') {
-        logDebug(`Swiper _reassign: Reassigning stored video`);
+        log.debug(`Swiper _reassign: Reassigning stored video`);
         // Change the command function to search on the yes-matched media item.
         convo.media = media;
         const searchOptions = {reassignTorrent: true, blacklist: options.blacklist};

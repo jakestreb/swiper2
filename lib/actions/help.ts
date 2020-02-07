@@ -1,5 +1,5 @@
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import * as commands from './_helpcommands.json'
+import * as commands from './_helpcommands.json';
 
 const ALL_CMDS = [...commands.basic, ...commands.monitoring, ...commands.advanced];
 

@@ -1,6 +1,6 @@
-import {getDescription, Media} from '../media';
+import {getDescription, Media} from '../common/media';
+import {matchYesNo} from '../common/util';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import {matchYesNo} from '../util';
 
 export async function remove(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const reply = await this.addStoredMediaIfFound(convo);
@@ -21,7 +21,7 @@ export async function remove(this: Swiper, convo: Conversation): Promise<SwiperR
       // If yes or no, shift the task to 'complete' it, then remove it from the database.
       const media: Media = storedMedia.shift()!;
       if (match === 'yes') {
-         if (media.type === 'movie') {
+        if (media.type === 'movie') {
           await this.dbManager.removeMovie(media.id);
         } else {
           await this.dbManager.removeEpisodes(media.episodes.map(e => e.id));

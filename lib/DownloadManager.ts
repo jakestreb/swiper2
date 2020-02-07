@@ -3,18 +3,24 @@ import * as Client from 'ftp';
 import * as path from 'path';
 import * as rmfr from 'rmfr';
 import {promisify} from 'util';
+
+import * as log from './common/logger';
+import {getDescription, getFileSafeTitle, Video, VideoMeta} from './common/media';
+import {delay} from './common/util';
 import {DBManager} from './DBManager';
-import {getDescription, getFileSafeTitle, Video, VideoMeta} from './media';
-import {settings} from './settings';
-import {logDebug, logSubProcess, logSubProcessError} from './terminal';
-import {assignMeta, DownloadClient, DownloadProgress, getBestTorrent, SearchClient} from './torrent';
-import {delay} from './util';
+import {DownloadClient} from './torrents/DownloadClient';
+import {SearchClient} from './torrents/SearchClient';
+import {assignMeta, DownloadProgress, getBestTorrent} from './torrents/util';
+
 const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
 
 const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../downloads');
 const EXPORT_ROOT = process.env.EXPORT_ROOT || path.resolve(__dirname, '../media');
 const USE_FTP = Boolean(parseInt(process.env.USE_FTP || "0", 10));
+
+const CLEAR_FAILED_POLL_MINS = 60;
+const REMAIN_IN_FAILED_MINS = 360;
 
 export class DownloadManager {
   private _downloadClient: DownloadClient;
@@ -27,7 +33,7 @@ export class DownloadManager {
   constructor(private _dbManager: DBManager, private _searchClient: SearchClient) {
     this._downloadClient = new DownloadClient();
     this._startRemovingFailed().catch(err => {
-      logSubProcessError(`DownloadManager _startRemovingFailed first call failed: ${err}`);
+      log.subProcessError(`DownloadManager _startRemovingFailed first call failed: ${err}`);
     });
     this.ping();
   }
@@ -35,7 +41,7 @@ export class DownloadManager {
   // A non-async public wrapper is used to prevent accidental waiting on the ping function.
   public ping(): void {
     this._ping().catch(err => {
-      logSubProcessError(`DownloadManager _ping failed with error: ${err}`);
+      log.subProcessError(`DownloadManager _ping failed with error: ${err}`);
     });
   }
 
@@ -49,7 +55,7 @@ export class DownloadManager {
 
   // This function should NOT be awaited.
   private async _ping(): Promise<void> {
-    logDebug(`DownloadManager: _ping()`);
+    log.debug(`DownloadManager: _ping()`);
     await this._managingPromise;
     // If after waiting, the downloads are already being managed again, the goal of the ping
     // is already being accomplished, so this ping can return.
@@ -62,7 +68,7 @@ export class DownloadManager {
   }
 
   private async _manageDownloads(): Promise<void> {
-    logDebug(`DownloadManager: _manageDownloads()`);
+    log.debug(`DownloadManager: _manageDownloads()`);
     // Should be pinged when:
     // - An item is added/removed/reordered in the queue.
     // - An item finishes downloading.
@@ -73,8 +79,8 @@ export class DownloadManager {
       // Determine which downloads to start and stop.
       const start = downloads.filter(v => !this._downloading.find(_v => _v.id === v.id));
       const stop = this._downloading.filter(v => !downloads.find(_v => _v.id === v.id));
-      logDebug(`DownloadManager: _manageDownloads() starting ${start.length}`);
-      logDebug(`DownloadManager: _manageDownloads() stopping ${stop.length}`);
+      log.debug(`DownloadManager: _manageDownloads() starting ${start.length}`);
+      log.debug(`DownloadManager: _manageDownloads() stopping ${stop.length}`);
 
       // Use the results from the database query to start/stop downloads.
       start.forEach(v => this._startDownload(v));
@@ -88,38 +94,38 @@ export class DownloadManager {
         this._wasDownloading = true;
       }
     } catch (err) {
-      logSubProcessError(`_manageDownloads err: ${err}`);
+      log.subProcessError(`_manageDownloads err: ${err}`);
     }
   }
 
   private async _startRemovingFailed(): Promise<void> {
-    logSubProcess(`Download Manager cleanup process started`);
+    log.subProcess(`Download Manager cleanup process started`);
     try {
       while (true) {
         await this._removeFailed();
         // Wait for the specified interval.
-        await delay(settings.clearFailedInterval * 60 * 1000);
+        await delay(CLEAR_FAILED_POLL_MINS * 60 * 1000);
         // Do not remove lost files on startup, since often an in-progress download
         // may be continued after an app reboot.
         await this._removeLostFiles();
       }
     } catch (err) {
-      logSubProcessError(`Failed item removal process failed with error: ${err}`);
+      log.subProcessError(`Failed item removal process failed with error: ${err}`);
       setTimeout(() => {
-        this._startRemovingFailed();
+        this._startRemovingFailed().catch(() => { /* noop */ });
       }, 5000);
     }
   }
 
   private async _removeFailed(): Promise<void> {
-    logDebug(`DownloadManager: _removeFailed()`);
-    const failedUpTimeMs = settings.failedUpTime * 60 * 60 * 1000;
+    log.debug(`DownloadManager: _removeFailed()`);
+    const failedUpTimeMs = REMAIN_IN_FAILED_MINS * 60 * 1000;
     const cutoff = Date.now() - failedUpTimeMs;
     await this._dbManager.removeFailed(cutoff);
   }
 
   private async _removeLostFiles(): Promise<void> {
-    logDebug(`DownloadManager: _removeLostFiles()`);
+    log.debug(`DownloadManager: _removeLostFiles()`);
     // Skip if any downloads are or were in progress in the past interval.
     if (this._wasDownloading) {
       // Clear the indicator if downloads are not currently occurring.
@@ -130,7 +136,7 @@ export class DownloadManager {
   }
 
   private async _startDownload(video: VideoMeta): Promise<void> {
-    logDebug(`DownloadManager: _startDownload(${getDescription(video)})`);
+    log.debug(`DownloadManager: _startDownload(${getDescription(video)})`);
     try {
       // Assign the torrent if it isn't already.
       if (!video.magnet) {
@@ -138,12 +144,12 @@ export class DownloadManager {
         const videoMeta = await this._dbManager.addMetadata(video);
         const best = getBestTorrent(videoMeta, torrents);
         if (!best) {
-          logDebug(`DownloadManager: _startDownload(${getDescription(video)}) failed (no torrent found)`);
+          log.debug(`DownloadManager: _startDownload(${getDescription(video)}) failed (no torrent found)`);
           // If no good torrent was found, add the video to failed.
           await this._dbManager.markAsFailed(video);
           return;
         } else {
-          logDebug(`DownloadManager: _startDownload(${getDescription(video)}) magnet added`);
+          log.debug(`DownloadManager: _startDownload(${getDescription(video)}) magnet added`);
           await this._dbManager.setTorrent(video.id, best);
           video = assignMeta(video, best);
         }
@@ -162,13 +168,13 @@ export class DownloadManager {
 
       // Export the video (run separately).
       exportVideo(video, downloadPaths).catch(err => {
-        logSubProcessError(`Failed to export video files: ${err}`);
+        log.subProcessError(`Failed to export video files: ${err}`);
       });
 
       // Ping since the database changed.
       this.ping();
     } catch (err) {
-      logSubProcessError(`_startDownload err: ${err}`);
+      log.subProcessError(`_startDownload err: ${err}`);
       // When downloading fails, remove the magnet and mark the video as failed.
       await this._dbManager.markAsFailed(video);
     }
@@ -180,20 +186,20 @@ export class DownloadManager {
         await this._downloadClient.stopDownload(video.magnet);
       }
     } catch (err) {
-      logSubProcessError(`_stopDownload err: ${err}`);
+      log.subProcessError(`_stopDownload err: ${err}`);
     }
   }
 }
 
 // Save a video in the correct directory, adding any necessary directories.
 async function exportVideo(video: Video, downloadPaths: string[]): Promise<void> {
-  logDebug(`exportVideo(${getDescription(video)}, ${downloadPaths})`);
+  log.debug(`exportVideo(${getDescription(video)}, ${downloadPaths})`);
   const safeTitle = getFileSafeTitle(video);
   const dirs = video.type === 'movie' ? ['movies', safeTitle] :
     ['tv', safeTitle, `Season ${video.seasonNum}`];
 
   let exportPath = EXPORT_ROOT;
-  if (!USE_FTP) { logDebug(`exportVideo: Creating missing folders in export directory`); }
+  if (!USE_FTP) { log.debug(`exportVideo: Creating missing folders in export directory`); }
   for (const pathElem of dirs) {
     exportPath = path.join(exportPath, pathElem);
     if (!USE_FTP) {
@@ -209,7 +215,7 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   }
 
   // Move the files to the final directory.
-  logDebug(`exportVideo: Copying videos to ${USE_FTP ? 'FTP server at ' : ''}${exportPath}`);
+  log.debug(`exportVideo: Copying videos to ${USE_FTP ? 'FTP server at ' : ''}${exportPath}`);
   const copyActions = downloadPaths.map(downloadPath => {
     const from = path.join(DOWNLOAD_ROOT, downloadPath);
     const to = path.join(exportPath, path.basename(downloadPath));
@@ -218,7 +224,7 @@ async function exportVideo(video: Video, downloadPaths: string[]): Promise<void>
   await Promise.all(copyActions);
 
   // Remove the download directories (Remove the first directory of each downloaded file).
-  logDebug(`exportVideo: Removing download directory`);
+  log.debug(`exportVideo: Removing download directory`);
   const deleteActions = downloadPaths.map(downloadPath => {
     const abs = path.join(DOWNLOAD_ROOT, path.dirname(downloadPath));
     return rmfr(abs);
@@ -255,11 +261,11 @@ function ftpCopy(src: string, dst: string): Promise<void> {
 
 function copy(src: string, dst: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    var rd = fs.createReadStream(src);
+    const rd = fs.createReadStream(src);
     rd.on("error", err => {
       reject(err);
     });
-    var wr = fs.createWriteStream(dst);
+    const wr = fs.createWriteStream(dst);
     wr.on("error", err => {
       reject(err);
     });

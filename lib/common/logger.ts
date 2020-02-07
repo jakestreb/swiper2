@@ -18,14 +18,14 @@ export function prompt(prefix: string = ''): void {
   term(`${prefix}> `);
 }
 
-export function log(str: string = ''): void {
+export function info(str: string = ''): void {
   term.eraseLine();
   term.column(0);
   term(`${str}\n`);
   logger.info(str);
 }
 
-export function logDebug(str: string = ''): void {
+export function debug(str: string = ''): void {
   if (DEBUG) {
     term.eraseLine();
     term.column(0);
@@ -35,21 +35,21 @@ export function logDebug(str: string = ''): void {
   logger.debug(str);
 }
 
-export function logInputError(str: string = ''): void {
+export function inputError(str: string = ''): void {
   term.eraseLine();
   term.column(0);
   term.red(`${str}\n`);
   logger.error(str);
 }
 
-export function logError(str: string = ''): void {
+export function error(str: string = ''): void {
   term.eraseLine();
   term.column(0);
   term.bgRed(`${str}\n`);
   logger.error(str);
 }
 
-export function logSubProcess(str: string = ''): void {
+export function subProcess(str: string = ''): void {
   const whitespace = Math.max(0, term.width - str.length - 2);
   term.eraseLine();
   term.column(whitespace);
@@ -58,7 +58,7 @@ export function logSubProcess(str: string = ''): void {
   logger.info(str);
 }
 
-export function logSubProcessError(str: string = ''): void {
+export function subProcessError(str: string = ''): void {
   const whitespace = Math.max(0, term.width - str.length - 2);
   term.eraseLine();
   term.column(whitespace);
@@ -67,7 +67,7 @@ export function logSubProcessError(str: string = ''): void {
   logger.error(str);
 }
 
-export function logForeignResponse(str: string = ''): void {
+export function foreignResponse(str: string = ''): void {
   const whitespace = Math.max(0, term.width - str.length - 2);
   term.eraseLine();
   term.column(whitespace);
@@ -76,7 +76,7 @@ export function logForeignResponse(str: string = ''): void {
   logger.info(str);
 }
 
-export function logForeignInputError(str: string = ''): void {
+export function foreignInputError(str: string = ''): void {
   const whitespace = Math.max(0, term.width - str.length - 2);
   term.eraseLine();
   term.column(whitespace);

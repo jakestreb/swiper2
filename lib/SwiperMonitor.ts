@@ -1,10 +1,11 @@
+import * as settings from './_settings.json';
+import * as log from './common/logger';
+import {Episode, getDescription, Video} from './common/media';
+import {delay, getDaysUntil, getMsUntil} from './common/util';
 import {DBManager} from './DBManager';
 import {DownloadManager} from './DownloadManager';
-import {Episode, getDescription, Video} from './media';
-import {settings} from './settings';
-import {logSubProcess, logSubProcessError} from './terminal';
-import {getBestTorrent, SearchClient, Torrent} from './torrent';
-import {delay, getDaysUntil, getMsUntil} from './util';
+import {SearchClient} from './torrents/SearchClient';
+import {getBestTorrent, Torrent} from './torrents/util';
 
 interface CommandOptions {
   catchErrors?: boolean; // Default false
@@ -16,7 +17,7 @@ export class SwiperMonitor {
     private _searchClient: SearchClient,
     private _downloadManager: DownloadManager
   ) {
-    this._startMonitoring();
+    this._startMonitoring().catch(() => { /* noop */ });
   }
 
   // Perform automated searched for all released monitored items.
@@ -40,7 +41,7 @@ export class SwiperMonitor {
       await Promise.all(searches);
     } catch (err) {
       if (options.catchErrors) {
-        logSubProcessError(`_doCheck error: ${err}`);
+        log.subProcessError(`_doCheck error: ${err}`);
       } else {
         throw err;
       }
@@ -50,9 +51,9 @@ export class SwiperMonitor {
   private async _startMonitoring(): Promise<void> {
     this._doMonitor()
     .catch(err => {
-      logSubProcessError(`Monitoring process failed with error: ${err}`);
+      log.subProcessError(`Monitoring process failed with error: ${err}`);
       setTimeout(() => {
-        this._startMonitoring();
+        this._startMonitoring().catch(() => { /* noop */ });
       }, 5000);
     });
   }
@@ -61,13 +62,13 @@ export class SwiperMonitor {
    * The monitoring process, which should be started and made to log and restart in case of errors.
    */
   private async _doMonitor(): Promise<void> {
-    logSubProcess(`Monitoring started`);
+    log.subProcess(`Monitoring started`);
     while (true) {
 
       // Episodes are released at predictable times, so their checks are individually scheduled.
       await this._scheduleEpisodeChecks();
       // Wait until the daily time given in settings to search for monitored items.
-      await delay(getMsUntil(settings.monitorAt));
+      await delay(getMsUntil(settings.monitorAtHour));
       await this.doCheck({catchErrors: true});
     }
   }
@@ -75,7 +76,7 @@ export class SwiperMonitor {
   // Perform an automated search for an item and download it if it's found. Give no prompts to the
   // user if the video is not found. Returns a boolean indicating success.
   private async _doSearch(video: Video, options: CommandOptions = {}): Promise<boolean> {
-    logSubProcess(`Searching ${getDescription(video)}`);
+    log.subProcess(`Searching ${getDescription(video)}`);
     try {
       const torrents: Torrent[] = await this._searchClient.search(video);
       const videoMeta = await this._dbManager.addMetadata(video);
@@ -87,12 +88,12 @@ export class SwiperMonitor {
         this._downloadManager.ping();
         return true;
       } else {
-        logSubProcess(`${getDescription(video)} not found`);
+        log.subProcess(`${getDescription(video)} not found`);
         return false;
       }
     } catch (err) {
       if (options.catchErrors) {
-        logSubProcess(`_doSearch ${getDescription(video)} error: ${err}`);
+        log.subProcess(`_doSearch ${getDescription(video)} error: ${err}`);
       } else {
         throw err;
       }
@@ -104,29 +105,31 @@ export class SwiperMonitor {
     const shows = await this._dbManager.getMonitoredShows();
     // Create one array of episodes with scheduled air dates only.
     const episodes = ([] as Episode[]).concat(...shows.map(s => s.episodes));
-    episodes.forEach(ep => { this._doBackoffCheckEpisode(ep); });
+    episodes.forEach(ep => {
+      this._doBackoffCheckEpisode(ep).catch(err => { /* noop */ });
+    });
   }
 
   private async _doBackoffCheckEpisode(episode: Episode): Promise<void> {
     if (!episode.airDate) {
       return;
     }
-    const backoff = settings.newEpisodeBackoff;
-    const now = new Date();
-    // Difference in ms between now and the release date.
-    const msPast = now.valueOf() - episode.airDate.valueOf();
-    let acc = 0;
-    for (let i = 0; msPast > acc && i < backoff.length; i++) {
-      acc += backoff[i] * 60 * 1000;
-    }
-    if (msPast > acc) {
-      // Repeat search array has ended.
-      return;
-    }
-    // Delay until the next check time.
-    await delay(acc - msPast);
-    // If the episode is still in the monitored array, look for it and repeat on failure.
     try {
+      const backoff = settings.newEpisodeBackoffMins;
+      const now = new Date();
+      // Difference in ms between now and the release date.
+      const msPast = now.valueOf() - episode.airDate.valueOf();
+      let acc = 0;
+      for (let i = 0; msPast > acc && i < backoff.length; i++) {
+        acc += backoff[i] * 60 * 1000;
+      }
+      if (msPast > acc) {
+        // Repeat search array has ended.
+        return;
+      }
+      // Delay until the next check time.
+      await delay(acc - msPast);
+      // If the episode is still in the monitored array, look for it and repeat on failure.
       const copy = await this._dbManager.getEpisode(episode);
       if (copy && copy.isMonitored) {
         setImmediate(async () => {
@@ -137,12 +140,12 @@ export class SwiperMonitor {
             // Subtract time already spent searching this time.
             const waitTime = (60 * 1000) - (Date.now() - beforeTime);
             await delay(waitTime);
-            this._doBackoffCheckEpisode(episode);
+            this._doBackoffCheckEpisode(episode).catch(err => { /* noop */ });
           }
         });
       }
     } catch (err) {
-      logSubProcessError(`_doBackoffCheckEpisode error: ${err}`);
+      log.subProcessError(`_doBackoffCheckEpisode error: ${err}`);
     }
   }
 }

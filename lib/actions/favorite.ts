@@ -1,4 +1,4 @@
-import {getDescription, Video} from '../media';
+import {getDescription, Video} from '../common/media';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
 
 export async function favorite(this: Swiper, convo: Conversation): Promise<SwiperReply> {

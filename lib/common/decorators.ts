@@ -1,6 +1,6 @@
 import range = require('lodash/range');
-import {Conversation, EpisodesDescriptor, MediaQuery} from './Swiper';
-import {SeasonEpisodes, SwiperReply} from './Swiper';
+import {Conversation, EpisodesDescriptor, MediaQuery} from '../Swiper';
+import {SeasonEpisodes, SwiperReply} from '../Swiper';
 import {filterEpisodes, getVideo, Show} from './media';
 import {identifyMedia} from './request';
 import {execCapture, removePrefix} from './util';

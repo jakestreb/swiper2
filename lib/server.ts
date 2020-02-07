@@ -8,9 +8,8 @@ import * as express from 'express';
 import * as readline from 'readline';
 import * as rp from 'request-promise';
 
+import * as log from './common/logger';
 import {Swiper, SwiperReply} from './Swiper';
-import {log, logError, logForeignInputError, logForeignResponse, logInputError} from './terminal';
-import {logSubProcess, prompt} from './terminal';
 
 // import * as heapProfile from 'heap-profile';
 
@@ -41,17 +40,17 @@ async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
       msg.enhanced();
     } else {
       if (msg.data) {
-        log(msg.data);
+        log.info(msg.data);
       } else {
-        logInputError(msg.err);
+        log.inputError(msg.err);
       }
-      prompt();
+      log.prompt();
     }
   } else {
     if (msg.data) {
-      logForeignResponse(msg.data);
+      log.foreignResponse(msg.data);
     } else {
-      logForeignInputError(msg.err);
+      log.foreignInputError(msg.err);
     }
     return rp({
       uri: `${gatewayUrl}/swiper`,
@@ -79,9 +78,12 @@ function startComms(swiper: Swiper): void {
   terminal.on('line', (line: string) => {
     acceptMsgFromClient('cli', CLI_ID, line.trim())
     .catch(err => {
-      logError(`Error handling cli request "${line.trim()}": ${err}`);
-      log('\n');
-      sendMsgToClient(CLI_ID, {err: `Something went wrong`});
+      log.error(`Error handling cli request "${line.trim()}": ${err}`);
+      log.info('\n');
+      sendMsgToClient(CLI_ID, {err: `Something went wrong`})
+      .catch(_err => {
+        log.error(`Error sending msg to client: ${_err}`);
+      });
     });
   });
 
@@ -93,7 +95,7 @@ function startComms(swiper: Swiper): void {
   // Start the app.
   app.listen(PORT, () => {
     // Prompt the user once the app is running.
-    logSubProcess(`Running and listening on port ${PORT}`);
+    log.subProcess(`Running and listening on port ${PORT}`);
   });
   app.get("/", (req, res) => {
     // Send a response when GET is called on the port for debugging.
@@ -104,9 +106,12 @@ function startComms(swiper: Swiper): void {
   app.post("/telegram", (req, res) => {
     acceptMsgFromClient('telegram', req.body.id, req.body.message)
     .catch(err => {
-      logError(`Error handling telegram request "${req.body.message}": ${err}`);
-      log('\n');
-      sendMsgToClient(req.body.id, {err: `Something went wrong`});
+      log.error(`Error handling telegram request "${req.body.message}": ${err}`);
+      log.info('\n');
+      sendMsgToClient(req.body.id, {err: `Something went wrong`})
+      .catch(_err => {
+        log.error(`Error sending msg to client: ${_err}`);
+      });
     });
     res.send('ok');
   });
@@ -118,6 +123,6 @@ Swiper.create(sendMsgToClient)
   startComms(swiper);
 })
 .catch(err => {
-  logError(`Process exiting on error: ${err}`);
+  log.error(`Process exiting on error: ${err}`);
   process.exit(1);
 });

@@ -1,4 +1,4 @@
-import {EpisodesDescriptor} from './Swiper';
+import {EpisodesDescriptor} from '../Swiper';
 import {getMorning, padZeros} from './util';
 
 export type Media = Movie|Show;

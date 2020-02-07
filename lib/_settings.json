@@ -1,0 +1,41 @@
+{
+  "quality": {
+    "episode": ["1080p", "720p"],
+    "movie": ["1080p", "720p"]
+  },
+  "seeders": [
+    {"min": 30, "points": 3.5},
+    {"min": 20, "points": 3},
+    {"min": 12, "points": 2}
+  ],
+  "reject": [
+    "HDCAM", "CAMRip", "CAM", "TS", "TELESYNC", "PDVD",
+    "HD-?TS", "HD-?TC", "WP", "WORKPRINT", "HC", "SUB",
+    "SUBS", "KORSUB", "KOR", "TS-?RIP"
+  ],
+  "size": {
+    "episode": [
+      {"minMB": 8000, "points": 0},
+      {"minMB": 5000, "points": 0.5},
+      {"minMB": 3000, "points": 1},
+      {"minMB": 800, "points": 1.5},
+      {"minMB": 200, "points": 1}
+    ],
+    "movie": [
+      {"minMB": 10000, "points": 0},
+      {"minMB": 8000, "points": 0.5},
+      {"minMB": 3000, "points": 1},
+      {"minMB": 1600, "points": 1.5},
+      {"minMB": 1000, "points": 1},
+      {"minMB": 600, "points": 0.5}
+    ]
+  },
+  "maxDownloads": 3,
+  "monitorAtHour": 2,
+  "daysBeforeDVD": 21,
+  "newEpisodeBackoffMins": [
+    30, 5, 5, 5, 10, 10, 10, 10,
+    15, 15, 30, 30, 30, 30,
+    60, 60, 120, 120, 240, 480
+  ]
+}

@@ -2,9 +2,9 @@
 import * as TVDB from 'node-tvdb';
 import * as rp from 'request-promise';
 
+import {MediaQuery} from '../Swiper';
+import * as log from './logger';
 import {Episode, Media, Movie, Show, sortEpisodes} from './media';
-import {MediaQuery} from './Swiper';
-import {logDebug, logError} from './terminal';
 import {getDateFromStr} from './util';
 
 // TVDB temporary token cache.
@@ -64,13 +64,13 @@ interface TVDBEpisode {
 
 // Returns the media with all episodes. Filtering must be performed afterward.
 export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Media>> {
-  logDebug(`identifyMedia(${JSON.stringify(info)})`);
+  log.debug(`identifyMedia(${JSON.stringify(info)})`);
   try {
     return {
       data: await _searchTMDB(info)
     };
   } catch (err) {
-    logError(err);
+    log.error(err);
     return { err: 'The Movie Database is not responding' };
   }
 }
@@ -95,7 +95,7 @@ export async function getPopularReleasedBetween(
       json: true
     });
   } catch (err) {
-    logError(`TMDB is not responding to requests: ${err}`);
+    log.error(`TMDB is not responding to requests: ${err}`);
   }
   // If the query fails or returns no movies, return no movies.
   if (!tmdbResult || !tmdbResult.results) {
@@ -183,7 +183,7 @@ async function _convertTMDBMovie(info: TMDBMovie): Promise<Movie> {
     }
     digitalRelease = relevant[0].release_date;
   } catch (err) {
-    logDebug(`_convertTMDBMovie find release date failed: ${err}`);
+    log.debug(`_convertTMDBMovie find release date failed: ${err}`);
   }
   return {
     id: convertImdbId(imdbId),
@@ -201,8 +201,8 @@ async function _convertTMDBShow(info: TMDBShow): Promise<Show> {
   try {
     tvdbResult = await _searchTVDB(imdbId);
   } catch (err) {
-    logError(`_searchTVDB Failed: ${err}`);
-    throw new Error(`Can't find that show`)
+    log.error(`_searchTVDB Failed: ${err}`);
+    throw new Error(`Can't find that show`);
   }
   const show: Show = {
     id: convertImdbId(imdbId),
@@ -234,7 +234,7 @@ async function _getTMDBImdbId(info: TMDBMedia, type: 'movie'|'tv'): Promise<stri
 
 async function _makeTMDBMediaRequest(uri: string, year?: string|null): Promise<TMDBMedia> {
   try {
-    let tmdbResp = await rp({
+    const tmdbResp = await rp({
       uri,
       headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
       json: true
@@ -250,8 +250,8 @@ async function _makeTMDBMediaRequest(uri: string, year?: string|null): Promise<T
     }
     return results[0];
   } catch (err) {
-    logError(err);
-    throw `Failed The Movie Database search: ${err}`;
+    log.error(err);
+    throw new Error(`Failed The Movie Database search: ${err}`);
   }
 }
 
@@ -262,7 +262,7 @@ async function _searchTVDB(imdbId: string): Promise<TVDB> {
   const day = 24 * 60 * 60 * 1000;
   if (now - tvdbTokenTimestamp > day) {
     // Needs refresh.
-    logDebug(`_searchTVDB: Refreshing token`);
+    log.debug(`_searchTVDB: Refreshing token`);
     const {token} = await rp({
       uri: 'https://api.thetvdb.com/login',
       method: 'POST',
@@ -273,24 +273,24 @@ async function _searchTVDB(imdbId: string): Promise<TVDB> {
   }
 
   // Get the TVDB series ID from the imdbID.
-  logDebug(`_searchTVDB: Fetching TVDB ID from IMDB ID`);
+  log.debug(`_searchTVDB: Fetching TVDB ID from IMDB ID`);
   const entriesJson = await rp({
     uri: 'https://api.thetvdb.com/search/series',
-    headers: { 'Authorization': `Bearer ${tvdbToken}` },
+    headers: {Authorization: `Bearer ${tvdbToken}`},
     method: 'GET',
-    qs: { imdbId }
+    qs: {imdbId}
   });
   const entries = JSON.parse(entriesJson).data;
   if (entries.length === 0) { throw new Error('Series not found in TVDB'); }
   const seriesId = entries[0].id;
 
   // Retrieved the ID, now fetch the series and episodes.
-  logDebug(`_searchTVDB: Fetching series`);
+  log.debug(`_searchTVDB: Fetching series`);
   const seriesJson = await rp({
     uri: `https://api.thetvdb.com/series/${seriesId}`,
-    headers: { 'Authorization': `Bearer ${tvdbToken}` },
+    headers: {Authorization: `Bearer ${tvdbToken}`},
     method: 'GET'
-  })
+  });
 
   // Convert and return.
   const series = JSON.parse(seriesJson).data;
@@ -301,13 +301,13 @@ async function _searchTVDB(imdbId: string): Promise<TVDB> {
 // Episodes sometimes need to be fetched in multiple requests if there are a lot.
 // This function facilitates that.
 async function fetchEpisodes(seriesId: number): Promise<TVDBEpisode[]> {
-  logDebug(`_searchTVDB: Fetching episodes`);
+  log.debug(`_searchTVDB: Fetching episodes`);
   const doFetch = async (pageNum: number) => {
     const episodesJson = await rp({
       uri: `https://api.thetvdb.com/series/${seriesId}/episodes`,
-      headers: { 'Authorization': `Bearer ${tvdbToken}` },
+      headers: {Authorization: `Bearer ${tvdbToken}`},
       method: 'GET',
-      qs: { page: pageNum }
+      qs: {page: pageNum}
     });
     return JSON.parse(episodesJson);
   };

@@ -1,8 +1,8 @@
-import {getDescription, Media} from '../media';
+import * as log from '../common/logger';
+import {getDescription, Media} from '../common/media';
+import {matchNumber} from '../common/util';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import {log, logDebug} from '../terminal';
-import {assignMeta, getTorrentString, Torrent} from '../torrent';
-import {matchNumber} from '../util';
+import {assignMeta, getTorrentString, Torrent} from '../torrents/util';
 
 // Number of torrents to show per page
 const PER_PAGE = 4;
@@ -13,7 +13,7 @@ export interface SearchOptions {
 }
 
 export async function search(this: Swiper, convo: Conversation, options: SearchOptions = {}): Promise<SwiperReply> {
-  logDebug(`Swiper: search`);
+  log.debug(`Swiper: search`);
 
   const media = convo.media as Media;
   const video = media.type === 'tv' ? media.episodes[0] : media;
@@ -21,7 +21,7 @@ export async function search(this: Swiper, convo: Conversation, options: SearchO
 
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
-    log(`Searching for ${getDescription(video)} downloads`);
+    log.info(`Searching for ${getDescription(video)} downloads`);
     convo.torrents = await this.searchClient.search(video);
     convo.pageNum = 0;
   }

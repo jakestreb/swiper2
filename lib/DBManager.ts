@@ -2,11 +2,11 @@ import values = require('lodash/values');
 import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 
-import {getDescription, sortEpisodes} from './media';
-import {Episode, EpisodeMeta, Media, Movie, MovieMeta, Show, Video, VideoMeta} from './media';
-import {settings} from './settings';
-import {logDebug} from './terminal';
-import {Torrent} from './torrent';
+import * as settings from './_settings.json';
+import * as log from './common/logger';
+import {Episode, EpisodeMeta, getDescription, sortEpisodes} from './common/media';
+import {Media, Movie, MovieMeta, Show, Video, VideoMeta} from './common/media';
+import {Torrent} from './torrents/util';
 
 interface AddOptions {
   queue: boolean;
@@ -51,7 +51,7 @@ export class DBManager {
   // If a show contains any episodes that are not queued, its title with those episode nums
   // will show in the monitored list.
   public async initDB(): Promise<void> {
-    logDebug(`DBManager: initDB()`);
+    log.debug(`DBManager: initDB()`);
     await this._run(`CREATE TABLE IF NOT EXISTS Movies (
       id INTEGER PRIMARY KEY ON CONFLICT REPLACE,
       addedBy INTEGER,
@@ -104,20 +104,20 @@ export class DBManager {
   }
 
   public async get(media: Media): Promise<ResultRow|void> {
-    logDebug(`DBManager: get(${media.title})`);
+    log.debug(`DBManager: get(${media.title})`);
     const table = media.type === 'movie' ? 'Movies' : 'Shows';
     return this._get(`SELECT * FROM ? WHERE id=?`, [table, media.id]);
   }
 
   public async getEpisode(episode: Episode): Promise<ResultRow|void> {
-    logDebug(`DBManager: getEpisode(${getDescription(episode)})`);
+    log.debug(`DBManager: getEpisode(${getDescription(episode)})`);
     return this._get(`SELECT * FROM Episodes WHERE episodeId=?`, [episode.id]);
   }
 
   // Get all Movies and Shows. Note that a show can show up in both arrays with different
   // episodes in each.
   public async getStatus(): Promise<Status> {
-    logDebug(`DBManager: getStatus()`);
+    log.debug(`DBManager: getStatus()`);
     const movies = await this._all(`SELECT * FROM Movies LEFT JOIN VideoData ON ` +
       `Movies.id = VideoData.videoId`);
     const showEpisodes = await this._all(`SELECT * FROM Episodes ` +
@@ -133,7 +133,7 @@ export class DBManager {
   }
 
   public async getMonitored(): Promise<Media[]> {
-    logDebug(`DBManager: getMonitored()`);
+    log.debug(`DBManager: getMonitored()`);
     const movies = await this._all(`SELECT * FROM Movies WHERE queuePos=0`);
     const showEpisodes = await this._all(`SELECT * FROM Episodes LEFT JOIN Shows ` +
       `ON Episodes.show = Shows.id WHERE queuePos=0 AND failedAt=0`);
@@ -141,7 +141,7 @@ export class DBManager {
   }
 
   public async getMonitoredShows(): Promise<Show[]> {
-    logDebug(`DBManager: getMonitoredShows()`);
+    log.debug(`DBManager: getMonitoredShows()`);
     const showEpisodes = await this._all(`SELECT * FROM Episodes LEFT JOIN Shows ` +
       `ON Episodes.show = Shows.id WHERE queuePos=0 AND failedAt=0`);
     return createMedia(showEpisodes) as Show[];
@@ -150,13 +150,13 @@ export class DBManager {
   // Adds the item if it is not already in the database and sets it to monitored.
   // Limited to media since only media should be added to
   public async addToMonitored(media: Media, addedBy: number): Promise<void> {
-    logDebug(`DBManager: addToMonitored(${media.title}, ${addedBy})`);
+    log.debug(`DBManager: addToMonitored(${media.title}, ${addedBy})`);
     await this._add(media, {addedBy, queue: false, isPredictive: false});
   }
 
   // Adds the item if it is not already in the database and sets it to queued.
   public async addToQueued(media: Media, addedBy: number): Promise<void> {
-    logDebug(`DBManager: addToQueued(${media.title}, ${addedBy})`);
+    log.debug(`DBManager: addToQueued(${media.title}, ${addedBy})`);
     await this._add(media, {addedBy, queue: true, isPredictive: false});
   }
 
@@ -168,7 +168,7 @@ export class DBManager {
 
   // Move to queued.
   public async moveToQueued(video: Video) {
-    logDebug(`DBManager: moveToQueued(${getDescription(video)})`);
+    log.debug(`DBManager: moveToQueued(${getDescription(video)})`);
     if (video.type === 'movie') {
       const movie = video as Movie;
       await this._run(`UPDATE Movies SET queuePos=? WHERE id=?`, [this._nextLow--, movie.id]);
@@ -181,7 +181,7 @@ export class DBManager {
   }
 
   public async markAsFailed(video: Video): Promise<void> {
-    logDebug(`DBManager: markAsFailed(${getDescription(video)})`);
+    log.debug(`DBManager: markAsFailed(${getDescription(video)})`);
     const nowMs = Date.now();
     if (video.type === 'movie') {
       const movie = video as Movie;
@@ -198,7 +198,7 @@ export class DBManager {
 
   // Remove all items that failed before the cutoff.
   public async removeFailed(cutoff: number): Promise<void> {
-    logDebug(`DBManager: removeFailed(${cutoff})`);
+    log.debug(`DBManager: removeFailed(${cutoff})`);
     await this._run(`DELETE FROM Movies WHERE failedAt!=0 AND failedAt<?`, [cutoff]);
     await this._run(`DELETE FROM Episodes WHERE failedAt!=0 AND failedAt<?`, [cutoff]);
     // Remove show if all episodes were removed.
@@ -206,19 +206,19 @@ export class DBManager {
   }
 
   public async removeMovie(id: number): Promise<void> {
-    logDebug(`DBManager: removeMovie(${id})`);
+    log.debug(`DBManager: removeMovie(${id})`);
     await this._run(`DELETE FROM Movies WHERE id=?`, [id]);
   }
 
   public async removeEpisodes(episodeIds: number[]): Promise<void> {
-    logDebug(`DBManager: removeEpisode(${episodeIds})`);
+    log.debug(`DBManager: removeEpisode(${episodeIds})`);
     await this._run(`DELETE FROM Episodes WHERE episodeId IN (${episodeIds.map(e => '?')})`, episodeIds);
     // Remove show if all episodes were removed.
     await this._run(`DELETE FROM Shows WHERE id NOT IN (SELECT show FROM Episodes)`);
   }
 
   public async changeMovieQueuePos(id: number, pos: 'first'|'last'): Promise<void> {
-    logDebug(`DBManager: changeMovieQueuePos(${id}, ${pos})`);
+    log.debug(`DBManager: changeMovieQueuePos(${id}, ${pos})`);
     const newPos = pos === 'first' ? this._nextHigh++ : this._nextLow--;
     await this._run(`UPDATE Movies SET queuePos=? WHERE id=? AND queuePos!=0`, [newPos, id]);
   }
@@ -227,14 +227,14 @@ export class DBManager {
     episodeIds: number[],
     pos: 'first'|'last'
   ): Promise<void> {
-    logDebug(`DBManager: changeEpisodesQueuePos(${episodeIds}, ${pos})`);
+    log.debug(`DBManager: changeEpisodesQueuePos(${episodeIds}, ${pos})`);
     const newPos = pos === 'first' ? this._nextHigh++ : this._nextLow--;
     await this._run(`UPDATE Episodes SET queuePos=? WHERE episodeId IN (${episodeIds.map(e => '?')})` +
       ` AND queuePos!=0`, [newPos, ...episodeIds]);
   }
 
   public async moveAllQueuedToFailed(addedBy: number): Promise<void> {
-    logDebug(`DBManager: moveAllQueuedToFailed(${addedBy})`);
+    log.debug(`DBManager: moveAllQueuedToFailed(${addedBy})`);
     const nowMs = Date.now();
     await this._run(`UPDATE Movies SET queuePos=0, isDownloading=0, failedAt=? WHERE ` +
       `queuePos!=0 AND addedBy=?`, [nowMs, addedBy]);
@@ -245,7 +245,7 @@ export class DBManager {
   // Searches movie and tv tables for titles that match the given input. If the type is
   // specified in the options, only that table is searched. Returns all matches as ResultRows.
   public async searchTitles(input: string, options: DBSearchOptions): Promise<Media[]> {
-    logDebug(`DBManager: searchTitles(${input})`);
+    log.debug(`DBManager: searchTitles(${input})`);
     const rows: ResultRow[] = [];
     if (options.type !== 'tv') {
       // Search Movies
@@ -264,7 +264,7 @@ export class DBManager {
   // so the results just have to be consistent, if things change between fetches the process should
   // be pinged again to read just after. Returns all videos that are now set to download.
   public async manageDownloads(): Promise<VideoMeta[]> {
-    logDebug(`DBManager: manageDownloads()`);
+    log.debug(`DBManager: manageDownloads()`);
     // Get all queued movies and episodes.
     const movies = await this._all(`SELECT * FROM Movies ` +
       `LEFT JOIN VideoData ON Movies.id = VideoData.videoId WHERE queuePos!=0`);
@@ -285,13 +285,13 @@ export class DBManager {
   }
 
   public async setTorrent(videoId: number, torrent: Torrent): Promise<void> {
-    logDebug(`DBManager: addTorrent(${videoId}, ${torrent.parsedTitle})`);
+    log.debug(`DBManager: addTorrent(${videoId}, ${torrent.parsedTitle})`);
     await this._run(`UPDATE VideoData SET magnet=?, quality=?, resolution=?, size=? WHERE videoId=?`,
       [torrent.magnet, torrent.quality, torrent.resolution, torrent.size, videoId]);
   }
 
   public async getMoviePicks(n: number, timeoutMs: number = 0): Promise<Movie[]> {
-    logDebug(`DBManager: getMoviePicks(${n}, ${timeoutMs})`);
+    log.debug(`DBManager: getMoviePicks(${n}, ${timeoutMs})`);
     const nowMs = Date.now();
     const picks = await this._all(`SELECT * FROM MoviePicks WHERE lastDownloaded<? ` +
       `ORDER BY RANDOM() LIMIT ?`, [nowMs - timeoutMs, n]) as MoviePick[];
@@ -302,14 +302,14 @@ export class DBManager {
   }
 
   public async addToMoviePicks(movie: Movie): Promise<void> {
-    logDebug(`DBManager: addToMoviePicks(${movie})`);
+    log.debug(`DBManager: addToMoviePicks(${movie})`);
     await this._run(`INSERT INTO MoviePicks (imdbId, title, year) VALUES (?, ?, ?)`,
       [movie.id, movie.title, movie.year]);
   }
 
   // Blacklists the torrent and returns a boolean indicating whether the video was ever downloaded.
   public async blacklistMagnet(videoId: number): Promise<boolean> {
-    logDebug(`DBManager: blacklistMagnet(${videoId}`);
+    log.debug(`DBManager: blacklistMagnet(${videoId}`);
     const result = await this._get(`SELECT magnet, blacklisted FROM VideoData WHERE videoId=?`,
       [videoId]);
     if (!result || !result.magnet) {

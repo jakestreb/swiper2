@@ -1,6 +1,6 @@
-import {getDescription} from '../media';
+import {getDescription} from '../common/media';
+import {matchYesNo} from '../common/util';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import {matchYesNo} from '../util';
 
 // Time before a random movie is suggested again (3 months)
 const TIMEOUT = 3 * 30 * 24 * 60 * 60 * 1000;
@@ -21,7 +21,7 @@ export async function random(this: Swiper, convo: Conversation): Promise<SwiperR
     } else {
       return {
         data: `Download ${getDescription(convo.media)}?`,
-      }
+      };
     }
   }
   // Add media if not present and ask to download
@@ -40,5 +40,5 @@ export async function random(this: Swiper, convo: Conversation): Promise<SwiperR
   }
   return {
     data: `Download ${getDescription(convo.media)}?`,
-  }
+  };
 }

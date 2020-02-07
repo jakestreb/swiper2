@@ -1,4 +1,4 @@
-import {log} from './terminal';
+import * as log from './logger';
 
 interface Response {
   regex: RegExp;
@@ -10,7 +10,7 @@ const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 export function delay(ms: number): Promise<void> {
   return new Promise(resolve => {
-    log(`util delay: ${ms}`);
+    log.info(`util delay: ${ms}`);
     setTimeout(resolve, ms < 0 ? 0 : ms);
   });
 }

@@ -1,12 +1,13 @@
+import {requireFullMedia, requireMedia, requireMediaQuery} from './common/decorators';
+import {requireVideo, requireVideoQuery} from './common/decorators';
+import * as log from './common/logger';
+import {filterMediaEpisodes, Media} from './common/media';
+import {splitFirst} from './common/util';
 import {DBManager} from './DBManager';
-import {requireFullMedia, requireMedia, requireMediaQuery} from './decorators'
-import {requireVideo, requireVideoQuery} from './decorators'
 import {DownloadManager} from './DownloadManager';
-import {filterMediaEpisodes, Media} from './media';
 import {SwiperMonitor} from './SwiperMonitor';
-import {logDebug} from './terminal';
-import {SearchClient, Torrent} from './torrent';
-import {splitFirst} from './util';
+import {SearchClient} from './torrents/SearchClient';
+import {Torrent} from './torrents/util';
 
 import {check} from './actions/check';
 import {download} from './actions/download';
@@ -121,7 +122,7 @@ export class Swiper {
   }
 
   public async abort(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: abort`);
+    log.debug(`Swiper: abort`);
     await this.dbManager.moveAllQueuedToFailed(convo.id);
     this.downloadManager.ping();
     return {
@@ -132,13 +133,13 @@ export class Swiper {
 
   @requireVideoQuery
   public async blacklist(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: blacklist`);
+    log.debug(`Swiper: blacklist`);
     convo.commandFn = () => this.reassign(convo, {blacklist: true});
     return this.reassign(convo, {blacklist: true});
   }
 
   public cancel(convo: Conversation): SwiperReply {
-    logDebug(`Swiper: cancel`);
+    log.debug(`Swiper: cancel`);
     return {
       data: `Ok`,
       final: true
@@ -146,36 +147,36 @@ export class Swiper {
   }
 
   public async check(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: check`);
+    log.debug(`Swiper: check`);
     return check.call(this, convo);
   }
 
   @requireMedia
   public async download(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: download`);
+    log.debug(`Swiper: download`);
     return download.call(this, convo);
   }
 
   public help(convo: Conversation): SwiperReply {
-    logDebug(`Swiper: help`);
+    log.debug(`Swiper: help`);
     return help.call(this, convo);
   }
 
   @requireVideoQuery
   public async reassign(convo: Conversation, options: ReassignOptions = {}): Promise<SwiperReply> {
-    logDebug(`Swiper: reassign`);
+    log.debug(`Swiper: reassign`);
     return reassign.call(this, convo, options);
   }
 
   @requireVideo
   public async search(convo: Conversation, options: SearchOptions = {}): Promise<SwiperReply> {
-    logDebug(`Swiper: search`);
+    log.debug(`Swiper: search`);
     return search.call(this, convo, options);
   }
 
   @requireMedia
   public async monitor(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: monitor`);
+    log.debug(`Swiper: monitor`);
     const media = convo.media as Media;
     await this.dbManager.addToMonitored(media, convo.id);
     return {
@@ -186,45 +187,45 @@ export class Swiper {
 
   @requireFullMedia
   public async info(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: info`);
+    log.debug(`Swiper: info`);
     return info.call(this, convo);
   }
 
   @requireMediaQuery
   public async remove(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: remove`);
+    log.debug(`Swiper: remove`);
     return remove.call(this, convo);
   }
 
   @requireMediaQuery
   public async reorder(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: reorder`);
+    log.debug(`Swiper: reorder`);
     return reorder.call(this, convo);
   }
 
   public async random(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: random`);
+    log.debug(`Swiper: random`);
     return random.call(this, convo);
   }
 
   @requireVideo
   public async favorite(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: favorite`);
+    log.debug(`Swiper: favorite`);
     return favorite.call(this, convo);
   }
 
   public async status(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: status`);
+    log.debug(`Swiper: status`);
     return status.call(this, convo);
   }
 
   public async suggest(convo: Conversation): Promise<SwiperReply> {
-    logDebug(`Swiper: suggest`);
+    log.debug(`Swiper: suggest`);
     return suggest.call(this, convo);
   }
 
   public reboot(convo: Conversation): SwiperReply {
-    logDebug(`Swiper: reboot`);
+    log.debug(`Swiper: reboot`);
     setTimeout(() => process.kill(process.pid, 'SIGINT'), 2000);
     return {
       data: `Rebooting`,

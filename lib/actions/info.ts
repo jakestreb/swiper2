@@ -1,8 +1,7 @@
-import {Media} from '../media';
+import {Episode, getLastAired, getNextToAir} from '../common/media';
+import {Media, Movie, Show} from '../common/media';
+import {getAiredStr, padZeros} from '../common/util';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import {Episode, getLastAired, getNextToAir} from '../media';
-import {Movie, Show} from '../media';
-import {getAiredStr, padZeros} from '../util';
 
 export async function info(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const media = convo.media as Media;

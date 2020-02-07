@@ -1,11 +1,11 @@
-import {getDescription, getNextToAir} from '../media';
+import {getDescription, getNextToAir} from '../common/media';
+import {getAiredStr, getMorning} from '../common/util';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import {getAiredStr, getMorning} from '../util';
 
 export async function status(this: Swiper, convo: Conversation): Promise<SwiperReply> {
-  const status = await this.dbManager.getStatus();
+  const _status = await this.dbManager.getStatus();
 
-  const monitoredStr = status.monitored.map(media => {
+  const monitoredStr = _status.monitored.map(media => {
     if (media.type === 'movie') {
       const dvd = media.dvd && (media.dvd > getMorning());
       const dvdStr = dvd ? ` _Digital ${media.dvd!.toDateString()}_` : ` _${media.year}_`;
@@ -17,7 +17,7 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
     }
   }).join('\n');
 
-  const downloading = status.downloading.map((video, i) => {
+  const downloading = _status.downloading.map((video, i) => {
     const {progress, remaining, speed, peers} = this.downloadManager.getProgress(video);
     let sizeStr = '';
     if (video.size) {
@@ -32,8 +32,8 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
       `\`       \`_${remainingStr}${speed}MB/s with ${peers} peers_`;
   });
 
-  const numDownloads = status.downloading.length;
-  const queued = status.queued.map((media, i) => {
+  const numDownloads = _status.downloading.length;
+  const queued = _status.queued.map((media, i) => {
     const desc = media.type === 'movie' ? media.title :
       `${getDescription(media)}`;
     return `\` ${i + numDownloads + 1} \` ${desc} _pending_`;
@@ -41,7 +41,7 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
 
   const downloadStr = [...downloading, ...queued].join('\n');
 
-  const failedStr = status.failed.map(video => {
+  const failedStr = _status.failed.map(video => {
     return `\`  \`${getDescription(video)}`;
   }).join('\n');
 
