@@ -4,7 +4,7 @@ import * as WebTorrent from 'webtorrent';
 import * as log from '../common/logger';
 import {DownloadProgress, getIP} from './util';
 
-const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../downloads');
+const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
 const WARN_PUBLIC_IP = process.env.WARN_PUBLIC_IP;
 
 export abstract class DownloadClient {
