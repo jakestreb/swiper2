@@ -63,7 +63,7 @@ export async function getIP(): Promise<string> {
 function getTorrentTier(video: VideoMeta, torrent: Torrent): number {
   // Check if any insta-reject strings match (ex. CAMRip).
   const rejected = settings.reject.find(r =>
-    torrent.title.match(new RegExp(`\b${r}\b`, 'gi')));
+    torrent.title.match(new RegExp(`\\b${r}\\b`, 'gi')));
   if (rejected) { return 0; }
 
   // Check if the size is too big or too small.
