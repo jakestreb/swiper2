@@ -21,8 +21,23 @@ export abstract class DownloadClient {
 export class WT extends DownloadClient {
   private _client: WebTorrent.Instance|null;
 
+  // If the instance is marked dead, it can no longer be used for anything.
+  private _isDead: boolean = false;
+
   constructor() {
     super();
+
+    // Verify IP every 5s
+    setInterval(() => {
+      if (this._client) {
+        assertIP().catch(err => {
+          log.error('Cannot download with current public IP, destroying client');
+          this._client!.destroy();
+          this._client = null;
+          this._isDead = true;
+        });
+      }
+    }, 5000);
   }
 
   // Returns the download directory.
@@ -102,7 +117,7 @@ export class WT extends DownloadClient {
   // Getter ensures the existence of the WebTorrent instance
   private get client(): WebTorrent.Instance {
     // If the client has shut down, restart it.
-    if (!this._client) { this._startClient(); }
+    if (!this._client && !this._isDead) { this._startClient(); }
     return this._client!;
   }
 
