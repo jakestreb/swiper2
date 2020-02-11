@@ -2,39 +2,12 @@ import * as path from 'path';
 import * as rmfr from 'rmfr';
 import * as WebTorrent from 'webtorrent';
 import * as log from '../common/logger';
-import {DownloadProgress} from './util';
+import {DownloadProgress, getIP} from './util';
 
 const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../downloads');
+const WARN_PUBLIC_IP = process.env.WARN_PUBLIC_IP;
 
-export class DownloadClient {
-  private _client: GenericDownloadClient;
-
-  constructor() {
-    this._client = new WT();
-  }
-
-  public download(magnet: string): Promise<string[]> {
-    return this._client.download(magnet);
-  }
-
-  public getProgress(magnet: string): DownloadProgress {
-    return this._client.getProgress(magnet);
-  }
-
-  public stopDownload(magnet: string): Promise<void> {
-    return this._client.stopDownload(magnet);
-  }
-
-  public deleteFiles(magnet: string): Promise<void> {
-    return this._client.deleteFiles(magnet);
-  }
-
-  public allDownloadsCompleted(): void {
-    this._client.allDownloadsCompleted();
-  }
-}
-
-abstract class GenericDownloadClient {
+export abstract class DownloadClient {
   // Returns the download directory.
   public abstract async download(magnet: string): Promise<string[]>;
   public abstract getProgress(magnet: string): DownloadProgress;
@@ -45,7 +18,7 @@ abstract class GenericDownloadClient {
   public abstract allDownloadsCompleted(): void;
 }
 
-class WT extends GenericDownloadClient {
+export class WT extends DownloadClient {
   private _client: WebTorrent.Instance|null;
 
   constructor() {
@@ -55,6 +28,7 @@ class WT extends GenericDownloadClient {
   // Returns the download directory.
   public async download(magnet: string): Promise<string[]> {
     log.debug(`WT: download(${magnet})`);
+    await assertIP();
     return new Promise((resolve, reject) => {
       this.client.add(magnet, {path: DOWNLOAD_ROOT}, wtTorrent => {
         wtTorrent.on('done', () => {
@@ -138,5 +112,15 @@ class WT extends GenericDownloadClient {
       log.subProcessError(`WebTorrent fatal error: ${err}`);
       this._startClient();
     });
+  }
+}
+
+async function assertIP() {
+  if (!WARN_PUBLIC_IP) {
+    return;
+  }
+  const ip = await getIP();
+  if (ip === WARN_PUBLIC_IP) {
+    throw new Error('Cannot download with current public IP');
   }
 }

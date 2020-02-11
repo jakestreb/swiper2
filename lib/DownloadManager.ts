@@ -8,7 +8,7 @@ import * as log from './common/logger';
 import {getDescription, getFileSafeTitle, Video, VideoMeta} from './common/media';
 import {delay} from './common/util';
 import {DBManager} from './DBManager';
-import {DownloadClient} from './torrents/DownloadClient';
+import {DownloadClient, WT} from './torrents/DownloadClient';
 import {SearchClient} from './torrents/SearchClient';
 import {assignMeta, DownloadProgress, getBestTorrent} from './torrents/util';
 
@@ -31,7 +31,7 @@ export class DownloadManager {
   private _wasDownloading: boolean = false;
 
   constructor(private _dbManager: DBManager, private _searchClient: SearchClient) {
-    this._downloadClient = new DownloadClient();
+    this._downloadClient = new WT();
     this._startRemovingFailed().catch(err => {
       log.subProcessError(`DownloadManager _startRemovingFailed first call failed: ${err}`);
     });
