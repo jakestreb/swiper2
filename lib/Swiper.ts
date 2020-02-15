@@ -59,6 +59,8 @@ export interface Conversation {
   pageNum?: number;
 }
 
+export type OperationMode = 'active'|'offline';
+
 export class Swiper {
   // Should be called to build a Swiper instance.
   public static async create(sendMsg: (id: number, msg: SwiperReply) => Promise<void>): Promise<Swiper> {
@@ -66,6 +68,8 @@ export class Swiper {
     await dbManager.initDB();
     return new Swiper(sendMsg, dbManager);
   }
+
+  public mode: OperationMode = 'active';
 
   public searchClient: SearchClient;
   public downloadManager: DownloadManager;
@@ -80,7 +84,7 @@ export class Swiper {
     public dbManager: DBManager
   ) {
     this.searchClient = new SearchClient();
-    this.downloadManager = new DownloadManager(this.dbManager, this.searchClient);
+    this.downloadManager = new DownloadManager(this, this.dbManager, this.searchClient);
     this.swiperMonitor = new SwiperMonitor(this.dbManager, this.searchClient, this.downloadManager);
   }
 
@@ -94,7 +98,9 @@ export class Swiper {
 
     // Run a new command or an existing command.
     let reply: SwiperReply;
-    if (commandFn) {
+    if (this.mode === 'offline') {
+      reply = { data: `Currently in offline mode` };
+    } else if (commandFn) {
       this._updateConversation(id, {commandFn, input});
       reply = await commandFn();
     } else if (existingCommandFn) {

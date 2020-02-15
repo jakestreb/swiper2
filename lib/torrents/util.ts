@@ -1,6 +1,5 @@
 import * as settings from '../_settings.json';
 import {getFileSafeTitle, Video, VideoMeta} from '../common/media';
-import * as rp from 'request-promise';
 
 export interface Torrent {
   title: string;
@@ -52,11 +51,6 @@ export function getBestTorrent(video: VideoMeta, torrents: Torrent[]): Torrent|n
     }
   });
   return bestTorrent;
-}
-
-export async function getIP(): Promise<string> {
-  const ip = await rp('http://icanhazip.com/');
-  return ip.trim();
 }
 
 // Get download quality tier. The tiers range from 0 <-> (2 * number of quality preferences)

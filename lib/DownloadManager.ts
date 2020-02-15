@@ -8,6 +8,7 @@ import * as log from './common/logger';
 import {getDescription, getFileSafeTitle, Video, VideoMeta} from './common/media';
 import {delay} from './common/util';
 import {DBManager} from './DBManager';
+import {Swiper} from './Swiper';
 import {DownloadClient, WT} from './torrents/DownloadClient';
 import {SearchClient} from './torrents/SearchClient';
 import {assignMeta, DownloadProgress, getBestTorrent} from './torrents/util';
@@ -30,11 +31,23 @@ export class DownloadManager {
   // Used to determine when the downloads folder can be cleaned up
   private _wasDownloading: boolean = false;
 
-  constructor(private _dbManager: DBManager, private _searchClient: SearchClient) {
-    this._downloadClient = new WT();
+  constructor(private _swiper: Swiper, private _dbManager: DBManager, private _searchClient: SearchClient) {
+    this._downloadClient = new WT(this._swiper.mode);
+
+    this._downloadClient.on('offline', () => {
+      this._swiper.mode = 'offline';
+      this._downloading = [];
+    });
+
+    this._downloadClient.on('online', () => {
+      this._swiper.mode = 'active';
+      this.ping();
+    });
+
     this._startRemovingFailed().catch(err => {
       log.subProcessError(`DownloadManager _startRemovingFailed first call failed: ${err}`);
     });
+
     this.ping();
   }
 

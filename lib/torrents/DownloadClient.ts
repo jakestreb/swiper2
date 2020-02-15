@@ -1,13 +1,18 @@
+import * as EventEmitter from 'events';
 import * as path from 'path';
+import * as publicIp from 'public-ip';
 import * as rmfr from 'rmfr';
 import * as WebTorrent from 'webtorrent';
+import {OperationMode} from '../Swiper';
 import * as log from '../common/logger';
-import {DownloadProgress, getIP} from './util';
+import {DownloadProgress} from './util';
 
-const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
+// TODO: Should be ip change proof
 const WARN_PUBLIC_IP = process.env.WARN_PUBLIC_IP;
+const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
+const IP_CHECK_INTERVAL = 2000;
 
-export abstract class DownloadClient {
+export abstract class DownloadClient extends EventEmitter {
   // Returns the download directory.
   public abstract async download(magnet: string): Promise<string[]>;
   public abstract getProgress(magnet: string): DownloadProgress;
@@ -21,29 +26,26 @@ export abstract class DownloadClient {
 export class WT extends DownloadClient {
   private _client: WebTorrent.Instance|null;
 
-  // If the instance is marked dead, it can no longer be used for anything.
-  private _isDead: boolean = false;
+  // If the instance is marked offline, it can no longer be used for anything.
+  private _isOffline: boolean;
 
-  constructor() {
+  // Indicates whether the ip ping is currently occurring.
+  private _pinging: boolean = false;
+  // Indicates whether to ip ping again immediately after the current ping.
+  private _pingAgain: boolean = false;
+
+  constructor(mode: OperationMode) {
     super();
 
-    // Verify IP every 5s
-    setInterval(() => {
-      if (this._client) {
-        assertIP().catch(err => {
-          log.error('Cannot download with current public IP, destroying client');
-          this._client!.destroy();
-          this._client = null;
-          this._isDead = true;
-        });
-      }
-    }, 5000);
+    this._isOffline = mode === 'offline';
+
+    // Verify IP every N ms
+    setInterval(() => this._pingIp().catch(() => { /* noop */ }), IP_CHECK_INTERVAL);
   }
 
   // Returns the download directory.
   public async download(magnet: string): Promise<string[]> {
     log.debug(`WT: download(${magnet})`);
-    await assertIP();
     return new Promise((resolve, reject) => {
       this.client.add(magnet, {path: DOWNLOAD_ROOT}, wtTorrent => {
         wtTorrent.on('done', () => {
@@ -117,7 +119,7 @@ export class WT extends DownloadClient {
   // Getter ensures the existence of the WebTorrent instance
   private get client(): WebTorrent.Instance {
     // If the client has shut down, restart it.
-    if (!this._client && !this._isDead) { this._startClient(); }
+    if (!this._client && !this._isOffline) { this._startClient(); }
     return this._client!;
   }
 
@@ -128,14 +130,58 @@ export class WT extends DownloadClient {
       this._startClient();
     });
   }
-}
 
-async function assertIP() {
-  if (!WARN_PUBLIC_IP) {
-    return;
+  private async _pingIp(): Promise<void> {
+    if (this._pinging) {
+      this._pingAgain = true;
+      return;
+    }
+    this._pinging = true;
+
+    // Noop if client isn't active but not offline
+    if (this._client) {
+      try {
+        const ip = await publicIp.v4()
+        if (ip === WARN_PUBLIC_IP) {
+          log.error(`Cannot download via ${ip}, going offline`);
+          this._setOffline();
+        }
+      } catch (err) {
+        // Failed to find IP,
+        log.error(`Failed to find IP, going offline: ${err}`);
+        this._setOffline();
+      }
+    } else if (this._isOffline) {
+      try {
+        const ip = await publicIp.v4()
+        if (ip !== WARN_PUBLIC_IP) {
+          log.info(`IP changed to ${ip}, going back online`);
+          this._setOnline();
+        }
+      } catch (err) {
+        // Failed to find IP,
+        log.error(`Failed to find IP, remaining offline`);
+      };
+    }
+
+    this._pinging = false;
+    if (this._pingAgain) {
+      this._pingAgain = false;
+      setTimeout(() => this._pingIp().catch(() => { /* noop */ }), 0);
+    }
   }
-  const ip = await getIP();
-  if (ip === WARN_PUBLIC_IP) {
-    throw new Error('Cannot download with current public IP');
+
+  private _setOnline(): void {
+    this._isOffline = false;
+    this.emit('online');
+  }
+
+  private _setOffline(): void {
+    if (this._client) {
+      this._client!.destroy();
+      this._client = null;
+    }
+    this._isOffline = true;
+    this.emit('offline');
   }
 }
