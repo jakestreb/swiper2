@@ -7,8 +7,7 @@ import {OperationMode} from '../Swiper';
 import * as log from '../common/logger';
 import {DownloadProgress} from './util';
 
-// TODO: Should be ip change proof
-const WARN_PUBLIC_IP = process.env.WARN_PUBLIC_IP;
+const SAFE_IP_REGEX = process.env.SAFE_IP_REGEX || '0\\.0\\.0\\.0';
 const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
 const IP_CHECK_INTERVAL = 2000;
 
@@ -138,11 +137,13 @@ export class WT extends DownloadClient {
     }
     this._pinging = true;
 
+    const regex = new RegExp(SAFE_IP_REGEX, 'g');
+
     // Noop if client isn't active but not offline
     if (this._client) {
       try {
-        const ip = await publicIp.v4()
-        if (ip === WARN_PUBLIC_IP) {
+        const ip = await publicIp.v4();
+        if (!ip.match(regex)) {
           log.error(`Cannot download via ${ip}, going offline`);
           this._setOffline();
         }
@@ -153,8 +154,8 @@ export class WT extends DownloadClient {
       }
     } else if (this._isOffline) {
       try {
-        const ip = await publicIp.v4()
-        if (ip !== WARN_PUBLIC_IP) {
+        const ip = await publicIp.v4();
+        if (ip.match(regex)) {
           log.info(`IP changed to ${ip}, going back online`);
           this._setOnline();
         }
