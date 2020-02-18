@@ -7,9 +7,12 @@ EventEmitter.defaultMaxListeners = Infinity; // Hides a repeated warning from 'w
 import * as express from 'express';
 import * as readline from 'readline';
 import * as rp from 'request-promise';
+import * as utf8 from "utf8";
 
 import * as log from './common/logger';
 import {Swiper, SwiperReply} from './Swiper';
+
+const telegramToken = process.env.TELEGRAM_TOKEN;
 
 // import * as heapProfile from 'heap-profile';
 
@@ -28,7 +31,6 @@ const app = express();
 app.use(express.json());
 
 const CLI_ID = -1;
-const gatewayUrl = process.env.GATEWAY_URL || 'https://limitless-island-56260.herokuapp.com';
 const PORT = process.env.PORT;
 const ENHANCED_TERMINAL = Boolean(parseInt(process.env.ENHANCED_TERMINAL || "0", 10));
 const commTypes: {[id: number]: string} = {};
@@ -52,14 +54,12 @@ async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
     } else {
       log.foreignInputError(msg.err);
     }
+    const msgText = msg.data ? msg.data : msg.err;
+    const encodedMsgText = encodeURIComponent(utf8.encode(msgText || ''));
     return rp({
-      uri: `${gatewayUrl}/swiper`,
-      method: 'POST',
-      json: {
-        id,
-        message: msg.data ? msg.data : msg.err,
-        destination: commType
-      }
+      url: `https://api.telegram.org/bot${telegramToken}/sendMessage?chat_id=${id}` +
+        `&text=${encodedMsgText}&parse_mode=Markdown`,
+      method: 'POST'
     });
   }
 }
@@ -104,7 +104,9 @@ function startComms(swiper: Swiper): void {
 
   // Message from telegram.
   app.post("/telegram", (req, res) => {
-    acceptMsgFromClient('telegram', req.body.id, req.body.message)
+    const id = req.body.message.chat.id;
+    const msg = req.body.message.text;
+    acceptMsgFromClient('telegram', id, msg)
     .catch(err => {
       log.error(`Error handling telegram request "${req.body.message}": ${err}`);
       log.info('\n');
