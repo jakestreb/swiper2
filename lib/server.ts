@@ -104,10 +104,7 @@ function startComms(swiper: Swiper): void {
 
   // Message from telegram.
   app.post("/telegram", (req, res) => {
-    console.warn('REQUEST', req.body);
-    const id = req.body.message.chat.id;
-    const msg = req.body.message.text;
-    acceptMsgFromClient('telegram', id, msg)
+    acceptMsgFromClient('telegram', req.body.id, req.body.message)
     .catch(err => {
       log.error(`Error handling telegram request "${req.body.message}": ${err}`);
       log.info('\n');
