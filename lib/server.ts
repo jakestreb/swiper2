@@ -4,15 +4,18 @@ dotenv.config();
 import {EventEmitter} from 'events';
 EventEmitter.defaultMaxListeners = Infinity; // Hides a repeated warning from 'webtorrent'
 
-import * as express from 'express';
+import * as TelegramBot from 'node-telegram-bot-api';
 import * as readline from 'readline';
-import * as rp from 'request-promise';
-import * as utf8 from "utf8";
 
 import * as log from './common/logger';
 import {Swiper, SwiperReply} from './Swiper';
 
-const telegramToken = process.env.TELEGRAM_TOKEN;
+const CLI_ID = -1;
+const ENHANCED_TERMINAL = Boolean(parseInt(process.env.ENHANCED_TERMINAL || "0", 10));
+const telegramToken = process.env.TELEGRAM_TOKEN || '';
+
+const telegram = new TelegramBot(telegramToken, {polling: true});
+const commTypes: {[id: number]: string} = {};
 
 // import * as heapProfile from 'heap-profile';
 
@@ -26,14 +29,6 @@ const telegramToken = process.env.TELEGRAM_TOKEN;
 // }, 6 * 60 * 60 * 1000).unref();
 
 type CommType = 'cli'|'telegram';
-
-const app = express();
-app.use(express.json());
-
-const CLI_ID = -1;
-const PORT = process.env.PORT;
-const ENHANCED_TERMINAL = Boolean(parseInt(process.env.ENHANCED_TERMINAL || "0", 10));
-const commTypes: {[id: number]: string} = {};
 
 async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
   const commType = commTypes[id];
@@ -55,14 +50,7 @@ async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
       log.foreignInputError(msg.err);
     }
     const msgText = msg.data ? msg.data : msg.err;
-    const encodedMsgText = encodeURIComponent(utf8.encode(msgText || ''));
-    console.warn("SENDING TO", `https://api.telegram.org/bot${telegramToken}/sendMessage?chat_id=${id}` +
-      `&text=${encodedMsgText}&parse_mode=Markdown`);
-    return rp({
-      method: 'POST',
-      url: `https://api.telegram.org/bot${telegramToken}/sendMessage?chat_id=${id}` +
-        `&text=${encodedMsgText}&parse_mode=Markdown`
-    });
+    telegram.sendMessage(id, msgText || '', {parse_mode: 'MarkdownV2'});
   }
 }
 
@@ -89,33 +77,17 @@ function startComms(swiper: Swiper): void {
     });
   });
 
-  // terminal.on('close', () => {
-  //   logError(`Process exiting on terminal close`);
-  //   process.exit(0);
-  // });
-
-  // Start the app.
-  app.listen(PORT, () => {
-    // Prompt the user once the app is running.
-    log.subProcess(`Running and listening on port ${PORT}`);
-  });
-  app.get("/", (req, res) => {
-    // Send a response when GET is called on the port for debugging.
-    res.send('Running');
-  });
-
-  // Message from telegram.
-  app.post("/telegram", (req, res) => {
-    acceptMsgFromClient('telegram', req.body.id, req.body.message)
+  telegram.on("text", (message) => {
+    log.subProcess(`Running and listening for messages`);
+    acceptMsgFromClient('telegram', message.chat.id, message.text)
     .catch(err => {
-      log.error(`Error handling telegram request "${req.body.message}": ${err}`);
+      log.error(`Error handling telegram request "${message}": ${err}`);
       log.info('\n');
-      sendMsgToClient(req.body.id, {err: `Something went wrong`})
+      sendMsgToClient(message.chat.id, {err: `Something went wrong`})
       .catch(_err => {
         log.error(`Error sending msg to client: ${_err}`);
       });
     });
-    res.send('ok');
   });
 }
 
