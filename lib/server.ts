@@ -50,7 +50,7 @@ async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
       log.foreignInputError(msg.err);
     }
     const msgText = msg.data ? msg.data : msg.err;
-    telegram.sendMessage(id, msgText || '', {parse_mode: 'MarkdownV2'});
+    telegram.sendMessage(id, msgText || '', {parse_mode: 'Markdown'});
   }
 }
 
