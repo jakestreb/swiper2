@@ -56,10 +56,12 @@ async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
     }
     const msgText = msg.data ? msg.data : msg.err;
     const encodedMsgText = encodeURIComponent(utf8.encode(msgText || ''));
+    console.warn("SENDING TO", `https://api.telegram.org/bot${telegramToken}/sendMessage?chat_id=${id}` +
+      `&text=${encodedMsgText}&parse_mode=Markdown`);
     return rp({
+      method: 'POST',
       url: `https://api.telegram.org/bot${telegramToken}/sendMessage?chat_id=${id}` +
-        `&text=${encodedMsgText}&parse_mode=Markdown`,
-      method: 'POST'
+        `&text=${encodedMsgText}&parse_mode=Markdown`
     });
   }
 }
