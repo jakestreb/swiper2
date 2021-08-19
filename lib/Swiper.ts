@@ -99,7 +99,8 @@ export class Swiper {
     // Run a new command or an existing command.
     let reply: SwiperReply;
     if (this.mode === 'offline') {
-      reply = { data: `Currently in offline mode` };
+      this.reboot(convo);
+      reply = { data: `Rebooting, please wait` };
     } else if (commandFn) {
       this._updateConversation(id, {commandFn, input});
       reply = await commandFn();
