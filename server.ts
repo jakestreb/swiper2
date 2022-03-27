@@ -4,11 +4,11 @@ dotenv.config();
 import {EventEmitter} from 'events';
 EventEmitter.defaultMaxListeners = Infinity; // Hides a repeated warning from 'webtorrent'
 
-import * as TelegramBot from 'node-telegram-bot-api';
+import TelegramBot from 'node-telegram-bot-api';
 import * as readline from 'readline';
 
-import * as log from './common/logger';
-import {Swiper, SwiperReply} from './Swiper';
+import * as log from './lib/common/logger';
+import {Swiper, SwiperReply} from './lib/Swiper';
 
 const CLI_ID = -1;
 const ENHANCED_TERMINAL = Boolean(parseInt(process.env.ENHANCED_TERMINAL || "0", 10));
@@ -77,7 +77,7 @@ function startComms(swiper: Swiper): void {
     });
   });
 
-  telegram.on("text", (message) => {
+  telegram.on("text", (message: any) => {
     log.subProcess(`Running and listening for messages`);
     acceptMsgFromClient('telegram', message.chat.id, message.text)
     .catch(err => {

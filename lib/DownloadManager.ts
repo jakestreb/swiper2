@@ -1,7 +1,7 @@
 import * as fs from 'fs';
-import * as Client from 'ftp';
+import Client from 'ftp';
 import * as path from 'path';
-import * as rmfr from 'rmfr';
+import rmfr from 'rmfr';
 import {promisify} from 'util';
 
 import * as log from './common/logger';
@@ -9,7 +9,7 @@ import {getDescription, getFileSafeTitle, Video, VideoMeta} from './common/media
 import {delay} from './common/util';
 import {DBManager} from './DBManager';
 import {Swiper} from './Swiper';
-import {DownloadClient, WT} from './torrents/DownloadClient';
+import {DownloadClient} from './torrents/DownloadClient';
 import {SearchClient} from './torrents/SearchClient';
 import {assignMeta, DownloadProgress, getBestTorrent} from './torrents/util';
 
@@ -32,7 +32,7 @@ export class DownloadManager {
   private _wasDownloading: boolean = false;
 
   constructor(private _swiper: Swiper, private _dbManager: DBManager, private _searchClient: SearchClient) {
-    this._downloadClient = new WT(this._swiper.mode);
+    this._downloadClient = new DownloadClient(this._swiper.mode);
 
     this._downloadClient.on('offline', () => {
       this._swiper.mode = 'offline';

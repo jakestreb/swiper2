@@ -1,6 +1,6 @@
 // TODO: Consider replacing TVDB with TMDB.
 import * as TVDB from 'node-tvdb';
-import * as rp from 'request-promise';
+import axios from 'axios';
 
 import {MediaQuery} from '../Swiper';
 import * as log from './logger';
@@ -84,21 +84,20 @@ export async function getPopularReleasedBetween(
   const minVoteCount = 100;
   const startDateStr = getYMDString(startDate);
   const endDateStr = getYMDString(endDate);
-  const uri = `https://api.themoviedb.org/4/discover/movie?primary_release_date.gte=${startDateStr}`
+  const url = `https://api.themoviedb.org/4/discover/movie?primary_release_date.gte=${startDateStr}`
     + `&primary_release_date.lte=${endDateStr}&vote_count.gte=${minVoteCount}`
     + `&sort_by=release_date.desc&include_adult=false&page=${page}`;
-  let tmdbResult;
+  let response: any;
   try {
-    tmdbResult = await rp({
-      uri,
+    response = await axios.get(url, {
       headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
-      json: true
     });
   } catch (err) {
     log.error(`TMDB is not responding to requests: ${err}`);
   }
   // If the query fails or returns no movies, return no movies.
-  if (!tmdbResult || !tmdbResult.results) {
+  const tmdbResult = response.data;
+  if (!tmdbResult || !tmdbResult.data.results) {
     return {
       movies: [],
       total_pages: 0,
@@ -158,15 +157,16 @@ async function _searchTMDB(info: MediaQuery): Promise<Media> {
 
 async function _convertTMDBMovie(info: TMDBMovie): Promise<Movie> {
   const imdbId = await _getTMDBImdbId(info, 'movie');
+      // TODO: Convert to v4 when supported.
+  const url = `https://api.themoviedb.org/3/movie/${info.id}/release_dates?api_key=${process.env.TMDB_ID}`;
   let digitalRelease;
   try {
-    const {results} = await rp({
-      // TODO: Convert to v4 when supported.
-      uri: `https://api.themoviedb.org/3/movie/${info.id}/release_dates?api_key=${process.env.TMDB_ID}`,
+    const response = await axios.get(url, {
       headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
-      json: true
     });
-    const usaResult = results.find((_res: any) => _res.iso_3166_1 === 'US');
+    const movieResults = response.data.results;
+    console.warn('response!!!!', movieResults);
+    const usaResult = movieResults.find((_res: any) => _res.iso_3166_1 === 'US');
     if (!usaResult) {
       throw new Error('No results for the US');
     }
@@ -223,23 +223,20 @@ async function _convertTMDBShow(info: TMDBShow): Promise<Show> {
 }
 
 async function _getTMDBImdbId(info: TMDBMedia, type: 'movie'|'tv'): Promise<string> {
-  const idsResp = await rp({
-    // TODO: Convert to v4 when supported.
-    uri: `https://api.themoviedb.org/3/${type}/${info.id}/external_ids?api_key=${process.env.TMDB_ID}`,
+  // TODO: Convert to v4 when supported.
+  const url = `https://api.themoviedb.org/3/${type}/${info.id}/external_ids?api_key=${process.env.TMDB_ID}`;
+  const response = await axios.get(url, {
     headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
-    json: true
   });
-  return idsResp.imdb_id;
+  return response.data.imdb_id;
 }
 
-async function _makeTMDBMediaRequest(uri: string, year?: string|null): Promise<TMDBMedia> {
+async function _makeTMDBMediaRequest(url: string, year?: string|null): Promise<TMDBMedia> {
   try {
-    const tmdbResp = await rp({
-      uri,
+    const response = await axios.get(url, {
       headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
-      json: true
     });
-    let results = tmdbResp.results;
+    let results = response.data.results;
     if (year) {
       results = results.filter((_media: TMDBMedia) =>
         (_media as TMDBMovie).release_date && getTMDBYear((_media as TMDBMovie).release_date) === year ||
@@ -257,43 +254,41 @@ async function _makeTMDBMediaRequest(uri: string, year?: string|null): Promise<T
 
 // Helper function to search TVDB and retry with a refreshed API token on error.
 async function _searchTVDB(imdbId: string): Promise<TVDB> {
+  const loginUrl = 'https://api.thetvdb.com/login';
+  const searchUrl = 'https://api.thetvdb.com/search/series';
+
   // Token lasts for 24 hours - refresh if necessary.
   const now = new Date().getTime();
   const day = 24 * 60 * 60 * 1000;
   if (now - tvdbTokenTimestamp > day) {
     // Needs refresh.
     log.debug(`_searchTVDB: Refreshing token`);
-    const {token} = await rp({
-      uri: 'https://api.thetvdb.com/login',
-      method: 'POST',
-      json: { apikey: process.env.TVDB_ID }
+    const response = await axios.post(loginUrl, {
+      apikey: process.env.TVDB_ID,
     });
-    tvdbToken = token;
+    tvdbToken = response.data.token;
     tvdbTokenTimestamp = now;
   }
 
   // Get the TVDB series ID from the imdbID.
   log.debug(`_searchTVDB: Fetching TVDB ID from IMDB ID`);
-  const entriesJson = await rp({
-    uri: 'https://api.thetvdb.com/search/series',
+  const searchResponse = await axios.get(searchUrl, {
     headers: {Authorization: `Bearer ${tvdbToken}`},
-    method: 'GET',
-    qs: {imdbId}
+    params: {imdbId}
   });
-  const entries = JSON.parse(entriesJson).data;
+  const entries = JSON.parse(searchResponse.data).data;
   if (entries.length === 0) { throw new Error('Series not found in TVDB'); }
   const seriesId = entries[0].id;
 
   // Retrieved the ID, now fetch the series and episodes.
   log.debug(`_searchTVDB: Fetching series`);
-  const seriesJson = await rp({
-    uri: `https://api.thetvdb.com/series/${seriesId}`,
+  const seriesUrl = `https://api.thetvdb.com/series/${seriesId}`;
+  const seriesResponse = await axios.get(seriesUrl, {
     headers: {Authorization: `Bearer ${tvdbToken}`},
-    method: 'GET'
   });
 
   // Convert and return.
-  const series = JSON.parse(seriesJson).data;
+  const series = JSON.parse(seriesResponse.data).data;
   series.episodes = await fetchEpisodes(seriesId);
   return series;
 }
@@ -303,13 +298,12 @@ async function _searchTVDB(imdbId: string): Promise<TVDB> {
 async function fetchEpisodes(seriesId: number): Promise<TVDBEpisode[]> {
   log.debug(`_searchTVDB: Fetching episodes`);
   const doFetch = async (pageNum: number) => {
-    const episodesJson = await rp({
-      uri: `https://api.thetvdb.com/series/${seriesId}/episodes`,
+    const url = `https://api.thetvdb.com/series/${seriesId}/episodes`;
+    const response = await axios.get(url, {
       headers: {Authorization: `Bearer ${tvdbToken}`},
-      method: 'GET',
-      qs: {page: pageNum}
+      params: {page: pageNum}
     });
-    return JSON.parse(episodesJson);
+    return JSON.parse(response.data);
   };
   const firstResult = await doFetch(1);
   const episodes = firstResult.data;

@@ -1,8 +1,8 @@
-import * as EventEmitter from 'events';
+import * as events from 'events';
+import rmfr from 'rmfr';
 import * as path from 'path';
 import * as publicIp from 'public-ip';
-import * as rmfr from 'rmfr';
-import * as WebTorrent from 'webtorrent';
+import WebTorrent from 'webtorrent';
 import {OperationMode} from '../Swiper';
 import * as log from '../common/logger';
 import {DownloadProgress} from './util';
@@ -11,18 +11,7 @@ const SAFE_IP_REGEX = process.env.SAFE_IP_REGEX || '0\\.0\\.0\\.0';
 const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
 const IP_CHECK_INTERVAL = 2000;
 
-export abstract class DownloadClient extends EventEmitter {
-  // Returns the download directory.
-  public abstract async download(magnet: string): Promise<string[]>;
-  public abstract getProgress(magnet: string): DownloadProgress;
-  public abstract async stopDownload(magnet: string): Promise<void>;
-  public abstract async deleteFiles(magnet: string): Promise<void>;
-  // Indicates that all of the queued downloads have completed. Added to allow removing
-  // WebTorrent instance until another download starts to avoid the library's memory leak.
-  public abstract allDownloadsCompleted(): void;
-}
-
-export class WT extends DownloadClient {
+export class DownloadClient extends events.EventEmitter {
   private _client: WebTorrent.Instance|null;
 
   // If the instance is marked offline, it can no longer be used for anything.
@@ -39,12 +28,14 @@ export class WT extends DownloadClient {
     this._isOffline = mode === 'offline';
 
     // Verify IP every N ms
-    setInterval(() => this._pingIp().catch(() => { /* noop */ }), IP_CHECK_INTERVAL);
+    if (process.env.USE_KILLSWITCH !== '0') {
+      setInterval(() => this._pingIp().catch(() => { /* noop */ }), IP_CHECK_INTERVAL);
+    }
   }
 
   // Returns the download directory.
   public async download(magnet: string): Promise<string[]> {
-    log.debug(`WT: download(${magnet})`);
+    log.debug(`DownloadClient: download(${magnet})`);
     return new Promise((resolve, reject) => {
       this.client.add(magnet, {path: DOWNLOAD_ROOT}, wtTorrent => {
         wtTorrent.on('done', () => {
@@ -62,7 +53,7 @@ export class WT extends DownloadClient {
   }
 
   public getProgress(magnet: string): DownloadProgress {
-    log.debug(`WT: getProgress(${magnet})`);
+    log.debug(`DownloadClient: getProgress(${magnet})`);
     const wtTorrent = this.client.get(magnet);
     return {
       progress: wtTorrent ? (wtTorrent.progress * 100).toPrecision(2) : '0',

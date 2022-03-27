@@ -43,8 +43,8 @@ export class DBManager {
   private _nextLow: number = -1;
 
   constructor() {
-    const dbPath = process.env.DB_PATH || path.resolve(__dirname, '../memory.db');
-    this._db = new sqlite3.Database(dbPath);
+    const dbPath = process.env.DB_PATH || path.resolve(__dirname, '../../memory.db');
+    this._db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
   }
 
   // Only videos (not shows) can be queued. Everything that is not queued is monitored.

@@ -1,4 +1,4 @@
-import * as ptn from 'parse-torrent-name';
+import ptn from 'parse-torrent-name';
 import {getSearchTerm, Video} from '../common/media';
 import {delay} from '../common/util';
 import {Torrent} from './util';
