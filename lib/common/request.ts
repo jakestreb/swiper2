@@ -165,7 +165,6 @@ async function _convertTMDBMovie(info: TMDBMovie): Promise<Movie> {
       headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
     });
     const movieResults = response.data.results;
-    console.warn('response!!!!', movieResults);
     const usaResult = movieResults.find((_res: any) => _res.iso_3166_1 === 'US');
     if (!usaResult) {
       throw new Error('No results for the US');
@@ -264,7 +263,8 @@ async function _searchTVDB(imdbId: string): Promise<TVDB> {
     // Needs refresh.
     log.debug(`_searchTVDB: Refreshing token`);
     const response = await axios.post(loginUrl, {
-      apikey: process.env.TVDB_ID,
+      apikey: process.env.TVDB_API_KEY,
+      pin: process.env.TVDB_PIN
     });
     tvdbToken = response.data.token;
     tvdbTokenTimestamp = now;
@@ -276,7 +276,7 @@ async function _searchTVDB(imdbId: string): Promise<TVDB> {
     headers: {Authorization: `Bearer ${tvdbToken}`},
     params: {imdbId}
   });
-  const entries = JSON.parse(searchResponse.data).data;
+  const entries = searchResponse.data.data;
   if (entries.length === 0) { throw new Error('Series not found in TVDB'); }
   const seriesId = entries[0].id;
 
@@ -288,7 +288,7 @@ async function _searchTVDB(imdbId: string): Promise<TVDB> {
   });
 
   // Convert and return.
-  const series = JSON.parse(seriesResponse.data).data;
+  const series = seriesResponse.data.data;
   series.episodes = await fetchEpisodes(seriesId);
   return series;
 }
@@ -303,7 +303,7 @@ async function fetchEpisodes(seriesId: number): Promise<TVDBEpisode[]> {
       headers: {Authorization: `Bearer ${tvdbToken}`},
       params: {page: pageNum}
     });
-    return JSON.parse(response.data);
+    return response.data;
   };
   const firstResult = await doFetch(1);
   const episodes = firstResult.data;

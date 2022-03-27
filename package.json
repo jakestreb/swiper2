@@ -54,7 +54,7 @@
     "rmfr": "^2.0.0",
     "sqlite3": "^5.0.2",
     "terminal-kit": "^1.26.10",
-    "torrent-search-api": "^2.0.4",
+    "torrent-search-api": "^2.1.4",
     "webtorrent": "^0.103.0",
     "winston": "^3.2.1"
   }

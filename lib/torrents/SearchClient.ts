@@ -5,12 +5,13 @@ import {Torrent} from './util';
 
 // Typescript doesn't recognize the default export of TSA.
 // tslint:disable-next-line
-const torrentSearchApi = require('torrent-search-api');
-torrentSearchApi.enableProvider('ThePirateBay');
-torrentSearchApi.enableProvider('Rarbg');
+const TorrentSearchApi = require('torrent-search-api');
+TorrentSearchApi.enablePublicProviders();
+// torrentSearchApi.enableProvider('ThePirateBay');
+// torrentSearchApi.enableProvider('Rarbg');
 // torrentSearchApi.enableProvider('Torrentz2');
-torrentSearchApi.enableProvider('1337x');
-torrentSearchApi.enableProvider('ExtraTorrent');
+// torrentSearchApi.enableProvider('1337x');
+// torrentSearchApi.enableProvider('ExtraTorrent');
 
 interface TSAResult {
   title: string;
@@ -18,7 +19,11 @@ interface TSAResult {
   seeds: number;
   peers: number;
   time: string;
-  magnet: string;
+  magnet?: string;
+}
+
+type TSAResultWithMagnet = TSAResult & {
+  magnet: string
 }
 
 export class SearchClient {
@@ -39,7 +44,7 @@ export class SearchClient {
     this._activeSearchCount += 1;
     if (this._activeSearchCount > this._maxActiveSearches) {
       await new Promise(resolve => {
-        this._searchPendingQueue.push(resolve);
+        this._searchPendingQueue.push(resolve as () => void);
       });
     }
     try {
@@ -78,7 +83,7 @@ abstract class GenericSearchClient {
     return doRetrySearch(this.retries);
   }
 
-  public abstract async _doSearch(searchTerm: string): Promise<Torrent[]>;
+  public abstract _doSearch(searchTerm: string): Promise<Torrent[]>;
 }
 
 class TSA extends GenericSearchClient {
@@ -87,16 +92,31 @@ class TSA extends GenericSearchClient {
   }
 
   public async _doSearch(searchTerm: string): Promise<Torrent[]> {
-    const results = await torrentSearchApi.search(searchTerm);
-    const torrents: Torrent[] = results.filter((res: TSAResult) => res.title && res.magnet && res.size)
-    .map((res: TSAResult) => this._createTorrent(res))
-    .filter((torrent: Torrent) => torrent.size > -1);
+    const results: TSAResult[] = await TorrentSearchApi.search(searchTerm);
+    const filtered: TSAResult[] = results.filter((res: TSAResult) => res.title && res.size);
+    const filteredWithMagnet: (TSAResultWithMagnet|null)[] = await Promise.all(
+      filtered.map((res: TSAResult) => this._addMissingMagnet(res))
+    );
+    const torrents = filteredWithMagnet.filter(notNull)
+      .map((res: TSAResultWithMagnet) => this._createTorrent(res))
+      .filter((torrent: Torrent) => torrent.size > -1);
     // Sort by peers desc
     torrents.sort((a, b) => b.seeders - a.seeders || b.leechers - a.leechers);
     return torrents;
   }
 
-  private _createTorrent(result: TSAResult): Torrent {
+  private async _addMissingMagnet(result: TSAResult): Promise<TSAResultWithMagnet|null> {
+    if (result.magnet) {
+      return result as TSAResultWithMagnet;
+    }
+    const magnet = await TorrentSearchApi.getMagnet(result);
+    if (!magnet) {
+      return null;
+    }
+    return { ...result, magnet };
+  }
+
+  private _createTorrent(result: TSAResultWithMagnet): Torrent {
     const parsed = ptn(result.title);
     return {
       title: result.title,
@@ -123,4 +143,8 @@ function getSizeInMB(sizeStr: string): number|null {
   } else {
     return null;
   }
+}
+
+function notNull<T>(value: T|null|undefined): value is T {
+    return value !== null && value !== undefined;
 }
