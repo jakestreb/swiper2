@@ -307,6 +307,8 @@ export class Swiper {
       case "help":
       case "commands":
         return () => this.help(convo);
+      case "restart":
+      case "reset":
       case "reboot":
         return () => this.reboot(convo);
       case "cancel":
