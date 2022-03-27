@@ -8,7 +8,7 @@ import * as log from '../common/logger';
 import {DownloadProgress} from './util';
 
 const SAFE_IP_REGEX = process.env.SAFE_IP_REGEX || '0\\.0\\.0\\.0';
-const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
+const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../../downloads');
 const IP_CHECK_INTERVAL = 2000;
 
 export class DownloadClient extends events.EventEmitter {

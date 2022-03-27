@@ -16,8 +16,8 @@ import {assignMeta, DownloadProgress, getBestTorrent} from './torrents/util';
 const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
 
-const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../downloads');
-const EXPORT_ROOT = process.env.EXPORT_ROOT || path.resolve(__dirname, '../media');
+const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
+const EXPORT_ROOT = process.env.EXPORT_ROOT || path.resolve(__dirname, '../../media');
 const USE_FTP = Boolean(parseInt(process.env.USE_FTP || "0", 10));
 
 const CLEAR_FAILED_POLL_MINS = 60;
@@ -254,7 +254,7 @@ function ftpCopy(src: string, dst: string): Promise<void> {
       c.mkdir(directory, true, (_mkDirErr: Error|undefined) => {
         // Suppress errors thrown because the directory already exists.
         if (_mkDirErr && !/already exists/.exec(_mkDirErr.message)) {
-          reject(`FTP mkDir error: ` + _mkDirErr);
+          reject(`FTP mkDir error: ${_mkDirErr} (directory: ${directory})`);
         }
         // Copy the file
         c.put(src, dst, (_putErr: Error) => {
@@ -266,8 +266,6 @@ function ftpCopy(src: string, dst: string): Promise<void> {
     });
     c.connect({
       host: process.env.FTP_HOST_IP,
-      user: process.env.FTP_USER,
-      password: process.env.FTP_PASS
     });
   });
 }
