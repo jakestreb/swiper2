@@ -36,7 +36,6 @@
     "@types/torrent-search-api": "^2.0.0",
     "@types/utf8": "^2.1.6",
     "@types/webtorrent": "^0.98.4",
-    "heap-profile": "^0.4.0",
     "ts-node": "^7.0.1",
     "typescript": "^3.2.4"
   },
