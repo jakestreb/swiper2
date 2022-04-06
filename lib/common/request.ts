@@ -97,7 +97,7 @@ export async function getPopularReleasedBetween(
   }
   // If the query fails or returns no movies, return no movies.
   const tmdbResult = response.data;
-  if (!tmdbResult || !tmdbResult.data.results) {
+  if (!tmdbResult || !tmdbResult.results) {
     return {
       movies: [],
       total_pages: 0,
