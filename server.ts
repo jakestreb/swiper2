@@ -89,6 +89,8 @@ function startComms(swiper: Swiper): void {
       });
     });
   });
+
+  telegram.on("polling_error", (message: any) => log.error(`Telegram error: ${message}`));
 }
 
 // Create a Swiper instance and start the process.
