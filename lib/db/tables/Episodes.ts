@@ -17,7 +17,7 @@ export default class Episodes extends Base {
   }
 
   public async get(id: number): Promise<Episode|null> {
-    const episodes = await this.all('SELECT * FROM episodes WHERE id=?', [id]);
+    const episodes = await this.all('SELECT * FROM episodes WHERE id=? LIMIT 1', [id]);
     return episodes.length > 0 ? episodes[0] : null;
   }
 

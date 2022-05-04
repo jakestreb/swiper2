@@ -17,6 +17,11 @@ export default class Movies extends Base {
     return this;
   }
 
+  public async get(id: number): Promise<Movie|null> {
+    const movies = await this.all('SELECT * FROM movies WHERE id=? LIMIT 1', [id]);
+    return movies.length > 0 ? movies[0] : null;
+  }
+
   public search(input: string): Promise<Movie[]> {
     return this.all(`SELECT * FROM movies WHERE title LIKE ?`, [`%${input}%`]);
   }

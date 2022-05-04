@@ -3,12 +3,12 @@ import * as log from '../common/logger';
 import {getDescription} from '../common/media';
 import {matchNumber} from '../common/util';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import {getTorrentString} from '../torrents/util';
+import TorrentSearch from '../apis/TorrentSearch';
 
 // Number of torrents to show per page
 const PER_PAGE = 4;
 
-export async function search(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+export async function search(swiper: Swiper, convo: Conversation): Promise<SwiperReply> {
   log.debug(`Swiper: search`);
 
   const media = convo.media as Media;
@@ -18,7 +18,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
     log.info(`Searching for ${getDescription(video)} downloads`);
-    convo.torrents = await this.searchClient.search(video);
+    convo.torrents = await TorrentSearch.search(video);
     convo.pageNum = 0;
   }
 
@@ -67,7 +67,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 
   await db.media.insert(media, { addedBy: convo.id, status: 'queued' });
   await db.torrents.insert({ ...torrent, videoId: video.id });
-  this.downloadManager.ping();
+  swiper.downloadManager.ping();
 
   return {
     data: `Queued ${getDescription(video)} for download`,
@@ -97,3 +97,10 @@ function showTorrents(
   };
 }
 
+function getTorrentString(torrent: TorrentResult): string {
+  const seed = torrent.seeders ? `${torrent.seeders} peers ` : '';
+  // const leech = torrent.leechers ? `${torrent.leechers} leech ` : '';
+  return `*${torrent.title.replace(/\./g, ' ')}*\n` +
+    `\`       \`_${torrent.sizeMb}MB with ${seed}_\n` +
+    `\`       \`_${torrent.uploadTime}_`;
+}

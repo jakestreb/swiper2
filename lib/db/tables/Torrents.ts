@@ -8,6 +8,7 @@ export default class Torrents extends Base {
       quality TEXT,
       resolution TEXT,
       sizeMb INTEGER,
+      status TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -19,8 +20,8 @@ export default class Torrents extends Base {
   }
 
   public async insert(arg: DBTorrent): Promise<void> {
-    await this.db.run(`INSERT INTO torrents (magnet, videoId, quality, resolution, sizeMb)`
+    await this.db.run(`INSERT INTO torrents (magnet, videoId, quality, resolution, sizeMb, status)`
     	+ ` VALUES (?, ?, ?, ?, ?)`,
-        [arg.magnet, arg.videoId, arg.quality, arg.resolution, arg.sizeMb]);
+        [arg.magnet, arg.videoId, arg.quality, arg.resolution, arg.sizeMb, arg.status]);
   }
 }

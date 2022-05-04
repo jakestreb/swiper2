@@ -2,6 +2,7 @@ import Episodes from './tables/Episodes';
 import Movies from './tables/Movies';
 import Shows from './tables/Shows';
 import Torrents from './tables/Torrents';
+import Jobs from './tables/Jobs';
 import Media from './helpers/Media';
 import Videos from './helpers/Videos';
 import * as path from 'path';
@@ -13,6 +14,7 @@ export class DBManager {
   public movies: Movies;
   public shows: Shows;
   public torrents: Torrents;
+  public jobs: Jobs;
 
   public media: Media;
   public videos: Videos;
@@ -27,6 +29,7 @@ export class DBManager {
     this.movies = await new Movies(this).init();
     this.shows = await new Shows(this).init();
     this.torrents = await new Torrents(this).init();
+    this.jobs = await new Jobs(this).init(); // Note that jobs should only be added via worker
 
     this.media = await new Media(this);
     this.videos = await new Videos(this);
@@ -64,6 +67,4 @@ export class DBManager {
   }
 }
 
-const db = new DBManager();
-
-export default db;
+export default new DBManager();

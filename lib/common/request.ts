@@ -1,4 +1,3 @@
-// TODO: Consider replacing TVDB with TMDB.
 import * as TVDB from 'node-tvdb';
 import axios from 'axios';
 

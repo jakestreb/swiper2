@@ -1,8 +1,11 @@
 declare module 'node-tvdb';
 declare module 'parse-torrent-name';
 
-declare type Status = 'identified'|'unreleased'|'queued'|'downloading'|'uploading'|'completed';
+declare type Status = 'identified'|'unreleased'|'searching'|'downloading'|'uploading'|'completed';
+declare type TorrentStatus = 'downloading'|'paused';
 declare type MediaType = 'movie'|'tv'|'episode';
+declare type JobType = 'AddTorrent'|'DeleteVideo'|'QueueVideo';
+declare type JobSchedule = 'once'|'repeated'|'backoff';
 
 declare interface TorrentResult {
   title: string;
@@ -14,6 +17,14 @@ declare interface TorrentResult {
   quality: string;
   resolution: string;
   sizeMb: number;
+}
+
+declare interface JobDescription {
+  type: JobType;
+  videoId: number;
+  schedule: JobSchedule;
+  intervalSeconds: number;
+  runCount: number;
 }
 
 declare interface DBEpisode {
@@ -48,6 +59,17 @@ declare interface DBTorrent {
   quality: string;
   resolution: string;
   sizeMb: number;
+  status: TorrentStatus;
+}
+
+declare interface DBJob {
+  id: number;
+  type: JobType;
+  videoId: number;
+  schedule: JobSchedule;
+  intervalSeconds: number;
+  runCount: number;
+  runAt: Date;
 }
 
 declare type DBMedia = DBMovie|DBShow;

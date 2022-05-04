@@ -1,42 +1,28 @@
-import * as fs from 'fs';
-import Client from 'ftp';
 import * as path from 'path';
-import rmfr from 'rmfr';
-import {promisify} from 'util';
 import db from './db';
-
 import * as log from './common/logger';
-import {getDescription, getFileSafeTitle} from './common/media';
-import {Swiper} from './Swiper';
-import {DownloadClient} from './torrents/DownloadClient';
-import {SearchClient} from './torrents/SearchClient';
-import {getBestTorrent} from './torrents/util';
-
-const access = promisify(fs.access);
-const mkdir = promisify(fs.mkdir);
-
-const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
-const EXPORT_ROOT = process.env.EXPORT_ROOT || path.resolve(__dirname, '../../media');
-const USE_FTP = Boolean(parseInt(process.env.USE_FTP || "0", 10));
+import {getDescription} from './common/media';
+import ExportHandler from './ExportHandler';
+import MemoryManager from './MemoryManager';
+import {DownloadClient} from './DownloadClient';
 
 export class DownloadManager {
-  private _downloadClient: DownloadClient;
-  private _downloading: TVideo[] = [];
-  private _managingPromise: Promise<void>;
-  private _inProgress: boolean = false;
 
-  constructor(private _swiper: Swiper, private _searchClient: SearchClient) {
-    this._downloadClient = new DownloadClient(this._swiper.mode);
+  private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
 
-    this._downloadClient.on('offline', () => {
-      this._swiper.mode = 'offline';
-      this._downloading = [];
-    });
+  private downloadClient: DownloadClient;
+  private memoryManager: MemoryManager;
+  private exportHandler: ExportHandler;
 
-    this._downloadClient.on('online', () => {
-      this._swiper.mode = 'active';
-      this.ping();
-    });
+  private managingPromise: Promise<void>;
+  private inProgress: boolean = false;
+
+  constructor() {
+    const downloadRoot = DownloadManager.DOWNLOAD_ROOT;
+
+    this.downloadClient = new DownloadClient(downloadRoot);
+    this.memoryManager = new MemoryManager();
+    this.exportHandler = new ExportHandler(downloadRoot);
 
     this.ping();
   }
@@ -53,41 +39,45 @@ export class DownloadManager {
   }
 
   public getProgress(torrent: DBTorrent): DownloadProgress {
-    return this._downloadClient.getProgress(torrent.magnet);
+    return this.downloadClient.getProgress(torrent.magnet);
   }
 
-  // This function should NOT be awaited.
+  // This function should generally not be awaited.
   private async _ping(): Promise<void> {
     log.debug(`DownloadManager: _ping()`);
-    await this._managingPromise;
+    await this.managingPromise;
     // If after waiting, the downloads are already being managed again, the goal of the ping
     // is already being accomplished, so this ping can return.
-    if (!this._inProgress) {
-      this._inProgress = true;
-      this._managingPromise = this._manageDownloads();
-      await this._managingPromise;
-      this._inProgress = false;
+    if (!this.inProgress) {
+      this.inProgress = true;
+      this.managingPromise = this._manageDownloads();
+      await this.managingPromise;
+      this.inProgress = false;
     }
   }
 
+  // Should be called when a new torrent is added to a video & when a download completes.
   private async _manageDownloads(): Promise<void> {
     log.debug(`DownloadManager: _manageDownloads()`);
-    // Should be pinged when:
-    // - An item is added/removed/reordered in the queue.
-    // - An item finishes downloading.
 
-    // Manage which videos are downloading in the queue.
-    const downloads = await db.videos.manageDownloads();
+    // TODO: Torrents need running/paused status, videos are always 'searching'/'downloading'
 
-    // Determine which downloads to start and stop.
-    const start = downloads.filter(v => !this._downloading.find(_v => _v.id === v.id));
-    const stop = this._downloading.filter(v => !downloads.find(_v => _v.id === v.id));
-    log.debug(`DownloadManager: _manageDownloads() starting ${start.length}`);
-    log.debug(`DownloadManager: _manageDownloads() stopping ${stop.length}`);
+    const queue: Video[] = await db.videos.getWithStatus('searching', 'downloading');
+    const updated = this.prioritizeTorrents(queue.map(v => ({ ...v })));
+
+    await db.videos.saveStatuses(updated);
+
+    queue.sort((a, b) => a.id - b.id);
+    updated.sort((a, b) => a.id - b.id);
+
+    const start = queue.filter((v, i) => v.status === 'queued' && updated[i].status === 'downloading');
+    const stop = queue.filter((v, i) => v.status === 'downloading' && updated[i].status === 'queued');
+    log.debug(`DownloadManager: manageDownloads() starting ${start.length}`);
+    log.debug(`DownloadManager: manageDownloads() stopping ${stop.length}`);
 
     // Use the results from the database query to start/stop downloads.
-    start.forEach(v => this._startDownload(v));
-    stop.forEach(v => this._stopDownload(v));
+    start.forEach(v => this.startDownload(v));
+    stop.forEach(v => this.stopDownload(v));
 
     // Update downloading array.
     this._downloading = downloads;
@@ -96,35 +86,22 @@ export class DownloadManager {
     }
   }
 
-  private async _startDownload(video: TVideo): Promise<void> {
-    log.debug(`DownloadManager: _startDownload(${getDescription(video)})`);
-    // Assign a torrent if there are none.
-    if (!video.torrents.length) {
-      const torrents = await this._searchClient.search(video);
-      const best = getBestTorrent(video, torrents);
-      if (!best) {
-        log.debug(`DownloadManager: _startDownload(${getDescription(video)}) failed (no torrent found)`);
-        // TODO: Schedule search
-        return;
-      } else {
-        log.debug(`DownloadManager: _startDownload(${getDescription(video)}) magnet added`);
-        const torrent: DBTorrent = { ...best, videoId: video.id };
-        await db.torrents.insert(torrent);
-        video.torrents = [torrent];
-      }
-    }
+  // Must be idempotent
+  private prioritizeTorrents(videos: TVideo[]): TVideo[] {
+    return videos;
+  }
+
+  private async startDownload(video: Video, torrent: DBTorrent): Promise<void> {
+    log.debug(`DownloadManager: startDownload(${getDescription(video)})`);
 
     // Run the download
-    const downloadPaths = await this._downloadClient.download(video.torrents[0].magnet);
+    const downloadPaths = await this.downloadClient.download(torrent.magnet);
 
     // On completion, remove the item from the database.
     await db.videos.delete(video);
 
-    // Remove from downloading
-    this._downloading = this._downloading.filter(v => v.id !== video.id);
-
     // Export the video (run separately).
-    exportVideo(video, downloadPaths).catch(err => {
+    this.exportHandler.export(video, downloadPaths).catch(err => {
       log.subProcessError(`Failed to export video files: ${err}`);
     });
 
@@ -132,92 +109,7 @@ export class DownloadManager {
     this.ping();
   }
 
-  private async _stopDownload(video: TVideo): Promise<void> {
-    if (video.torrents.length > 0) {
-      await this._downloadClient.stopDownload(video.torrents[0].magnet);
-    }
+  private async stopDownload(torrent: DBTorrent): Promise<void> {
+    await this.downloadClient.stopDownload(torrent.magnet);
   }
-}
-
-// Save a video in the correct directory, adding any necessary directories.
-async function exportVideo(video: Video, downloadPaths: string[]): Promise<void> {
-  log.debug(`exportVideo(${getDescription(video)}, ${downloadPaths})`);
-  const safeTitle = getFileSafeTitle(video);
-  const dirs = video.type === 'movie' ? ['movies', safeTitle] :
-    ['tv', safeTitle, `Season ${video.seasonNum}`];
-
-  let exportPath = EXPORT_ROOT;
-  if (!USE_FTP) { log.debug(`exportVideo: Creating missing folders in export directory`); }
-  for (const pathElem of dirs) {
-    exportPath = path.join(exportPath, pathElem);
-    if (!USE_FTP) {
-      // The FTP copy process creates any folders needed in the FTP directory, but the
-      // normal copy process does not.
-      try {
-        await access(exportPath, fs.constants.F_OK);
-      } catch {
-        // Throws when path does not exist
-        await mkdir(exportPath);
-      }
-    }
-  }
-
-  // Move the files to the final directory.
-  log.debug(`exportVideo: Copying videos to ${USE_FTP ? 'FTP server at ' : ''}${exportPath}`);
-  const copyActions = downloadPaths.map(downloadPath => {
-    const from = path.join(DOWNLOAD_ROOT, downloadPath);
-    const to = path.join(exportPath, path.basename(downloadPath));
-    return USE_FTP ? ftpCopy(from, to) : copy(from, to);
-  });
-  await Promise.all(copyActions);
-
-  // Remove the download directories (Remove the first directory of each downloaded file).
-  log.debug(`exportVideo: Removing download directory`);
-  const deleteActions = downloadPaths.map(downloadPath => {
-    const abs = path.join(DOWNLOAD_ROOT, path.dirname(downloadPath));
-    return rmfr(abs);
-  });
-  await Promise.all(deleteActions);
-}
-
-function ftpCopy(src: string, dst: string): Promise<void> {
-  const c = new Client();
-  const directory = path.dirname(dst);
-  return new Promise((resolve, reject) => {
-    c.on('ready', async () => {
-      // Make the necessary directories
-      c.mkdir(directory, true, (_mkDirErr: Error|undefined) => {
-        // Suppress errors thrown because the directory already exists.
-        if (_mkDirErr && !/already exists/.exec(_mkDirErr.message)) {
-          reject(`FTP mkDir error: ${_mkDirErr} (directory: ${directory})`);
-        }
-        // Copy the file
-        c.put(src, dst, (_putErr: Error) => {
-          if (_putErr) { reject(`FTP put error: ` + _putErr); }
-          c.end();
-          resolve();
-        });
-      });
-    });
-    c.connect({
-      host: process.env.FTP_HOST_IP,
-    });
-  });
-}
-
-function copy(src: string, dst: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const rd = fs.createReadStream(src);
-    rd.on("error", err => {
-      reject(err);
-    });
-    const wr = fs.createWriteStream(dst);
-    wr.on("error", err => {
-      reject(err);
-    });
-    wr.on("close", () => {
-      resolve();
-    });
-    rd.pipe(wr);
-  });
 }

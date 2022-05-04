@@ -45,18 +45,6 @@ export function getLastAired(episodes: Episode[]): Episode|null {
   return episodes.slice().reverse().find(ep => ep.airDate !== null && (ep.airDate < morning)) || null;
 }
 
-export function getSearchTerm(video: Video): string {
-  if (video.type === 'movie') {
-    const cleanTitle = video.title.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
-    return `${cleanTitle} ${video.year}`;
-  } else if (video.type === 'episode') {
-    const cleanTitle = video.showTitle.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
-    return `${cleanTitle} s${padZeros(video.seasonNum)}e${padZeros(video.episodeNum)}`;
-  } else {
-    throw new Error(`getSearchTerm error: invalid video`);
-  }
-}
-
 export function getFileSafeTitle(video: Video): string {
   const regex = /[\\/:*?"<>|'\.]/g;
   if (video.type === 'movie') {

@@ -4,9 +4,9 @@ import * as log from './common/logger';
 import {filterMediaEpisodes} from './common/media';
 import {splitFirst} from './common/util';
 import db from './db';
+import worker from './worker';
 import {DownloadManager} from './DownloadManager';
 import {SwiperMonitor} from './SwiperMonitor';
-import {SearchClient} from './torrents/SearchClient';
 
 // import {check} from './actions/check';
 import {download} from './actions/download';
@@ -58,18 +58,14 @@ export interface Conversation {
   pageNum?: number;
 }
 
-export type OperationMode = 'active'|'offline';
-
 export class Swiper {
   // Should be called to build a Swiper instance.
   public static async create(sendMsg: (id: number, msg: SwiperReply) => Promise<void>): Promise<Swiper> {
     await db.init();
+    await worker.start();
     return new Swiper(sendMsg);
   }
 
-  public mode: OperationMode = 'active';
-
-  public searchClient: SearchClient;
   public downloadManager: DownloadManager;
   public swiperMonitor: SwiperMonitor;
 
@@ -79,9 +75,8 @@ export class Swiper {
   constructor(
     private _sendMsg: (id: number, msg: SwiperReply) => Promise<void>
   ) {
-    this.searchClient = new SearchClient();
-    this.downloadManager = new DownloadManager(this, this.searchClient);
-    this.swiperMonitor = new SwiperMonitor(this.searchClient, this.downloadManager);
+    this.downloadManager = new DownloadManager();
+    this.swiperMonitor = new SwiperMonitor(this.downloadManager);
   }
 
   public async handleMsg(id: number, msg?: string): Promise<void> {
@@ -94,10 +89,7 @@ export class Swiper {
 
     // Run a new command or an existing command.
     let reply: SwiperReply;
-    if (this.mode === 'offline') {
-      this.reboot(convo);
-      reply = { data: `Rebooting, please wait` };
-    } else if (commandFn) {
+    if (commandFn) {
       this._updateConversation(id, {commandFn, input});
       reply = await commandFn();
     } else if (existingCommandFn) {

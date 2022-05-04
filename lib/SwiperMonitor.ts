@@ -4,18 +4,14 @@ import db from './db';
 import {getDescription} from './common/media';
 import {delay, getDaysUntil, getMsUntil} from './common/util';
 import {DownloadManager} from './DownloadManager';
-import {SearchClient} from './torrents/SearchClient';
-import {getBestTorrent} from './torrents/util';
+import TorrentSearch from './apis/TorrentSearch';
 
 interface CommandOptions {
   catchErrors?: boolean; // Default false
 }
 
 export class SwiperMonitor {
-  constructor(
-    private _searchClient: SearchClient,
-    private _downloadManager: DownloadManager
-  ) {
+  constructor(private _downloadManager: DownloadManager) {
     this._startMonitoring().catch(() => { /* noop */ });
   }
 
@@ -74,7 +70,7 @@ export class SwiperMonitor {
   private async _doSearch(video: Video, options: CommandOptions = {}): Promise<boolean> {
     log.subProcess(`Searching ${getDescription(video)}`);
     try {
-      const torrents: TorrentResult[] = await this._searchClient.search(video);
+      const torrents: TorrentResult[] = await TorrentSearch.search(video);
       const bestTorrent = getBestTorrent(video, torrents);
       if (bestTorrent !== null) {
         // Set the item in the database to queued.

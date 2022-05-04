@@ -47,14 +47,4 @@ export default class MediaHandler {
     }
     await Promise.all(videos.map(v => this.db.videos.setStatus(v, status)));
   }
-
-  // public async setStatus(media: Media, status: Status): Promise<void> {
-  //   const videos: Video[] = [];
-  //   if (media.type === 'movie') {
-  //     videos.push(media);
-  //   } else {
-  //     videos.push(...media.episodes);
-  //   }
-  //   await Promise.all(videos.map(v => this.db.videos.setStatus(v, status)));
-  // }
 }
