@@ -10,7 +10,7 @@ export default class Movies extends Base {
       year TEXT,
       theaterRelease DATETIME,
       dvdRelease DATETIME,
-      status TEXT DEFAULT unreleased,
+      status TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -22,8 +22,7 @@ export default class Movies extends Base {
   }
 
   public getWithStatus(...statuses: Status[]): Promise<Movie[]> {
-    const condition = statuses.map(s => `status=${s}`).join(' OR ');
-    return this.all('SELECT * FROM movies WHERE ?', [condition]);
+    return this.all(`SELECT * FROM movies WHERE status IN (${statuses.map(e => '?')})`, statuses);
   }
 
   public async setStatus(movie: Movie, status: Status): Promise<Movie> {

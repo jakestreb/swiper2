@@ -22,8 +22,7 @@ export default class Episodes extends Base {
   }
 
   public getWithStatus(...statuses: Status[]): Promise<Episode[]> {
-    const condition = statuses.map(s => `status=${s}`).join(' OR ');
-    return this.all('SELECT * FROM episodes WHERE ?', [condition]);
+    return this.all(`SELECT * FROM episodes WHERE status IN (${statuses.map(e => '?')})`, statuses);
   }
 
   public getFromShow(showId: number): Promise<Episode[]> {
