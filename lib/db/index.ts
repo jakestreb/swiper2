@@ -21,7 +21,7 @@ export class DBManager {
 
   public async init(): Promise<void> {
     const dbPath = path.resolve(__dirname, './records.db');
-    this._db = new sqlite3.Database(dbPath);
+    this._db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
 
     this.episodes = await new Episodes(this).init();
     this.movies = await new Movies(this).init();

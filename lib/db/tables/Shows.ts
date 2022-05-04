@@ -26,7 +26,7 @@ export default class Shows extends Base {
       episodesByShow[e.showId].push(e);
     });
     const showIds = Object.keys(episodesByShow);
-    const shows: Show[] = await this.db.all(`SELECT * FROM shows WHERE id IN (id IN (${showIds.map(id => '?')})`, showIds);
+    const shows: Show[] = await this.db.all(`SELECT * FROM shows WHERE id IN (${showIds.map(id => '?')})`, showIds);
     shows.forEach(s => s.episodes = episodesByShow[s.id]);
     return shows;
   }
