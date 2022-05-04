@@ -30,7 +30,7 @@
       {"minMB": 600, "points": 0.5}
     ]
   },
-  "maxDownloads": 3,
+  "maxDownloads": 2,
   "monitorAtHour": 2,
   "daysBeforeDVD": 21,
   "newEpisodeBackoffMins": [

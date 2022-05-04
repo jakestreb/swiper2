@@ -1,11 +1,11 @@
 import * as settings from './_settings.json';
 import * as log from './common/logger';
-import {Episode, getDescription, Video} from './common/media';
+import db from './db';
+import {getDescription} from './common/media';
 import {delay, getDaysUntil, getMsUntil} from './common/util';
-import {DBManager} from './DBManager';
 import {DownloadManager} from './DownloadManager';
 import {SearchClient} from './torrents/SearchClient';
-import {getBestTorrent, Torrent} from './torrents/util';
+import {getBestTorrent} from './torrents/util';
 
 interface CommandOptions {
   catchErrors?: boolean; // Default false
@@ -13,7 +13,6 @@ interface CommandOptions {
 
 export class SwiperMonitor {
   constructor(
-    private _dbManager: DBManager,
     private _searchClient: SearchClient,
     private _downloadManager: DownloadManager
   ) {
@@ -24,15 +23,12 @@ export class SwiperMonitor {
   public async doCheck(options: CommandOptions = {}): Promise<void> {
     try {
       const now = new Date();
-      const monitored = await this._dbManager.getMonitored();
-      const videos = ([] as Video[]).concat(...monitored.map(media =>
-        media.type === 'movie' ? [media] : media.episodes
-      ));
+      const videos = await db.videos.getWithStatus('unreleased');
       // Decide which media items should be searched.
       const released = videos.filter(vid => {
         if (vid.type === 'movie') {
-          const daysUntilDVD = vid.dvd ? getDaysUntil(vid.dvd) : 0;
-          return daysUntilDVD <= settings.daysBeforeDVD;
+          const daysUntilRelease = vid.streamingRelease ? getDaysUntil(vid.streamingRelease) : 0;
+          return daysUntilRelease <= settings.daysBeforeDVD;
         } else {
           return vid.airDate && now > vid.airDate;
         }
@@ -78,13 +74,12 @@ export class SwiperMonitor {
   private async _doSearch(video: Video, options: CommandOptions = {}): Promise<boolean> {
     log.subProcess(`Searching ${getDescription(video)}`);
     try {
-      const torrents: Torrent[] = await this._searchClient.search(video);
-      const videoMeta = await this._dbManager.addMetadata(video);
-      const bestTorrent = getBestTorrent(videoMeta, torrents);
+      const torrents: TorrentResult[] = await this._searchClient.search(video);
+      const bestTorrent = getBestTorrent(video, torrents);
       if (bestTorrent !== null) {
         // Set the item in the database to queued.
-        await this._dbManager.setTorrent(video.id, bestTorrent);
-        await this._dbManager.moveToQueued(video);
+        await db.torrents.insert({ ...bestTorrent, videoId: video.id });
+        await db.videos.setStatus(video, 'queued');
         this._downloadManager.ping();
         return true;
       } else {
@@ -102,9 +97,7 @@ export class SwiperMonitor {
   }
 
   private async _scheduleEpisodeChecks(): Promise<void> {
-    const shows = await this._dbManager.getMonitoredShows();
-    // Create one array of episodes with scheduled air dates only.
-    const episodes = ([] as Episode[]).concat(...shows.map(s => s.episodes));
+    const episodes = await db.episodes.getWithStatus('unreleased');
     episodes.forEach(ep => {
       this._doBackoffCheckEpisode(ep).catch(err => { /* noop */ });
     });
@@ -130,8 +123,8 @@ export class SwiperMonitor {
       // Delay until the next check time.
       await delay(acc - msPast);
       // If the episode is still in the monitored array, look for it and repeat on failure.
-      const copy = await this._dbManager.getEpisode(episode);
-      if (copy && copy.isMonitored) {
+      const copy = await db.episodes.get(episode.id);
+      if (copy && copy.status === 'unreleased') {
         setImmediate(async () => {
           const beforeTime = Date.now();
           const success = await this._doSearch(episode, {catchErrors: true});

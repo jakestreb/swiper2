@@ -5,7 +5,6 @@ import * as publicIp from 'public-ip';
 import WebTorrent from 'webtorrent';
 import {OperationMode} from '../Swiper';
 import * as log from '../common/logger';
-import {DownloadProgress} from './util';
 
 const SAFE_IP_REGEX = process.env.SAFE_IP_REGEX || '0\\.0\\.0\\.0';
 const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../../downloads');

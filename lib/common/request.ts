@@ -4,7 +4,7 @@ import axios from 'axios';
 
 import {MediaQuery} from '../Swiper';
 import * as log from './logger';
-import {Episode, Media, Movie, Show, sortEpisodes} from './media';
+import {sortEpisodes} from './media';
 import {getDateFromStr} from './util';
 
 // TVDB temporary token cache.
@@ -70,7 +70,7 @@ export async function identifyMedia(info: MediaQuery): Promise<DataResponse<Medi
       data: await _searchTMDB(info)
     };
   } catch (err) {
-    log.error(err);
+    log.error(err as any);
     return { err: 'The Movie Database is not responding' };
   }
 }
@@ -113,7 +113,7 @@ export async function getPopularReleasedBetween(
     episodes: null,
     year: getTMDBYear(tmdb.release_date)
   }));
-  const responses: Array<DataResponse<Media>> = await Promise.all(requestArray);
+  const responses: DataResponse<Media>[] = await Promise.all(requestArray);
   const movies = responses.filter(r => r.data).map(r => r.data) as Movie[];
   return {
     movies,
@@ -159,7 +159,7 @@ async function _convertTMDBMovie(info: TMDBMovie): Promise<Movie> {
   const imdbId = await _getTMDBImdbId(info, 'movie');
       // TODO: Convert to v4 when supported.
   const url = `https://api.themoviedb.org/3/movie/${info.id}/release_dates?api_key=${process.env.TMDB_ID}`;
-  let digitalRelease;
+  let streamingRelease;
   try {
     const response = await axios.get(url, {
       headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
@@ -180,7 +180,7 @@ async function _convertTMDBMovie(info: TMDBMovie): Promise<Movie> {
     if (relevant.length === 0) {
       throw new Error('No results');
     }
-    digitalRelease = relevant[0].release_date;
+    streamingRelease = relevant[0].release_date;
   } catch (err) {
     log.debug(`_convertTMDBMovie find release date failed: ${err}`);
   }
@@ -189,8 +189,9 @@ async function _convertTMDBMovie(info: TMDBMovie): Promise<Movie> {
     type: 'movie',
     title: info.title,
     year: getTMDBYear(info.release_date),
-    release: getDateFromStr(info.release_date),
-    dvd: digitalRelease ? getDateFromStr(digitalRelease) : null
+    theatricalRelease: getDateFromStr(info.release_date),
+    streamingRelease: streamingRelease ? getDateFromStr(streamingRelease) : null,
+    status: 'identified',
   };
 }
 
@@ -207,15 +208,17 @@ async function _convertTMDBShow(info: TMDBShow): Promise<Show> {
     id: convertImdbId(imdbId),
     type: 'tv',
     title: tvdbResult.seriesName,
-    episodes: ([] as Episode[])
+    episodes: [],
   };
-  const episodes = tvdbResult.episodes.map(ep => ({
-    show,
+  const episodes: Episode[] = tvdbResult.episodes.map(ep => ({
     id: hashEpisodeId(show.id, ep.airedSeason, ep.airedEpisodeNumber),
-    type: 'episode' as 'episode',
+    type: 'episode',
     seasonNum: ep.airedSeason,
     episodeNum: ep.airedEpisodeNumber,
-    airDate: ep.firstAired ? new Date(`${ep.firstAired} ${tvdbResult.airsTime}`) : null
+    airDate: ep.firstAired ? new Date(`${ep.firstAired} ${tvdbResult.airsTime}`) : null,
+    showId: show.id,
+    showTitle: show.title,
+    status: 'identified',
   }));
   show.episodes.push(...sortEpisodes(episodes));
   return show;

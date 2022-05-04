@@ -1,47 +1,6 @@
 import {EpisodesDescriptor} from '../Swiper';
 import {getMorning, padZeros} from './util';
 
-export type Media = Movie|Show;
-export type Video = Movie|Episode;
-
-export interface Movie {
-  id: number;         // Imdb id
-  type: 'movie';
-  title: string;
-  year: string;
-  release: Date|null;
-  dvd: Date|null;
-}
-
-export interface Show {
-  id: number;         // Imdb id
-  type: 'tv';
-  title: string;
-  episodes: Episode[];
-}
-
-export interface Episode {
-  id: number;         // Hashed id using show imdb id, season num and episode num
-  type: 'episode';
-  show: Show;
-  seasonNum: number;
-  episodeNum: number;
-  airDate: Date|null;
-}
-
-export interface Metadata {
-  magnet: string|null;
-  quality: string|null;
-  resolution: string|null;
-  size: number|null;
-  blacklisted: string[]; // Array of blacklisted magnets
-  isPredictive: boolean;
-}
-
-export type MovieMeta = Movie & Metadata;
-export type EpisodeMeta = Episode & Metadata;
-export type VideoMeta = MovieMeta|EpisodeMeta;
-
 export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor): Episode[] {
   if (filter === 'new') {
     // Unaired episodes only
@@ -91,7 +50,7 @@ export function getSearchTerm(video: Video): string {
     const cleanTitle = video.title.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
     return `${cleanTitle} ${video.year}`;
   } else if (video.type === 'episode') {
-    const cleanTitle = video.show.title.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
+    const cleanTitle = video.showTitle.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
     return `${cleanTitle} s${padZeros(video.seasonNum)}e${padZeros(video.episodeNum)}`;
   } else {
     throw new Error(`getSearchTerm error: invalid video`);
@@ -103,7 +62,7 @@ export function getFileSafeTitle(video: Video): string {
   if (video.type === 'movie') {
     return video.title.replace(regex, '');
   } else if (video.type === 'episode') {
-    return video.show.title.replace(regex, '');
+    return video.showTitle.replace(regex, '');
   } else {
     throw new Error(`getFileSafeTitle error: invalid video`);
   }
@@ -111,7 +70,7 @@ export function getFileSafeTitle(video: Video): string {
 
 export function getDescription(anyMedia: Movie|Show|Episode): string {
   if (anyMedia.type === 'episode') {
-    return `*${anyMedia.show.title}* (S${padZeros(anyMedia.seasonNum)}E${padZeros(anyMedia.episodeNum)})`;
+    return `*${anyMedia.showTitle}* (S${padZeros(anyMedia.seasonNum)}E${padZeros(anyMedia.episodeNum)})`;
   } else if (anyMedia.type === 'tv') {
     return `*${anyMedia.title}* (${getExpandedEpisodeStr(anyMedia.episodes)})`;
   } else {

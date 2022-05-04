@@ -1,7 +1,6 @@
 import ptn from 'parse-torrent-name';
-import {getSearchTerm, Video} from '../common/media';
+import {getSearchTerm} from '../common/media';
 import {delay} from '../common/util';
-import {Torrent} from './util';
 
 // Typescript doesn't recognize the default export of TSA.
 // tslint:disable-next-line
@@ -40,7 +39,7 @@ export class SearchClient {
 
   // Perform the search, delaying searches so that no more than the maxActiveSearches count occur
   // concurrently.
-  public async search(video: Video): Promise<Torrent[]> {
+  public async search(video: Video): Promise<TorrentResult[]> {
     this._activeSearchCount += 1;
     if (this._activeSearchCount > this._maxActiveSearches) {
       await new Promise(resolve => {
@@ -58,7 +57,7 @@ export class SearchClient {
     }
   }
 
-  private _doSearch(video: Video): Promise<Torrent[]> {
+  private _doSearch(video: Video): Promise<TorrentResult[]> {
     const searchTerm = getSearchTerm(video);
     return this._client.search(searchTerm);
   }
@@ -70,8 +69,8 @@ export class SearchClient {
 abstract class GenericSearchClient {
   constructor(public readonly retries: number) {}
 
-  public search(searchTerm: string): Promise<Torrent[]> {
-    const doRetrySearch: (retries: number) => Promise<Torrent[]> = async retries => {
+  public search(searchTerm: string): Promise<TorrentResult[]> {
+    const doRetrySearch: (retries: number) => Promise<TorrentResult[]> = async retries => {
       const res = await this._doSearch(searchTerm);
       if (res.length === 0 && retries > 0) {
         await delay(100);
@@ -83,7 +82,7 @@ abstract class GenericSearchClient {
     return doRetrySearch(this.retries);
   }
 
-  public abstract _doSearch(searchTerm: string): Promise<Torrent[]>;
+  public abstract _doSearch(searchTerm: string): Promise<TorrentResult[]>;
 }
 
 class TSA extends GenericSearchClient {
@@ -91,7 +90,7 @@ class TSA extends GenericSearchClient {
     super(retries);
   }
 
-  public async _doSearch(searchTerm: string): Promise<Torrent[]> {
+  public async _doSearch(searchTerm: string): Promise<TorrentResult[]> {
     const results: TSAResult[] = await TorrentSearchApi.search(searchTerm);
     const filtered: TSAResult[] = results.filter((res: TSAResult) => res.title && res.size);
     const filteredWithMagnet: (TSAResultWithMagnet|null)[] = await Promise.all(
@@ -99,7 +98,7 @@ class TSA extends GenericSearchClient {
     );
     const torrents = filteredWithMagnet.filter(notNull)
       .map((res: TSAResultWithMagnet) => this._createTorrent(res))
-      .filter((torrent: Torrent) => torrent.size > -1);
+      .filter((torrent: TorrentResult) => torrent.sizeMb > -1);
     // Sort by peers desc
     torrents.sort((a, b) => b.seeders - a.seeders || b.leechers - a.leechers);
     return torrents;
@@ -116,18 +115,18 @@ class TSA extends GenericSearchClient {
     return { ...result, magnet };
   }
 
-  private _createTorrent(result: TSAResultWithMagnet): Torrent {
+  private _createTorrent(result: TSAResultWithMagnet): TorrentResult {
     const parsed = ptn(result.title);
     return {
       title: result.title,
       parsedTitle: parsed.title,
-      size: getSizeInMB(result.size) || -1,
+      sizeMb: getSizeInMB(result.size) || -1,
       seeders: result.seeds || 0,
       leechers: result.peers || 0,
       uploadTime: result.time,
       magnet: result.magnet,
       quality: parsed.quality || '',
-      resolution: parsed.resolution || ''
+      resolution: parsed.resolution || '',
     };
   }
 }

@@ -1,15 +1,19 @@
+import db from '../db';
 import {getDescription, getNextToAir} from '../common/media';
 import {getAiredStr, getMorning} from '../common/util';
 import {Conversation, Swiper, SwiperReply} from '../Swiper';
 
 export async function status(this: Swiper, convo: Conversation): Promise<SwiperReply> {
-  const _status = await this.dbManager.getStatus();
+  const monitored = await db.media.getWithStatus('unreleased');
+  const queued = await db.media.getWithStatus('queued');
+  const downloading = await db.videos.getWithStatus('downloading');
+  const downloadingWithTorrents = await Promise.all(downloading.map(d => db.videos.addTorrents(d)));
 
-  const monitoredStr = _status.monitored.map(media => {
+  const monitoredStr = monitored.map(media => {
     if (media.type === 'movie') {
-      const dvd = media.dvd && (media.dvd > getMorning());
-      const dvdStr = dvd ? ` _Digital ${media.dvd!.toDateString()}_` : ` _${media.year}_`;
-      return `\`  \`*${media.title}*${dvdStr}`;
+      const release = media.streamingRelease && (media.streamingRelease > getMorning());
+      const releaseStr = release ? ` _Streaming ${media.streamingRelease!.toDateString()}_` : ` _${media.year}_`;
+      return `\`  \`*${media.title}*${releaseStr}`;
     } else {
       const next = getNextToAir(media.episodes);
       return `\`  \`${getDescription(media)}` +
@@ -17,33 +21,27 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
     }
   }).join('\n');
 
-  const downloading = _status.downloading.map((video, i) => {
-    const {progress, remaining, speed, peers} = this.downloadManager.getProgress(video);
-    let sizeStr = '';
-    if (video.size) {
-      const sizeGb = video.size / 1000;
-      sizeStr = `${sizeGb.toFixed(1)}GB `;
-    }
-    const resStr = video.resolution ? `${video.resolution} ` : ``;
-    const qualStr = video.quality ? `${video.quality} ` : ``;
-    const remainingStr = remaining && parseInt(remaining, 10) ? `${remaining} min at ` : '';
-    return `\` ${i + 1} \`${getDescription(video)} _${progress}%_\n` +
-      `\`       \`_${sizeStr}${resStr}${qualStr}_\n` +
-      `\`       \`_${remainingStr}${speed}MB/s with ${peers} peers_`;
+  const downloadingStr = downloadingWithTorrents.map((video, i) => {
+    const torrentStrs = video.torrents.map(t => {
+      const {progress, peers} = this.downloadManager.getProgress(t);
+      const sizeStr = t.sizeMb ? `${(t.sizeMb / 1000).toFixed(1)}GB ` : '';
+      const resStr = t.resolution ? `${t.resolution} ` : ``;
+      const qualStr = t.quality ? `${t.quality} ` : ``;
+      const peersStr = peers ? `${peers}x ` : ``;
+      const progressStr = progress ? `${progress} ` : ``;
+      return `\`       \`_${sizeStr}${resStr}${qualStr}${peersStr}${progressStr}_`;
+    });
+    return `\` ${i + 1} \`${getDescription(video)}\n` + torrentStrs.join('\n');
   });
 
-  const numDownloads = _status.downloading.length;
-  const queued = _status.queued.map((media, i) => {
+  const numDownloads = downloading.length;
+  const queuedStr = queued.map((media, i) => {
     const desc = media.type === 'movie' ? media.title :
       `${getDescription(media)}`;
     return `\` ${i + numDownloads + 1} \` ${desc} _pending_`;
   });
 
-  const downloadStr = [...downloading, ...queued].join('\n');
-
-  const failedStr = _status.failed.map(video => {
-    return `\`  \`${getDescription(video)}`;
-  }).join('\n');
+  const downloadStr = [...downloadingStr, ...queuedStr].join('\n');
 
   const strs = [];
   if (monitoredStr) {
@@ -51,9 +49,6 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
   }
   if (downloadStr) {
     strs.push(`\`DOWNLOADING\`\n${downloadStr}`);
-  }
-  if (failedStr) {
-    strs.push(`\`FAILED\`\n${failedStr}`);
   }
   const str = strs.join('\n');
   return {

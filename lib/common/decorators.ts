@@ -1,7 +1,7 @@
 import range = require('lodash/range');
 import {Conversation, EpisodesDescriptor, MediaQuery} from '../Swiper';
 import {SeasonEpisodes, SwiperReply} from '../Swiper';
-import {filterEpisodes, getVideo, Show} from './media';
+import {filterEpisodes, getVideo} from './media';
 import {identifyMedia} from './request';
 import {execCapture, removePrefix} from './util';
 
@@ -76,7 +76,7 @@ async function addMedia(convo: Conversation, options: RequireOptions = {}): Prom
   }
 
   // If the media isn't a single video and the episodes weren't specified, ask about them.
-  if (!getVideo(convo.media)) {
+  if (!getVideo(convo.media!)) {
     mediaQuery.episodes = mediaQuery.episodes || getEpisodesIdentifier(convo.input || '');
     if (!mediaQuery.episodes && options.requireVideo) {
       return { data: `Specify episode:\nex: S03E02` };

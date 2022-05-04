@@ -3,15 +3,14 @@ import Client from 'ftp';
 import * as path from 'path';
 import rmfr from 'rmfr';
 import {promisify} from 'util';
+import db from './db';
 
 import * as log from './common/logger';
-import {getDescription, getFileSafeTitle, Video, VideoMeta} from './common/media';
-import {delay} from './common/util';
-import {DBManager} from './DBManager';
+import {getDescription, getFileSafeTitle} from './common/media';
 import {Swiper} from './Swiper';
 import {DownloadClient} from './torrents/DownloadClient';
 import {SearchClient} from './torrents/SearchClient';
-import {assignMeta, DownloadProgress, getBestTorrent} from './torrents/util';
+import {getBestTorrent} from './torrents/util';
 
 const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
@@ -20,18 +19,13 @@ const DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../.
 const EXPORT_ROOT = process.env.EXPORT_ROOT || path.resolve(__dirname, '../../media');
 const USE_FTP = Boolean(parseInt(process.env.USE_FTP || "0", 10));
 
-const CLEAR_FAILED_POLL_MINS = 60;
-const REMAIN_IN_FAILED_MINS = 360;
-
 export class DownloadManager {
   private _downloadClient: DownloadClient;
-  private _downloading: VideoMeta[] = [];
+  private _downloading: TVideo[] = [];
   private _managingPromise: Promise<void>;
   private _inProgress: boolean = false;
-  // Used to determine when the downloads folder can be cleaned up
-  private _wasDownloading: boolean = false;
 
-  constructor(private _swiper: Swiper, private _dbManager: DBManager, private _searchClient: SearchClient) {
+  constructor(private _swiper: Swiper, private _searchClient: SearchClient) {
     this._downloadClient = new DownloadClient(this._swiper.mode);
 
     this._downloadClient.on('offline', () => {
@@ -42,10 +36,6 @@ export class DownloadManager {
     this._downloadClient.on('online', () => {
       this._swiper.mode = 'active';
       this.ping();
-    });
-
-    this._startRemovingFailed().catch(err => {
-      log.subProcessError(`DownloadManager _startRemovingFailed first call failed: ${err}`);
     });
 
     this.ping();
@@ -62,8 +52,8 @@ export class DownloadManager {
     await this._ping();
   }
 
-  public getProgress(video: VideoMeta): DownloadProgress {
-    return this._downloadClient.getProgress(video.magnet || '');
+  public getProgress(torrent: DBTorrent): DownloadProgress {
+    return this._downloadClient.getProgress(torrent.magnet);
   }
 
   // This function should NOT be awaited.
@@ -85,121 +75,66 @@ export class DownloadManager {
     // Should be pinged when:
     // - An item is added/removed/reordered in the queue.
     // - An item finishes downloading.
-    try {
-      // Manage which videos are downloading in the queue.
-      const downloads = await this._dbManager.manageDownloads();
 
-      // Determine which downloads to start and stop.
-      const start = downloads.filter(v => !this._downloading.find(_v => _v.id === v.id));
-      const stop = this._downloading.filter(v => !downloads.find(_v => _v.id === v.id));
-      log.debug(`DownloadManager: _manageDownloads() starting ${start.length}`);
-      log.debug(`DownloadManager: _manageDownloads() stopping ${stop.length}`);
+    // Manage which videos are downloading in the queue.
+    const downloads = await db.videos.manageDownloads();
 
-      // Use the results from the database query to start/stop downloads.
-      start.forEach(v => this._startDownload(v));
-      stop.forEach(v => this._stopDownload(v));
+    // Determine which downloads to start and stop.
+    const start = downloads.filter(v => !this._downloading.find(_v => _v.id === v.id));
+    const stop = this._downloading.filter(v => !downloads.find(_v => _v.id === v.id));
+    log.debug(`DownloadManager: _manageDownloads() starting ${start.length}`);
+    log.debug(`DownloadManager: _manageDownloads() stopping ${stop.length}`);
 
-      // Update downloading array.
-      this._downloading = downloads;
-      if (downloads.length === 0) {
-        this._downloadClient.allDownloadsCompleted();
-      } else {
-        this._wasDownloading = true;
-      }
-    } catch (err) {
-      log.subProcessError(`_manageDownloads err: ${err}`);
+    // Use the results from the database query to start/stop downloads.
+    start.forEach(v => this._startDownload(v));
+    stop.forEach(v => this._stopDownload(v));
+
+    // Update downloading array.
+    this._downloading = downloads;
+    if (downloads.length === 0) {
+      this._downloadClient.allDownloadsCompleted();
     }
   }
 
-  private async _startRemovingFailed(): Promise<void> {
-    log.subProcess(`Download Manager cleanup process started`);
-    try {
-      while (true) {
-        await this._removeFailed();
-        // Wait for the specified interval.
-        await delay(CLEAR_FAILED_POLL_MINS * 60 * 1000);
-        // Do not remove lost files on startup, since often an in-progress download
-        // may be continued after an app reboot.
-        await this._removeLostFiles();
-      }
-    } catch (err) {
-      log.subProcessError(`Failed item removal process failed with error: ${err}`);
-      setTimeout(() => {
-        this._startRemovingFailed().catch(() => { /* noop */ });
-      }, 5000);
-    }
-  }
-
-  private async _removeFailed(): Promise<void> {
-    log.debug(`DownloadManager: _removeFailed()`);
-    const failedUpTimeMs = REMAIN_IN_FAILED_MINS * 60 * 1000;
-    const cutoff = Date.now() - failedUpTimeMs;
-    await this._dbManager.removeFailed(cutoff);
-  }
-
-  private async _removeLostFiles(): Promise<void> {
-    log.debug(`DownloadManager: _removeLostFiles()`);
-    // Skip if any downloads are or were in progress in the past interval.
-    if (this._wasDownloading) {
-      // Clear the indicator if downloads are not currently occurring.
-      this._wasDownloading = this._downloading.length > 0;
-      return;
-    }
-    await rmfr(path.join(DOWNLOAD_ROOT, '*'), {glob: true} as any);
-  }
-
-  private async _startDownload(video: VideoMeta): Promise<void> {
+  private async _startDownload(video: TVideo): Promise<void> {
     log.debug(`DownloadManager: _startDownload(${getDescription(video)})`);
-    try {
-      // Assign the torrent if it isn't already.
-      if (!video.magnet) {
-        const torrents = await this._searchClient.search(video);
-        const videoMeta = await this._dbManager.addMetadata(video);
-        const best = getBestTorrent(videoMeta, torrents);
-        if (!best) {
-          log.debug(`DownloadManager: _startDownload(${getDescription(video)}) failed (no torrent found)`);
-          // If no good torrent was found, add the video to failed.
-          await this._dbManager.markAsFailed(video);
-          return;
-        } else {
-          log.debug(`DownloadManager: _startDownload(${getDescription(video)}) magnet added`);
-          await this._dbManager.setTorrent(video.id, best);
-          video = assignMeta(video, best);
-        }
+    // Assign a torrent if there are none.
+    if (!video.torrents.length) {
+      const torrents = await this._searchClient.search(video);
+      const best = getBestTorrent(video, torrents);
+      if (!best) {
+        log.debug(`DownloadManager: _startDownload(${getDescription(video)}) failed (no torrent found)`);
+        // TODO: Schedule search
+        return;
+      } else {
+        log.debug(`DownloadManager: _startDownload(${getDescription(video)}) magnet added`);
+        const torrent: DBTorrent = { ...best, videoId: video.id };
+        await db.torrents.insert(torrent);
+        video.torrents = [torrent];
       }
-
-      // Run the download
-      const downloadPaths = await this._downloadClient.download(video.magnet!);
-
-      // On completion, remove the item from the database.
-      const removeFn = video.type === 'movie' ? (id: number) => this._dbManager.removeMovie(id) :
-        (id: number) => this._dbManager.removeEpisodes([id]);
-      await removeFn(video.id);
-
-      // Remove from downloading
-      this._downloading = this._downloading.filter(v => v.id !== video.id);
-
-      // Export the video (run separately).
-      exportVideo(video, downloadPaths).catch(err => {
-        log.subProcessError(`Failed to export video files: ${err}`);
-      });
-
-      // Ping since the database changed.
-      this.ping();
-    } catch (err) {
-      log.subProcessError(`_startDownload err: ${err}`);
-      // When downloading fails, remove the magnet and mark the video as failed.
-      await this._dbManager.markAsFailed(video);
     }
+
+    // Run the download
+    const downloadPaths = await this._downloadClient.download(video.torrents[0].magnet);
+
+    // On completion, remove the item from the database.
+    await db.videos.delete(video);
+
+    // Remove from downloading
+    this._downloading = this._downloading.filter(v => v.id !== video.id);
+
+    // Export the video (run separately).
+    exportVideo(video, downloadPaths).catch(err => {
+      log.subProcessError(`Failed to export video files: ${err}`);
+    });
+
+    // Ping since the database changed.
+    this.ping();
   }
 
-  private async _stopDownload(video: VideoMeta): Promise<void> {
-    try {
-      if (video.magnet) {
-        await this._downloadClient.stopDownload(video.magnet);
-      }
-    } catch (err) {
-      log.subProcessError(`_stopDownload err: ${err}`);
+  private async _stopDownload(video: TVideo): Promise<void> {
+    if (video.torrents.length > 0) {
+      await this._downloadClient.stopDownload(video.torrents[0].magnet);
     }
   }
 }
