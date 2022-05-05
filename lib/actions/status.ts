@@ -1,7 +1,7 @@
 import db from '../db';
 import {getDescription, getNextToAir} from '../common/media';
 import {getAiredStr, getMorning} from '../common/util';
-import {Conversation, Swiper, SwiperReply} from '../Swiper';
+import Swiper from '../Swiper';
 
 export async function status(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const monitored = await db.media.getWithStatus('unreleased');

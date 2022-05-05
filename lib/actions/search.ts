@@ -2,7 +2,7 @@ import db from '../db';
 import * as log from '../common/logger';
 import {getDescription} from '../common/media';
 import {matchNumber} from '../common/util';
-import {Conversation, Swiper, SwiperReply} from '../Swiper';
+import Swiper from '../Swiper';
 import TorrentSearch from '../apis/TorrentSearch';
 
 // Number of torrents to show per page

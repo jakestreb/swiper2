@@ -8,10 +8,9 @@ EventEmitter.defaultMaxListeners = Infinity; // Hides a repeated warning from 'w
 import * as readline from 'readline';
 
 import * as log from './lib/common/logger';
-import {Swiper, SwiperReply} from './lib/Swiper';
+import Swiper from './lib/Swiper';
 
 const CLI_ID = -1;
-const ENHANCED_TERMINAL = Boolean(parseInt(process.env.ENHANCED_TERMINAL || "0", 10));
 // const telegramToken = process.env.TELEGRAM_TOKEN || '';
 
 // const telegram = new TelegramBot(telegramToken, {polling: true});
@@ -33,16 +32,12 @@ type CommType = 'cli'|'telegram';
 async function sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
   const commType = commTypes[id];
   if (commType === 'cli') {
-    if (ENHANCED_TERMINAL && msg.enhanced) {
-      msg.enhanced();
+    if (msg.data) {
+      log.info(msg.data);
     } else {
-      if (msg.data) {
-        log.info(msg.data);
-      } else {
-        log.inputError(msg.err);
-      }
-      log.prompt();
+      log.inputError(msg.err);
     }
+    log.prompt();
   } else {
     if (msg.data) {
       log.foreignResponse(msg.data);

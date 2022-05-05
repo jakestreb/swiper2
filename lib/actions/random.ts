@@ -1,6 +1,6 @@
 // import {getDescription} from '../common/media';
 // import {matchYesNo} from '../common/util';
-// import {Conversation, Swiper, SwiperReply} from '../Swiper';
+// import Swiper from '../Swiper';
 
 // // Time before a random movie is suggested again (3 months)
 // const TIMEOUT = 3 * 30 * 24 * 60 * 60 * 1000;

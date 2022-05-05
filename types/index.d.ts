@@ -6,6 +6,37 @@ declare type MediaType = 'movie'|'tv'|'episode';
 declare type JobType = 'AddTorrent'|'DeleteVideo'|'QueueVideo';
 declare type JobSchedule = 'once'|'repeated'|'backoff';
 
+declare interface SwiperReply {
+  data?: string;
+  err?: string;
+  final?: boolean;
+}
+
+declare interface MediaQuery {
+  title: string;
+  type: 'movie'|'tv'|null;
+  episodes: EpisodesDescriptor|null;
+  year: string|null;
+}
+
+declare interface SeasonEpisodes {
+  [season: string]: number[]|'all';
+}
+
+declare type EpisodesDescriptor = SeasonEpisodes|'new'|'all';
+
+declare interface Conversation {
+  id: number;
+  input?: string;
+  commandFn?: (input?: string) => Promise<SwiperReply>|SwiperReply;
+  mediaQuery?: MediaQuery;
+  media?: Media;
+  position?: 'first'|'last';
+  torrents?: TorrentResult[];
+  storedMedia?: Media[];
+  pageNum?: number;
+}
+
 declare interface TorrentResult {
   title: string;
   parsedTitle: string;

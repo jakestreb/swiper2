@@ -1,5 +1,5 @@
 // import {getDescription, Video} from '../common/media';
-// import {Conversation, Swiper, SwiperReply} from '../Swiper';
+// import Swiper from '../Swiper';
 
 // export async function favorite(this: Swiper, convo: Conversation): Promise<SwiperReply> {
 //   const video = convo.media as Video;

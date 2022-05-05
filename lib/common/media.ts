@@ -1,4 +1,3 @@
-import {EpisodesDescriptor} from '../Swiper';
 import {getMorning, padZeros} from './util';
 
 export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor): Episode[] {

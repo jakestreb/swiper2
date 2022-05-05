@@ -1,8 +1,7 @@
 import * as log from '../common/logger';
 import db from '../db';
 import {getDescription, getVideo} from '../common/media';
-import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import {getBestTorrent} from '../torrents/util';
+import Swiper from '../Swiper';
 
 export async function download(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   // Check if the media item is a single video for special handling.

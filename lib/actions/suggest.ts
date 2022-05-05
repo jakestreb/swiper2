@@ -2,7 +2,7 @@
 // import {getPopularReleasedBetween} from '../common/request';
 // import {getMorning, matchYesNo} from '../common/util';
 // import {DBManager} from '../DBManager';
-// import {Conversation, Swiper, SwiperReply} from '../Swiper';
+// import Swiper from '../Swiper';
 
 // // Start suggesting 10 weeks back for proximity to dvd release
 // const DVD_DELAY = 10 * 7 * 24 * 60 * 60 * 1000;

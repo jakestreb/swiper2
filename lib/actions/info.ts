@@ -1,6 +1,6 @@
 // import {getLastAired, getNextToAir} from '../common/media';
 // import {getAiredStr, padZeros} from '../common/util';
-// import {Conversation, Swiper, SwiperReply} from '../Swiper';
+// import Swiper from '../Swiper';
 
 // export async function info(this: Swiper, convo: Conversation): Promise<SwiperReply> {
 //   const media = convo.media as Media;

@@ -21,44 +21,7 @@ import {search} from './actions/search';
 import {status} from './actions/status';
 // import {suggest} from './actions/suggest';
 
-type CommandFn = (input?: string) => Promise<SwiperReply>|SwiperReply;
-
-export interface SwiperReply {
-  data?: string;
-  enhanced?: () => void; // Enhanced response for the terminal
-  err?: string;
-  final?: boolean;
-}
-
-// Info from the client to identify media
-// All null values are treated as undetermined.
-export interface MediaQuery {
-  title: string;
-  type: 'movie'|'tv'|null;
-  episodes: EpisodesDescriptor|null;
-  year: string|null;
-}
-
-// Map from each desired season to an array of episode numbers or 'all'.
-export interface SeasonEpisodes {
-  [season: string]: number[]|'all';
-}
-
-export type EpisodesDescriptor = SeasonEpisodes|'new'|'all';
-
-export interface Conversation {
-  id: number;
-  input?: string;
-  commandFn?: CommandFn;
-  mediaQuery?: MediaQuery;
-  media?: Media;
-  position?: 'first'|'last';
-  torrents?: TorrentResult[];
-  storedMedia?: Media[];
-  pageNum?: number;
-}
-
-export class Swiper {
+export default class Swiper {
   // Should be called to build a Swiper instance.
   public static async create(sendMsg: (id: number, msg: SwiperReply) => Promise<void>): Promise<Swiper> {
     await db.init();

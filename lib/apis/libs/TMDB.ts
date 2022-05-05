@@ -1,5 +1,4 @@
 import axios from 'axios';
-import {MediaQuery} from '../../Swiper';
 import * as log from '../../common/logger';
 import {getDateFromStr} from '../../common/util';
 

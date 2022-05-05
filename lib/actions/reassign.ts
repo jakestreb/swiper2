@@ -1,7 +1,7 @@
 // import * as log from '../common/logger';
 // import {getDescription, getVideo, Media} from '../common/media';
 // import {matchYesNo} from '../common/util';
-// import {Conversation, Swiper, SwiperReply} from '../Swiper';
+// import Swiper from '../Swiper';
 
 // export interface ReassignOptions {
 //   blacklist?: boolean; // When true, the reassigned torrent is also blacklisted.

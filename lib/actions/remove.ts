@@ -1,7 +1,7 @@
 import db from '../db';
 import {getDescription} from '../common/media';
 import {matchYesNo} from '../common/util';
-import {Conversation, Swiper, SwiperReply} from '../Swiper';
+import Swiper from '../Swiper';
 
 export async function remove(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const reply = await this.addStoredMediaIfFound(convo);

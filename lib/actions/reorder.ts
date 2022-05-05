@@ -1,6 +1,6 @@
 // import {getDescription, Media} from '../common/media';
 // import {execCapture, matchYesNo} from '../common/util';
-// import {Conversation, MediaQuery, Swiper, SwiperReply} from '../Swiper';
+// import Swiper from '../Swiper';
 
 // export async function reorder(this: Swiper, convo: Conversation): Promise<SwiperReply> {
 //   const mediaQuery = convo.mediaQuery as MediaQuery;
