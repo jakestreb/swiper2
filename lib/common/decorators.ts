@@ -2,8 +2,9 @@ import range = require('lodash/range');
 import {Conversation, EpisodesDescriptor, MediaQuery} from '../Swiper';
 import {SeasonEpisodes, SwiperReply} from '../Swiper';
 import {filterEpisodes, getVideo} from './media';
-import {identifyMedia} from './request';
+import MediaSearch from '../apis/MediaSearch';
 import {execCapture, removePrefix} from './util';
+import * as logger from './logger';
 
 interface RequireOptions {
   forceEpisodes?: EpisodesDescriptor; // Forces the episode mediaQuery argument to be as given.
@@ -62,17 +63,16 @@ async function addMedia(convo: Conversation, options: RequireOptions = {}): Prom
 
   // If media has not been found yet, find it.
   if (!convo.media) {
-    const mediaResp = await identifyMedia(mediaQuery);
-    if (!mediaResp.data) {
-      // If the media cannot be identified, clear the conversation state.
+    try {
+      convo.media = await MediaSearch.search(mediaQuery);
+      convo.input = ''; // Clear the input since it has already been used.
+    } catch (err) {
+      logger.error(`Media lookup failed: ${err}`);
       return {
-        err: mediaResp.err!,
+        err: 'Media lookup failed',
         final: true
       };
     }
-    convo.media = mediaResp.data;
-    // Clear the input since it has already been used.
-    convo.input = '';
   }
 
   // If the media isn't a single video and the episodes weren't specified, ask about them.

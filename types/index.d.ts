@@ -1,4 +1,3 @@
-declare module 'node-tvdb';
 declare module 'parse-torrent-name';
 
 declare type Status = 'identified'|'unreleased'|'searching'|'downloading'|'uploading'|'completed';
