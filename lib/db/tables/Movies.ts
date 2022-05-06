@@ -4,13 +4,13 @@ export default class Movies extends Base {
   public async init(): Promise<this> {
     await this.db.run(`CREATE TABLE IF NOT EXISTS movies (
       id INTEGER PRIMARY KEY ON CONFLICT REPLACE,
-      addedBy INTEGER,
-      type TEXT,
       title TEXT,
       year TEXT,
-      theaterRelease DATETIME,
-      dvdRelease DATETIME,
+      theatricalRelease DATETIME,
+      streamingRelease DATETIME,
       status TEXT,
+      queueIndex INTEGER DEFAULT -1,
+      addedBy INTEGER,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -44,8 +44,11 @@ export default class Movies extends Base {
   }
 
   public async insert(arg: Movie, options: DBInsertOptions): Promise<void> {
-    await this.db.run('INSERT INTO movies (id, title, year, status, addedBy) VALUES (?, ?, ?, ?, ?)',
-        [arg.id, arg.title, arg.year, options.status, options.addedBy]);
+    await this.db.run('INSERT INTO movies '
+      + '(id, title, year, theatricalRelease, streamingRelease, status, addedBy) '
+      + 'VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [arg.id, arg.title, arg.year, arg.theatricalRelease, arg.streamingRelease,
+        options.status, options.addedBy]);
   }
 
   private async all(sqlCommand: string, sqlArgs: any[] = []): Promise<Movie[]> {

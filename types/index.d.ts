@@ -1,7 +1,7 @@
 declare module 'parse-torrent-name';
 
 declare type Status = 'identified'|'unreleased'|'searching'|'downloading'|'uploading'|'completed';
-declare type TorrentStatus = 'downloading'|'paused';
+declare type TorrentStatus = 'downloading'|'slow'|'paused';
 declare type MediaType = 'movie'|'tv'|'episode';
 declare type JobType = 'AddTorrent'|'DeleteVideo'|'QueueVideo';
 declare type JobSchedule = 'once'|'repeated'|'backoff';
@@ -65,16 +65,18 @@ declare interface DBEpisode {
   showId: number;
   status: Status;
   addedBy?: number;
+  queueIndex: number;
 }
 
 declare interface DBMovie {
   id: number; // IMDB id
   title: string;
   year: string;
-  theatricalRelease: Date|null;
-  streamingRelease: Date|null;
+  theatricalRelease: Date;
+  streamingRelease: Date;
   status: Status;
   addedBy?: number;
+  queueIndex: number;
 }
 
 declare interface DBShow {
@@ -90,6 +92,7 @@ declare interface DBTorrent {
   resolution: string;
   sizeMb: number;
   status: TorrentStatus;
+  queueIndex?: number;
 }
 
 declare interface DBJob {
@@ -142,8 +145,9 @@ declare type TEpisode = Episode & {
 declare type TVideo = TMovie|TEpisode;
 
 declare interface DownloadProgress {
-  progress: string;  // (0-100)
-  speed: string;     // (MB/s)
-  remaining: string; // (min)
+  progress: number;  // (0-100)
+  speed: number;     // (MB/s)
+  remaining: number; // (min)
   peers: number;
+  receivedMb: number;
 }

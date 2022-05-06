@@ -9,6 +9,7 @@ export default class Torrents extends Base {
       resolution TEXT,
       sizeMb INTEGER,
       status TEXT,
+      queueIndex INTEGER DEFAULT -1,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -23,5 +24,11 @@ export default class Torrents extends Base {
     await this.db.run(`INSERT INTO torrents (magnet, videoId, quality, resolution, sizeMb, status)`
     	+ ` VALUES (?, ?, ?, ?, ?)`,
         [arg.magnet, arg.videoId, arg.quality, arg.resolution, arg.sizeMb, arg.status]);
+  }
+
+  public async setQueueOrder(torrents: DBTorrent[]): Promise<void> {
+    await Promise.all(torrents.map((t, i) => {
+      return this.db.run(`UPDATE torrents SET queueIndex=? WHERE magnet=?`, [i, t.magnet]);
+    }));
   }
 }

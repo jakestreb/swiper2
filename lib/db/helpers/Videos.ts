@@ -33,4 +33,11 @@ export default class Videos {
     await this.db.movies.delete(videoId);
     await this.db.episodes.delete(videoId);
   }
+
+  public async setQueueOrder(videos: Video[]): Promise<void> {
+    await Promise.all(videos.map((v, i) => {
+      const table = v.type === 'movie' ? 'movies' : 'episodes';
+      return this.db.run(`UPDATE ? SET queueIndex=? WHERE id=?`, [table, i, v.id]);
+    }));
+  }
 }

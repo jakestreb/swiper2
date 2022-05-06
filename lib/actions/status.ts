@@ -3,7 +3,7 @@ import {getDescription, getNextToAir} from '../common/media';
 import {getAiredStr, getMorning} from '../common/util';
 import Swiper from '../Swiper';
 
-export async function status(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+export async function status(swiper: Swiper, convo: Conversation): Promise<SwiperReply> {
   const monitored = await db.media.getWithStatus('unreleased');
   const queued = await db.media.getWithStatus('queued');
   const downloading = await db.videos.getWithStatus('downloading');
@@ -23,7 +23,7 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
 
   const downloadingStr = downloadingWithTorrents.map((video, i) => {
     const torrentStrs = video.torrents.map(t => {
-      const {progress, peers} = this.downloadManager.getProgress(t);
+      const {progress, peers} = swiper.downloadManager.getProgress(t);
       const sizeStr = t.sizeMb ? `${(t.sizeMb / 1000).toFixed(1)}GB ` : '';
       const resStr = t.resolution ? `${t.resolution} ` : ``;
       const qualStr = t.quality ? `${t.quality} ` : ``;

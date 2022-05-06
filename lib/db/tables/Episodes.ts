@@ -4,12 +4,13 @@ export default class Episodes extends Base {
   public async init(): Promise<this> {
     await this.db.run(`CREATE TABLE IF NOT EXISTS episodes (
       id INTEGER PRIMARY KEY ON CONFLICT REPLACE,
-      addedBy INTEGER,
       seasonNum INTEGER,
       episodeNum INTEGER,
       airDate DATETIME,
       showId INTEGER,
       status TEXT DEFAULT unreleased,
+      queueIndex INTEGER DEFAULT -1,
+      addedBy INTEGER,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 

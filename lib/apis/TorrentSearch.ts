@@ -59,7 +59,7 @@ export default class TorrentSearch {
 
   public static async addBestTorrent(video: Video): Promise<DBTorrent|null> {
     const torrents = await this.search(video);
-    const best = getBestTorrent(video, torrents);
+    const best = this.getBestTorrent(video, torrents);
     if (!best) {
       log.debug(`SearchClient: getBestTorrent(${getDescription(video)}) failed (no torrent found)`);
       // TODO: Schedule search
@@ -69,6 +69,19 @@ export default class TorrentSearch {
     const torrent: DBTorrent = { ...best, status: 'paused', videoId: video.id };
     await db.torrents.insert(torrent);
     return torrent;
+  }
+
+  public static getBestTorrent(video: Video: torrents: TorrentResult[]): TorrentResult|null {
+    let bestTorrent = null;
+    let bestTier = 0;
+    torrents.forEach(t => {
+      const tier = getTorrentTier(video, t);
+      if (tier > bestTier) {
+        bestTorrent = t;
+        bestTier = tier;
+      }
+    });
+    return bestTorrent;
   }
 
   private static doRetrySearch(searchTerm: string): Promise<TorrentResult[]> {
@@ -123,20 +136,6 @@ export default class TorrentSearch {
       resolution: parsed.resolution || '',
     };
   }
-}
-
-// Returns the best torrent as a match to the video. Returns null if none are decided as good.
-function getBestTorrent(video: Video, torrents: TorrentResult[]): TorrentResult|null {
-  let bestTorrent = null;
-  let bestTier = 0;
-  torrents.forEach(t => {
-    const tier = getTorrentTier(video, t);
-    if (tier > bestTier) {
-      bestTorrent = t;
-      bestTier = tier;
-    }
-  });
-  return bestTorrent;
 }
 
 // Get download quality tier. The tiers range from 0 <-> (2 * number of quality preferences)

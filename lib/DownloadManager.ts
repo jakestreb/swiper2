@@ -2,9 +2,12 @@ import * as path from 'path';
 import db from './db';
 import * as log from './common/logger';
 import {getDescription} from './common/media';
+import * as priorityUtil from './common/priority';
 import ExportHandler from './ExportHandler';
 import MemoryManager from './MemoryManager';
 import {DownloadClient} from './DownloadClient';
+
+type VTorrent = DBTorrent & { video: Video };
 
 export class DownloadManager {
 
@@ -56,60 +59,96 @@ export class DownloadManager {
     }
   }
 
-  // Should be called when a new torrent is added to a video & when a download completes.
+  // Should be called when:
+  // - a new torrent is added to a video
+  // - a download completes
+  // - a torrent download is marked/unmarked as 'slow'
   private async _manageDownloads(): Promise<void> {
     log.debug(`DownloadManager: _manageDownloads()`);
 
-    // TODO: Torrents need running/paused status, videos are always 'searching'/'downloading'
+    const downloads: Video[] = await db.videos.getWithStatus('downloading');
+    const withTorrents = await Promise.all(downloads.map(d => db.videos.addTorrents(d)));
 
-    const queue: Video[] = await db.videos.getWithStatus('searching', 'downloading');
-    const updated = this.prioritizeTorrents(queue.map(v => ({ ...v })));
+    // Sort videos and video torrents by priority
+    const sorted = priorityUtil.sortByPriority(withTorrents, this.getVideoPriority.bind(this));
 
-    await db.videos.saveStatuses(updated);
+    const sortedTorrents: VTorrent[] = [];
+    sorted.forEach(v => {
+      const ts = priorityUtil.sortByPriority(v.torrents, this.getTorrentPriority.bind(this))
+      const vts = ts.map(t => ({ ...t, video: v }));
+      sortedTorrents.push(...vts);
+    });
 
-    queue.sort((a, b) => a.id - b.id);
-    updated.sort((a, b) => a.id - b.id);
+    const toStart: VTorrent[] = [];
+    const toPause: VTorrent[] = [];
 
-    const start = queue.filter((v, i) => v.status === 'queued' && updated[i].status === 'downloading');
-    const stop = queue.filter((v, i) => v.status === 'downloading' && updated[i].status === 'queued');
-    log.debug(`DownloadManager: manageDownloads() starting ${start.length}`);
-    log.debug(`DownloadManager: manageDownloads() stopping ${stop.length}`);
+    // Round robin iterate through videos starting any torrents where there's space
+    // Once all the space is allocated, pause any remaining torrents
+    let storageRemaining = this.memoryManager.freeMb;
 
-    // Use the results from the database query to start/stop downloads.
-    start.forEach(v => this.startDownload(v));
-    stop.forEach(v => this.stopDownload(v));
+    sortedTorrents.forEach(vt => {
+      const progressMb = this.downloadClient.getProgress(vt.magnet).receivedMb;
+      const allocateMb = vt.sizeMb - progressMb;
+      if (storageRemaining - allocateMb > 0) {
+        // Allocate
+        storageRemaining -= allocateMb;
+        if (vt.status === 'paused') {
+          toStart.push(vt);
+        }
+      } else if (vt.status !== 'paused') {
+        toPause.push(vt);
+      }
+    });
 
-    // Update downloading array.
-    this._downloading = downloads;
-    if (downloads.length === 0) {
-      this._downloadClient.allDownloadsCompleted();
-    }
+    log.debug(`DownloadManager: manageDownloads() starting ${toStart.length}`);
+    log.debug(`DownloadManager: manageDownloads() stopping ${toPause.length}`);
+
+    toStart.forEach(vt => this.startDownload(vt));
+    toPause.forEach(vt => this.stopDownload(vt));
+
+    // Update queueNums
+    await db.videos.setQueueOrder(sorted);
+    await db.torrents.setQueueOrder(sortedTorrents);
   }
 
-  // Must be idempotent
-  private prioritizeTorrents(videos: TVideo[]): TVideo[] {
-    return videos;
-  }
-
-  private async startDownload(video: Video, torrent: DBTorrent): Promise<void> {
-    log.debug(`DownloadManager: startDownload(${getDescription(video)})`);
+  private async startDownload(torrent: VTorrent): Promise<void> {
+    log.debug(`DownloadManager: startDownload(${getDescription(torrent.video)})`);
 
     // Run the download
     const downloadPaths = await this.downloadClient.download(torrent.magnet);
 
-    // On completion, remove the item from the database.
-    await db.videos.delete(video);
+    // On completion, mark the video status as uploading.
+    await db.videos.setStatus(torrent.video, 'uploading');
 
     // Export the video (run separately).
-    this.exportHandler.export(video, downloadPaths).catch(err => {
-      log.subProcessError(`Failed to export video files: ${err}`);
-    });
+    await this.exportHandler.export(torrent.video, downloadPaths)
+      .catch(err => {
+        log.subProcessError(`Failed to export video files: ${err}`);
+      });
 
     // Ping since the database changed.
     this.ping();
   }
 
-  private async stopDownload(torrent: DBTorrent): Promise<void> {
+  private async stopDownload(torrent: VTorrent): Promise<void> {
     await this.downloadClient.stopDownload(torrent.magnet);
+  }
+
+
+  private getVideoPriority(video: TVideo): number[] {
+    const isSlow = video.torrents.every(t => t.status === 'slow' || t.status === 'paused');
+    const isMovie = video.type === 'movie';
+    const season = video.type === 'episode' ? video.seasonNum : 0;
+    const episode = video.type === 'episode' ? video.episodeNum : 0;
+    // From important to least
+    return [-isSlow, +isMovie, -season, -episode];
+  }
+
+  private getTorrentPriority(torrent: DBTorrent): number[] {
+    const downloadProgress = this.getProgress(torrent);
+    const isSlow = torrent.status === 'slow';
+    const { progress, peers } = downloadProgress;
+    // From important to least
+    return [-isSlow, +progress, +peers];
   }
 }

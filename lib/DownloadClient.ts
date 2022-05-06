@@ -2,7 +2,7 @@ import * as events from 'events';
 import rmfr from 'rmfr';
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
-import * as log from '../common/logger';
+import * as log from './common/logger';
 
 export class DownloadClient extends events.EventEmitter {
   private _client: WebTorrent.Instance|null;
@@ -34,10 +34,11 @@ export class DownloadClient extends events.EventEmitter {
     log.debug(`DownloadClient: getProgress(${magnet})`);
     const wtTorrent = this.client.get(magnet);
     return {
-      progress: wtTorrent ? (wtTorrent.progress * 100).toPrecision(2) : '0',
-      speed: wtTorrent ? (wtTorrent.downloadSpeed / (1000 * 1000)).toPrecision(2) : '0',
-      remaining: wtTorrent ? Math.round(wtTorrent.timeRemaining / (60 * 1000)).toString() : '',
-      peers: wtTorrent ? wtTorrent.numPeers : 0
+      progress: wtTorrent ? wtTorrent.progress * 100 : 0,
+      speed: wtTorrent ? wtTorrent.downloadSpeed / (1000 * 1000) : 0,
+      remaining: wtTorrent ? Math.round(wtTorrent.timeRemaining / (60 * 1000)) : -1,
+      peers: wtTorrent ? wtTorrent.numPeers : 0,
+      receivedMb: wtTorrent ? wtTorrent.received / 1000 : 0,
     };
   }
 
