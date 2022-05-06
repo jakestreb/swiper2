@@ -3,7 +3,7 @@ declare module 'parse-torrent-name';
 declare type Status = 'identified'|'unreleased'|'searching'|'downloading'|'uploading'|'completed';
 declare type TorrentStatus = 'downloading'|'slow'|'paused';
 declare type MediaType = 'movie'|'tv'|'episode';
-declare type JobType = 'AddTorrent'|'DeleteVideo'|'QueueVideo';
+declare type JobType = 'AddTorrent'|'CheckForRelease'|'DeleteVideo'|'MonitorDownload'|'StartSearching';
 declare type JobSchedule = 'once'|'repeated'|'backoff';
 
 declare interface SwiperReply {
@@ -54,14 +54,14 @@ declare interface TorrentResult {
 declare interface JobDescription {
   type: JobType;
   videoId: number;
-  startAt: Date;
+  startAt: number;
 }
 
 declare interface DBEpisode {
   id: number; // IMDB id
   seasonNum: number;
   episodeNum: number;
-  airDate: Date|null;
+  airDate?: number;
   showId: number;
   status: Status;
   addedBy?: number;
@@ -72,8 +72,8 @@ declare interface DBMovie {
   id: number; // IMDB id
   title: string;
   year: string;
-  theatricalRelease?: Date;
-  streamingRelease?: Date;
+  theatricalRelease?: number;
+  streamingRelease?: number;
   status: Status;
   addedBy?: number;
   queueIndex?: number;
@@ -102,8 +102,8 @@ declare interface DBJob {
   schedule: JobSchedule;
   intervalS: number;
   runCount: number;
-  startAt: Date;
-  nextRunAt: Date;
+  startAt: number;
+  nextRunAt: number;
 }
 
 declare type DBMedia = DBMovie|DBShow;

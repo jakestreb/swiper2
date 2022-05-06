@@ -60,7 +60,7 @@ export default class TVDB {
       type: 'episode',
       seasonNum: ep.airedSeason,
       episodeNum: ep.airedEpisodeNumber,
-      airDate: ep.firstAired ? new Date(`${ep.firstAired} ${info.airsTime}`) : null,
+      airDate: ep.firstAired ? new Date(`${ep.firstAired} ${info.airsTime}`).getTime() : undefined,
       showId: show.id,
       showTitle: show.title,
       status: 'identified',

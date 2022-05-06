@@ -5,7 +5,7 @@ import * as jobs from './jobs';
 
 export class Worker {
   private jobs: {[type: string]: typeof BaseJob} = jobs;
-  private nextRunDate: Date|null = null;
+  private nextRunTs: number|null = null;
   private currentTimeout: NodeJS.Timeout|null = null;
 
   public start() {
@@ -34,19 +34,20 @@ export class Worker {
   // Do not await
   private async ping() {
     const nextJob = await db.jobs.getNext();
-    if (nextJob && (!this.nextRunDate || nextJob.nextRunAt < this.nextRunDate)) {
+    if (nextJob && (!this.nextRunTs || nextJob.nextRunAt < this.nextRunTs)) {
       clearTimeout(this.currentTimeout!);
-      this.nextRunDate = nextJob.nextRunAt;
+      console.warn('NEXT JOB', nextJob);
+      this.nextRunTs = nextJob.nextRunAt;
       this.currentTimeout = setTimeout(async () => this.runJob(nextJob),
-        this.nextRunDate.getTime() - Date.now());
+        this.nextRunTs - Date.now());
     }
   }
 
   private async runJob(job: DBJob) {
-    this.nextRunDate = null;
+    this.nextRunTs = null;
     this.currentTimeout = null;
-    const result = await this.jobs[job.type].run(job.videoId);
-    if (!result) {
+    const success = await this.jobs[job.type].run(job.videoId);
+    if (!success) {
       // Reschedule repeat jobs on failure
       await db.jobs.reschedule(job);
       this.start();

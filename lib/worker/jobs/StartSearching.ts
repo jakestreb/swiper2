@@ -2,7 +2,9 @@ import worker from '../../worker';
 import db from '../../db';
 import Base from './Base';
 
-export default class StartSearching extends Base {
+// For 'unreleased' videos, a one-time event on release to begin searching for
+// a torrent
+export class StartSearching extends Base {
 	public static schedule: JobSchedule = 'once';
 	public static initDelayS: number = 0;
 
@@ -15,7 +17,7 @@ export default class StartSearching extends Base {
 		await worker.addJob({
 		  type: 'AddTorrent',
 		  videoId,
-		  startAt: new Date(),
+		  startAt: Date.now(),
 		});
 		return true;
 	}

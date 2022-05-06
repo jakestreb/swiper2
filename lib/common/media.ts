@@ -4,7 +4,7 @@ export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor):
   if (filter === 'new') {
     // Unaired episodes only
     const morning = getMorning();
-    return episodes.filter(ep => ep.airDate && (ep.airDate > morning));
+    return episodes.filter(ep => ep.airDate && (new Date(ep.airDate) > morning));
   } else if (filter === 'all') {
     return episodes;
   } else {
@@ -36,12 +36,12 @@ export function sortEpisodes(episodes: Episode[]): Episode[] {
 
 export function getNextToAir(episodes: Episode[]): Episode|null {
   const morning = getMorning();
-  return episodes.find(ep => ep.airDate !== null && (ep.airDate >= morning)) || null;
+  return episodes.find(ep => ep.airDate && (new Date(ep.airDate) >= morning)) || null;
 }
 
 export function getLastAired(episodes: Episode[]): Episode|null {
   const morning = getMorning();
-  return episodes.slice().reverse().find(ep => ep.airDate !== null && (ep.airDate < morning)) || null;
+  return episodes.slice().reverse().find(ep => ep.airDate && (new Date(ep.airDate) < morning)) || null;
 }
 
 export function getFileSafeTitle(video: Video): string {

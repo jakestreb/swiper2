@@ -1,7 +1,9 @@
 import db from '../../db';
 import Base from './Base';
 
-export default class MonitorDownload extends Base {
+// For 'downloading' videos, backoff check progress to update torrent status
+// At certain checkpoints, add additional torrents
+export class MonitorDownload extends Base {
 	public static schedule: JobSchedule = 'backoff';
 	public static initDelayS: number = 60;
 

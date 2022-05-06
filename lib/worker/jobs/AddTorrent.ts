@@ -2,7 +2,8 @@ import db from '../../db';
 import Base from './Base';
 import TorrentSearch from '../../apis/TorrentSearch';
 
-export default class AddTorrent extends Base {
+// For 'searching' videos, backoff check for a torrent
+export class AddTorrent extends Base {
 	public static schedule: JobSchedule = 'backoff';
 	public static initDelayS: number = 60 * 15;
 

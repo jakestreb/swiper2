@@ -30,6 +30,7 @@ export default class Jobs extends Base {
 
   // Note that this should only be called by the worker
   public async insert(arg: JobInsertArg): Promise<void> {
+    console.warn('INSERT JOB', arg);
     await this.db.run(`INSERT INTO jobs `
       + `(type, videoId, schedule, intervalS, runCount, startAt, nextRunAt)`
     	+ ` VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -37,7 +38,7 @@ export default class Jobs extends Base {
   }
 
   public async reschedule(job: DBJob): Promise<void> {
-    const { schedule, intervalS, runCount } = job;
+    const { id, schedule, intervalS, runCount } = job;
     if (schedule === 'once') {
       return;
     }
@@ -45,8 +46,8 @@ export default class Jobs extends Base {
     interval = Math.max(interval, Jobs.MAX_INTERVAL_SECONDS);
 
     const nextRunAt = new Date(Date.now() + interval * 1000);
-    await this.db.run('UPDATE jobs SET nextRunAt=?, intervalS=? WHERE id=?',
-      [nextRunAt, interval, id]);
+    await this.db.run('UPDATE jobs SET nextRunAt=?, intervalS=?, runCount=? WHERE id=?',
+      [nextRunAt, interval, runCount + 1, id]);
   }
 
   public async deleteForVideo(videoId: number): Promise<void> {

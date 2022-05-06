@@ -1,7 +1,10 @@
 import db from '../../db';
 import Base from './Base';
+import TorrentSearch from '../../apis/TorrentSearch';
 
-export default class CheckForRelease extends Base {
+// For 'unreleased' movies without a clear release date, repeatedly search and set
+// directly to 'downloading' when a torrent is found
+export class CheckForRelease extends Base {
 	public static schedule: JobSchedule = 'repeated';
 	public static initDelayS: number = 60 * 60 * 12;
 
@@ -10,7 +13,11 @@ export default class CheckForRelease extends Base {
 		if (!video) {
 			throw new Error(`CheckForRelease job run on invalid videoId: ${videoId}`);
 		}
-		// TODO: Add slow status to torrents, add new torrent eventually
+		const torrent = await TorrentSearch.addBestTorrent(video);
+		if (torrent) {
+			await db.videos.setStatus(video, 'downloading');
+			return true;
+		}
 		return false;
 	}
 }

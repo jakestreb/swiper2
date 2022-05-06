@@ -10,13 +10,13 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
 
   const monitoredStr = monitored.map(media => {
     if (media.type === 'movie') {
-      const release = media.streamingRelease && (media.streamingRelease > getMorning());
-      const releaseStr = release ? ` _Streaming ${media.streamingRelease!.toDateString()}_` : ` _${media.year}_`;
+      const release = media.streamingRelease && (media.streamingRelease > getMorning().getTime());
+      const releaseStr = release ? ` _Streaming ${new Date(media.streamingRelease!).toDateString()}_` : ` _${media.year}_`;
       return `\`  \`*${media.title}*${releaseStr}`;
     } else {
       const next = getNextToAir(media.episodes);
       return `\`  \`${getDescription(media)}` +
-        ((next && next.airDate) ? ` _${getAiredStr(next!.airDate!)}_` : '');
+        ((next && next.airDate) ? ` _${getAiredStr(new Date(next!.airDate!))}_` : '');
     }
   }).join('\n');
 

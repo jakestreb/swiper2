@@ -58,13 +58,16 @@ export default class TMDB {
     } catch (err) {
       log.debug(`TMDB.toMovie fetching release date failed: ${err}`);
     }
+    const theatricalReleaseDate = getDateFromStr(info.release_date);
+    const streamingReleaseDate = getDateFromStr(streamingRelease);
+
     return {
       id: parseImdbId(imdbId),
       type: 'movie',
       title: info.title,
       year: getYear(info.release_date),
-      theatricalRelease: getDateFromStr(info.release_date)!,
-      streamingRelease: getDateFromStr(streamingRelease)!,
+      theatricalRelease: theatricalReleaseDate ? theatricalReleaseDate.getTime() : undefined,
+      streamingRelease: streamingReleaseDate ? streamingReleaseDate.getTime() : undefined,
       status: 'identified',
       queueIndex: -1,
     };
