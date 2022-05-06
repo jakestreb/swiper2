@@ -9,6 +9,7 @@
     "build": "tsc",
     "start": "npm run build && node dist/server.js",
     "dev": "ts-node server.ts",
+    "reset": "rm records.db",
     "lines": "git -C lib grep ^ | wc -l"
   },
   "repository": {

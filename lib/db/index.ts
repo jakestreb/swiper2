@@ -22,7 +22,7 @@ export class DBManager {
   private _db: sqlite3.Database;
 
   public async init(): Promise<void> {
-    const dbPath = path.resolve(__dirname, './records.db');
+    const dbPath = path.resolve(__dirname, '../../../records.db');
     this._db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
 
     this.episodes = await new Episodes(this).init();

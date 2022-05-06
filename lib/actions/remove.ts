@@ -3,8 +3,8 @@ import {getDescription} from '../common/media';
 import {matchYesNo} from '../common/util';
 import Swiper from '../Swiper';
 
-export async function remove(swiper: Swiper, convo: Conversation): Promise<SwiperReply> {
-  const reply = await swiper.addStoredMediaIfFound(convo);
+export async function remove(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+  const reply = await this.addStoredMediaIfFound(convo);
   if (reply) {
     return reply;
   }
@@ -24,7 +24,7 @@ export async function remove(swiper: Swiper, convo: Conversation): Promise<Swipe
       if (match === 'yes') {
         await db.media.delete(media);
         // After a removal, ping the download manager.
-        swiper.downloadManager.ping();
+        this.downloadManager.ping();
       }
     }
   }

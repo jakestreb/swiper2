@@ -16,7 +16,7 @@ export class Worker {
   }
 
   public async addJob(job: JobDescription) {
-    await db.jobs.insert(job);
+    await db.jobs.insert({ ...job, runCount: 0 });
     this.start();
   }
 

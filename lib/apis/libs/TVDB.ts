@@ -64,6 +64,7 @@ export default class TVDB {
       showId: show.id,
       showTitle: show.title,
       status: 'identified',
+      queueIndex: -1,
     }));
     show.episodes.push(...sortEpisodes(episodes));
     return show;

@@ -23,7 +23,7 @@ export default class Jobs extends Base {
   }
 
   // Note that this should only be called by the worker
-  public async insert(arg: JobDescription): Promise<void> {
+  public async insert(arg: JobDescription & { runCount: number }): Promise<void> {
     let interval = arg.intervalSeconds;
     // If running on backoff schedule, update interval by runCount
     interval = arg.schedule === 'backoff' ? interval * Math.pow(2, arg.runCount - 1) : interval;

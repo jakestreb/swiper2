@@ -25,10 +25,12 @@ declare interface SeasonEpisodes {
 
 declare type EpisodesDescriptor = SeasonEpisodes|'new'|'all';
 
+declare type CommandFn = (input?: string) => Promise<SwiperReply>|SwiperReply;
+
 declare interface Conversation {
   id: number;
   input?: string;
-  commandFn?: (input?: string) => Promise<SwiperReply>|SwiperReply;
+  commandFn?: CommandFn;
   mediaQuery?: MediaQuery;
   media?: Media;
   position?: 'first'|'last';
@@ -54,7 +56,6 @@ declare interface JobDescription {
   videoId: number;
   schedule: JobSchedule;
   intervalSeconds: number;
-  runCount: number;
 }
 
 declare interface DBEpisode {

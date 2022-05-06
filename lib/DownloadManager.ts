@@ -37,10 +37,6 @@ export class DownloadManager {
     });
   }
 
-  public async pingAndWait(): Promise<void> {
-    await this._ping();
-  }
-
   public getProgress(torrent: DBTorrent): DownloadProgress {
     return this.downloadClient.getProgress(torrent.magnet);
   }
@@ -53,7 +49,7 @@ export class DownloadManager {
     // is already being accomplished, so this ping can return.
     if (!this.inProgress) {
       this.inProgress = true;
-      this.managingPromise = this._manageDownloads();
+      this.managingPromise = this.manageDownloads();
       await this.managingPromise;
       this.inProgress = false;
     }
@@ -63,7 +59,7 @@ export class DownloadManager {
   // - a new torrent is added to a video
   // - a download completes
   // - a torrent download is marked/unmarked as 'slow'
-  private async _manageDownloads(): Promise<void> {
+  private async manageDownloads(): Promise<void> {
     log.debug(`DownloadManager: _manageDownloads()`);
 
     const downloads: Video[] = await db.videos.getWithStatus('downloading');
@@ -133,7 +129,6 @@ export class DownloadManager {
   private async stopDownload(torrent: VTorrent): Promise<void> {
     await this.downloadClient.stopDownload(torrent.magnet);
   }
-
 
   private getVideoPriority(video: TVideo): number[] {
     const isSlow = video.torrents.every(t => t.status === 'slow' || t.status === 'paused');

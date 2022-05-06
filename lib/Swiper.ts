@@ -6,7 +6,6 @@ import {splitFirst} from './common/util';
 import db from './db';
 import worker from './worker';
 import {DownloadManager} from './DownloadManager';
-import {SwiperMonitor} from './SwiperMonitor';
 
 // import {check} from './actions/check';
 import {download} from './actions/download';
@@ -30,7 +29,6 @@ export default class Swiper {
   }
 
   public downloadManager: DownloadManager;
-  public swiperMonitor: SwiperMonitor;
 
   private _conversations: {[id: number]: Conversation} = {};
 
@@ -39,7 +37,6 @@ export default class Swiper {
     private _sendMsg: (id: number, msg: SwiperReply) => Promise<void>
   ) {
     this.downloadManager = new DownloadManager();
-    this.swiperMonitor = new SwiperMonitor(this.downloadManager);
   }
 
   public async handleMsg(id: number, msg?: string): Promise<void> {

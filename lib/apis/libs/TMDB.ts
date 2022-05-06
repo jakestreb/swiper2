@@ -62,9 +62,10 @@ export default class TMDB {
       type: 'movie',
       title: info.title,
       year: getYear(info.release_date),
-      theatricalRelease: getDateFromStr(info.release_date),
-      streamingRelease: streamingRelease ? getDateFromStr(streamingRelease) : null,
+      theatricalRelease: getDateFromStr(info.release_date)!,
+      streamingRelease: getDateFromStr(streamingRelease)!,
       status: 'identified',
+      queueIndex: -1,
     };
   }
 

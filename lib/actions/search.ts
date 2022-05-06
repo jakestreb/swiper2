@@ -8,7 +8,7 @@ import TorrentSearch from '../apis/TorrentSearch';
 // Number of torrents to show per page
 const PER_PAGE = 4;
 
-export async function search(swiper: Swiper, convo: Conversation): Promise<SwiperReply> {
+export async function search(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   log.debug(`Swiper: search`);
 
   const media = convo.media as Media;
@@ -65,9 +65,9 @@ export async function search(swiper: Swiper, convo: Conversation): Promise<Swipe
   }
   const torrent = convo.torrents[torrentNum - 1];
 
-  await db.media.insert(media, { addedBy: convo.id, status: 'queued' });
+  await db.media.insert(media, { addedBy: convo.id, status: 'downloading' });
   await db.torrents.insert({ ...torrent, videoId: video.id, status: 'paused' });
-  swiper.downloadManager.ping();
+  this.downloadManager.ping();
 
   return {
     data: `Queued ${getDescription(video)} for download`,

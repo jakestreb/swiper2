@@ -71,7 +71,7 @@ export default class TorrentSearch {
     return torrent;
   }
 
-  public static getBestTorrent(video: Video: torrents: TorrentResult[]): TorrentResult|null {
+  public static getBestTorrent(video: Video, torrents: TorrentResult[]): TorrentResult|null {
     let bestTorrent = null;
     let bestTier = 0;
     torrents.forEach(t => {
