@@ -1,3 +1,5 @@
 export * from './AddTorrent';
+export * from './CheckForRelease';
 export * from './DeleteVideo';
-export * from './QueueVideo';
+export * from './MonitorDownload';
+export * from './StartSearching';

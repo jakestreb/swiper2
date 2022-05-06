@@ -1,5 +1,10 @@
 import Base from './Base';
 
+type JobInsertArg = JobDescription & {
+  schedule: JobSchedule;
+  initDelayS: number;
+}
+
 export default class Jobs extends Base {
   private static MAX_INTERVAL_SECONDS = 24 * 60 * 60;
 
@@ -9,9 +14,10 @@ export default class Jobs extends Base {
       type TEXT,
       videoId INTEGER,
       schedule TEXT,
-      intervalSeconds INTEGER,
+      intervalS INTEGER,
       runCount INTEGER,
-      runAt DATETIME,
+      startAt DATETIME,
+      nextRunAt DATETIME,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -19,23 +25,28 @@ export default class Jobs extends Base {
   }
 
   public getNext(): Promise<DBJob|null> {
-    return this.db.get('SELECT * FROM jobs ORDER BY runAt LIMIT 1');
+    return this.db.get('SELECT * FROM jobs ORDER BY nextRunAt LIMIT 1');
   }
 
   // Note that this should only be called by the worker
-  public async insert(arg: JobDescription & { runCount: number }): Promise<void> {
-    let interval = arg.intervalSeconds;
-    // If running on backoff schedule, update interval by runCount
-    interval = arg.schedule === 'backoff' ? interval * Math.pow(2, arg.runCount - 1) : interval;
-    // If running more than once, the first execution should occur immediately
-    interval = arg.schedule !== 'once' && arg.runCount === 0 ? 0 : interval;
-    // Ensure interval does not exceed maximum
+  public async insert(arg: JobInsertArg): Promise<void> {
+    await this.db.run(`INSERT INTO jobs `
+      + `(type, videoId, schedule, intervalS, runCount, startAt, nextRunAt)`
+    	+ ` VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [arg.type, arg.videoId, arg.schedule, arg.initDelayS, 0, arg.startAt, arg.startAt]);
+  }
+
+  public async reschedule(job: DBJob): Promise<void> {
+    const { schedule, intervalS, runCount } = job;
+    if (schedule === 'once') {
+      return;
+    }
+    let interval = job.schedule === 'backoff' ? intervalS * Math.pow(2, runCount - 1) : intervalS;
     interval = Math.max(interval, Jobs.MAX_INTERVAL_SECONDS);
 
-    const runAt = new Date(Date.now() + interval * 1000);
-    await this.db.run(`INSERT INTO jobs (type, videoId, schedule, intervalSeconds, runCount, runAt)`
-    	+ ` VALUES (?, ?, ?, ?, ?, ?)`,
-      [arg.type, arg.videoId, arg.schedule, arg.intervalSeconds, arg.runCount, runAt]);
+    const nextRunAt = new Date(Date.now() + interval * 1000);
+    await this.db.run('UPDATE jobs SET nextRunAt=?, intervalS=? WHERE id=?',
+      [nextRunAt, interval, id]);
   }
 
   public async deleteForVideo(videoId: number): Promise<void> {

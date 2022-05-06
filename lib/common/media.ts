@@ -1,9 +1,5 @@
 import {getMorning, padZeros} from './util';
 
-export function getReleaseDate(video: Video): Date {
-  return (video as Movie).streamingRelease || (video as Episode).airDate;
-}
-
 export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor): Episode[] {
   if (filter === 'new') {
     // Unaired episodes only

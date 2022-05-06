@@ -54,8 +54,7 @@ declare interface TorrentResult {
 declare interface JobDescription {
   type: JobType;
   videoId: number;
-  schedule: JobSchedule;
-  intervalSeconds: number;
+  startAt: Date;
 }
 
 declare interface DBEpisode {
@@ -66,18 +65,18 @@ declare interface DBEpisode {
   showId: number;
   status: Status;
   addedBy?: number;
-  queueIndex: number;
+  queueIndex?: number;
 }
 
 declare interface DBMovie {
   id: number; // IMDB id
   title: string;
   year: string;
-  theatricalRelease: Date;
-  streamingRelease: Date;
+  theatricalRelease?: Date;
+  streamingRelease?: Date;
   status: Status;
   addedBy?: number;
-  queueIndex: number;
+  queueIndex?: number;
 }
 
 declare interface DBShow {
@@ -101,9 +100,10 @@ declare interface DBJob {
   type: JobType;
   videoId: number;
   schedule: JobSchedule;
-  intervalSeconds: number;
+  intervalS: number;
   runCount: number;
-  runAt: Date;
+  startAt: Date;
+  nextRunAt: Date;
 }
 
 declare type DBMedia = DBMovie|DBShow;

@@ -1,14 +1,14 @@
 import db from '../../db';
 import Base from './Base';
 
-export default class MonitorDownload extends Base {
-	public static schedule: JobSchedule = 'backoff';
-	public static initDelayS: number = 60;
+export default class CheckForRelease extends Base {
+	public static schedule: JobSchedule = 'repeated';
+	public static initDelayS: number = 60 * 60 * 12;
 
 	public static async run(videoId: number): Promise<boolean> {
 		const video = await db.videos.get(videoId);
 		if (!video) {
-			throw new Error(`MonitorDownload job run on invalid videoId: ${videoId}`);
+			throw new Error(`CheckForRelease job run on invalid videoId: ${videoId}`);
 		}
 		// TODO: Add slow status to torrents, add new torrent eventually
 		return false;
