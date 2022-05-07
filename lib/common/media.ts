@@ -1,4 +1,13 @@
 import {getMorning, padZeros} from './util';
+import * as path from 'path';
+
+export function getVideoPath(videoId: number): string {
+  return `${videoId}`;
+}
+
+export function getTorrentPath(t: DBTorrent): string {
+  return path.join(`${t.videoId}`, `${t.id}`);
+}
 
 export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor): Episode[] {
   if (filter === 'new') {

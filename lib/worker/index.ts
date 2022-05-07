@@ -51,7 +51,7 @@ export default class Worker {
     this.currentTimeout = null;
     const JobClass = this.getJobClass(job.type);
     const jobInst = new JobClass(this, this.swiper);
-    const success = await jobInst.run(job.videoId);
+    const success = await jobInst.run(job.videoId, job.runCount);
     if (success || JobClass.schedule === 'once') {
       await db.jobs.markCompleted(job.id);
     } else {

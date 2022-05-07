@@ -7,8 +7,6 @@ import ExportHandler from './ExportHandler';
 import MemoryManager from './MemoryManager';
 import {DownloadClient} from './DownloadClient';
 
-type VTorrent = DBTorrent & { video: Video };
-
 export class DownloadManager {
 
   private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
@@ -83,10 +81,17 @@ export class DownloadManager {
     // Once all the space is allocated, pause any remaining torrents
     let storageRemaining = this.memoryManager.freeMb;
 
-    sortedTorrents.forEach(vt => {
-      const progressMb = this.downloadClient.getProgress(vt.magnet).receivedMb;
+    sortedTorrents.reduce(async (prevPromise, vt) => {
+      await prevPromise;
+      const progressMb = await this.downloadClient.getDownloadedMb(vt);
       const allocateMb = vt.sizeMb - progressMb;
-      console.warn(`queue ${getDescription(vt.video)}?`, storageRemaining, allocateMb);
+      console.warn(`queue ${getDescription(vt.video)}?`, {
+        storageRemaining,
+        allocateMb,
+        progressMb,
+        freeMb: this.memoryManager.freeMb,
+        totalMb: this.memoryManager.totalMb,
+      });
       if (true || storageRemaining - allocateMb > 0) {
         // Allocate
         storageRemaining -= allocateMb;
@@ -96,7 +101,7 @@ export class DownloadManager {
       } else if (vt.status !== 'paused') {
         toPause.push(vt);
       }
-    });
+    }, Promise.resolve());
 
     log.debug(`DownloadManager: manageDownloads() starting ${toStart.length}`);
     log.debug(`DownloadManager: manageDownloads() stopping ${toPause.length}`);
@@ -130,13 +135,13 @@ export class DownloadManager {
 
     // Run the download
     await db.torrents.setStatus(torrent, 'downloading');
-    const downloadPaths = await this.downloadClient.download(torrent.magnet);
+    await this.downloadClient.download(torrent);
 
     // On completion, mark the video status as uploading.
     await db.videos.setStatus(torrent.video, 'uploading');
 
     // Export the video (run separately).
-    await this.exportHandler.export(torrent.video, downloadPaths)
+    await this.exportHandler.export(torrent)
       .catch(err => {
         log.subProcessError(`Failed to export video files: ${err}`);
       });

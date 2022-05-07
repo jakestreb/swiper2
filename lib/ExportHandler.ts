@@ -5,10 +5,11 @@ import rmfr from 'rmfr';
 import {promisify} from 'util';
 
 import * as log from './common/logger';
-import {getDescription, getFileSafeTitle} from './common/media';
+import * as mediaUtil from './common/media';
 
 const access = promisify(fs.access);
 const mkdir = promisify(fs.mkdir);
+const readdir = promisify(fs.readdir);
 
 export default class ExportHandler {
 
@@ -21,14 +22,14 @@ export default class ExportHandler {
   }
 
   // Save a video in the correct directory, adding any necessary directories.
-  public async export(video: Video, downloadPaths: string[]): Promise<void> {
-    log.debug(`export(${getDescription(video)}, ${downloadPaths})`);
+  public async export(vt: VTorrent): Promise<void> {
+    log.debug(`ExportHandler.export(${mediaUtil.getDescription(vt.video)})`);
     const exportRoot = ExportHandler.EXPORT_ROOT;
     const useFtp = ExportHandler.USE_FTP;
 
-    const safeTitle = getFileSafeTitle(video);
-    const dirs = video.type === 'movie' ? ['movies', safeTitle] :
-      ['tv', safeTitle, `Season ${video.seasonNum}`];
+    const safeTitle = mediaUtil.getFileSafeTitle(vt.video);
+    const dirs = vt.video.type === 'movie' ? ['movies', safeTitle] :
+      ['tv', safeTitle, `Season ${vt.video.seasonNum}`];
 
     let exportPath = exportRoot;
     if (!useFtp) { log.debug(`exportVideo: Creating missing folders in export directory`); }
@@ -48,20 +49,19 @@ export default class ExportHandler {
 
     // Move the files to the final directory.
     log.debug(`exportVideo: Copying videos to ${useFtp ? 'FTP server at ' : ''}${exportPath}`);
-    const copyActions = downloadPaths.map(downloadPath => {
-      const from = path.join(this.downloadRoot, downloadPath);
-      const to = path.join(exportPath, path.basename(downloadPath));
+    const torrentPath = path.join(this.downloadRoot, mediaUtil.getTorrentPath(vt));
+    const files = await readdir(torrentPath);
+    const copyActions = files.map(filePath => {
+      const from = path.join(this.downloadRoot, torrentPath, filePath);
+      const to = path.join(exportPath, path.basename(filePath));
       return useFtp ? this.ftpCopy(from, to) : copy(from, to);
     });
     await Promise.all(copyActions);
 
-    // Remove the download directories (Remove the first directory of each downloaded file).
+    // Remove the entire video download directory
     log.debug(`exportVideo: Removing download directory`);
-    const deleteActions = downloadPaths.map(downloadPath => {
-      const abs = path.join(this.downloadRoot, path.dirname(downloadPath));
-      return rmfr(abs);
-    });
-    await Promise.all(deleteActions);
+    const videoPath = path.join(this.downloadRoot, mediaUtil.getVideoPath(vt.videoId));
+    await rmfr(videoPath);
   }
 
   private ftpCopy(src: string, dst: string): Promise<void> {

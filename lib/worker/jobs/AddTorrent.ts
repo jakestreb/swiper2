@@ -12,13 +12,11 @@ export class AddTorrent extends Base {
 		if (!video) {
 			throw new Error(`AddTorrent job run on invalid videoId: ${videoId}`);
 		}
-		const torrent = await TorrentSearch.addBestTorrent(video);
-		if (torrent) {
+		const success = await TorrentSearch.addBestTorrent(video);
+		if (success) {
 			await db.videos.setStatus(video, 'downloading');
-			await db.torrents.insert(torrent);
 			this.swiper.downloadManager.ping();
-			return true;
 		}
-		return false;
+		return success;
 	}
 }

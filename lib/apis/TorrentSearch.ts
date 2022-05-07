@@ -57,18 +57,18 @@ export default class TorrentSearch {
     return this.doRetrySearch(searchTerm);
   }
 
-  public static async addBestTorrent(video: Video): Promise<DBTorrent|null> {
+  public static async addBestTorrent(video: Video): Promise<boolean> {
     const torrents = await this.search(video);
     const best = this.getBestTorrent(video, torrents);
     if (!best) {
       log.debug(`SearchClient: getBestTorrent(${getDescription(video)}) failed (no torrent found)`);
       // TODO: Schedule search
-      return null;
+      return false;
     }
     log.debug(`SearchClient: getBestTorrent(${getDescription(video)}) succeeded`);
-    const torrent: DBTorrent = { ...best, status: 'paused', videoId: video.id };
+    const torrent = { ...best, status: 'paused' as TorrentStatus, videoId: video.id };
     await db.torrents.insert(torrent);
-    return torrent;
+    return !!torrent;
   }
 
   public static getBestTorrent(video: Video, torrents: TorrentResult[]): TorrentResult|null {

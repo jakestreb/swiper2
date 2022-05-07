@@ -9,12 +9,18 @@ export default class MemoryManager {
   }
 
   public get freeMb() {
-    return (os.freemem() / 1000000) - MemoryManager.MARGIN_MB;
+    return os.freemem() / 1000000;
+  }
+
+  public get totalMb() {
+    return os.totalmem() / 1000000;
+  }
+
+  public get availableMb() {
+    return this.freeMb - MemoryManager.MARGIN_MB;
   }
 
   public log() {
-    const freeMemory = os.freemem() / 1000000;
-    const totalMemory = os.totalmem() / 1000000;
-    console.warn('free / total', freeMemory, totalMemory);
+    console.warn('free / total', this.freeMb, this.totalMb);
   }
 }

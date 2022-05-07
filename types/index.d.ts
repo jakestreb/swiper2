@@ -86,6 +86,7 @@ declare interface DBShow {
 }
 
 declare interface DBTorrent {
+  id: number;
   magnet: string;
   videoId: number;
   quality: string;
@@ -146,10 +147,11 @@ declare type TEpisode = Episode & {
 
 declare type TVideo = TMovie|TEpisode;
 
+declare type VTorrent = DBTorrent & { video: Video };
+
 declare interface DownloadProgress {
   progress: number;  // (0-100)
   speed: number;     // (MB/s)
   remaining: number; // (min)
   peers: number;
-  receivedMb: number;
 }

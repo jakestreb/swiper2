@@ -6,11 +6,11 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
   const media = convo.media as Media;
   const video: Video|null = getVideo(media);
   if (video) {
-    await db.media.insert(media, { addedBy: convo.id, status: 'unreleased' });
+    await db.media.insert(media, { addedBy: convo.id, status: 'searching' });
     await checkOrAwaitRelease(this, video);
   } else {
     const show = media as Show;
-    await db.shows.insert(show, { addedBy: convo.id, status: 'unreleased' });
+    await db.shows.insert(show, { addedBy: convo.id, status: 'searching' });
     await Promise.all(show.episodes.map(async e => checkOrAwaitRelease(this, e)));
   }
   return {

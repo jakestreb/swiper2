@@ -21,7 +21,7 @@ interface TorrentInfo {
 
 export async function status(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const monitored = await db.media.getWithStatus('unreleased');
-  const downloading = await db.videos.getWithStatus('downloading', 'uploading', 'completed');
+  const downloading = await db.videos.getWithStatus('searching', 'downloading', 'uploading', 'completed');
   const downloadingWithTorrents = await Promise.all(downloading.map(d => db.videos.addTorrents(d)));
 
   const monitoredStr = monitored.map(media => {
@@ -42,10 +42,10 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
       const { sizeMb, resolution, status } = t;
       const { progress, peers } = this.downloadManager.getProgress(t);
       const torrentRowTxt = formatTorrentRow({ sizeMb, resolution, peers, progress, status });
-      return `\`  \`_${torrentRowTxt}_`;
+      return `\`  \`${torrentRowTxt}`;
     });
     const details = torrentStrs.length > 0 ? torrentStrs.join('\n') : SEARCHING;
-    return `\`${statusIcon} \`${getDescription(video)}\n${details}`;
+    return `\`${statusIcon} \`${getDescription(video)}\n_${details}_`;
   });
 
   const strs = [];

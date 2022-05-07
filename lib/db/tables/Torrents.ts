@@ -1,9 +1,19 @@
 import Base from './Base';
 
+declare interface TorrentInsertArg {
+  magnet: string;
+  videoId: number;
+  quality: string;
+  resolution: string;
+  sizeMb: number;
+  status: TorrentStatus;
+}
+
 export default class Torrents extends Base {
   public async init(): Promise<this> {
     await this.db.run(`CREATE TABLE IF NOT EXISTS torrents (
-      magnet TEXT PRIMARY KEY ON CONFLICT REPLACE,
+      id INTEGER PRIMARY KEY,
+      magnet TEXT ON CONFLICT REPLACE,
       videoId INTEGER,
       quality TEXT,
       resolution TEXT,
@@ -28,7 +38,7 @@ export default class Torrents extends Base {
     return { ...torrent, status };
   }
 
-  public async insert(arg: DBTorrent): Promise<void> {
+  public async insert(arg: TorrentInsertArg): Promise<void> {
     await this.db.run(`INSERT INTO torrents (magnet, videoId, quality, resolution, sizeMb, status)`
     	+ ` VALUES (?, ?, ?, ?, ?, ?)`,
         [arg.magnet, arg.videoId, arg.quality, arg.resolution, arg.sizeMb, arg.status]);
