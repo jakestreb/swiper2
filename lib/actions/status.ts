@@ -3,12 +3,21 @@ import {getDescription, getNextToAir} from '../common/media';
 import {getAiredStr, getMorning} from '../common/util';
 import Swiper from '../Swiper';
 
-const UP_ARROW = '\uA71B';
-const DOWN_ARROW = '\uA71C';
+const UP_ARROW = '\u2191';
+const DOWN_ARROW = '\u2193';
 const HOURGLASS = '\u29D6';
 
 const NO_PEERS = '(awaiting peers)';
 const PAUSED = '(awaiting space)';
+const SEARCHING = '(searching)';
+
+interface TorrentInfo {
+  sizeMb: number;
+  resolution: string;
+  peers: number;
+  progress: number;
+  status: TorrentStatus;
+}
 
 export async function status(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const monitored = await db.media.getWithStatus('unreleased');
@@ -30,16 +39,13 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
   const downloadingStr = downloadingWithTorrents.map((video, i) => {
     const statusIcon = getVideoStatusIcon(video);
     const torrentStrs = video.torrents.map(t => {
-      const {progress, peers} = this.downloadManager.getProgress(t);
-      const sizeStr = t.sizeMb ? `${(t.sizeMb / 1000).toFixed(1)}GB | ` : '';
-      const resStr = t.resolution ? `${t.resolution} | ` : ``;
-      const qualStr = t.quality ? `${t.quality} | ` : ``;
-      const peersStr = peers ? `${peers}x | ` : ``;
-      const progressStr = progress ? `${progress.toFixed(1)}% ` : ``;
-      const statusTxt = getTorrentStatusText(t, peers);
-      return `\`      \`_${sizeStr}${resStr}${qualStr}${peersStr}${progressStr}${statusTxt}_`;
+      const { sizeMb, resolution, status } = t;
+      const { progress, peers } = this.downloadManager.getProgress(t);
+      const torrentRowTxt = formatTorrentRow({ sizeMb, resolution, peers, progress, status });
+      return `\`  \`_${torrentRowTxt}_`;
     });
-    return `\`${statusIcon} \`${getDescription(video)}\n` + torrentStrs.join('\n');
+    const details = torrentStrs.length > 0 ? torrentStrs.join('\n') : SEARCHING;
+    return `\`${statusIcon} \`${getDescription(video)}\n${details}`;
   });
 
   const strs = [];
@@ -62,8 +68,28 @@ function getVideoStatusIcon(video: TVideo) {
   return isDownloading ? DOWN_ARROW : (isUploading ? UP_ARROW : HOURGLASS);
 }
 
-function getTorrentStatusText(torrent: DBTorrent, peers: number) {
-  const isPaused = torrent.status === 'paused';
+function getTorrentStatusText(status: TorrentStatus, peers: number) {
+  const isPaused = status === 'paused';
   const hasPeers = peers > 0;
   return isPaused ? PAUSED : (!hasPeers ? NO_PEERS : '');
+}
+
+function formatTorrentRow(info: TorrentInfo): string {
+  const { sizeMb, resolution, peers, progress, status } = info;
+  const elems = [resolution, formatSize(sizeMb), formatPeers(peers), formatProgress(progress)];
+  const infoTxt = elems.filter(x => x).join(' | ');
+  const statusTxt = getTorrentStatusText(status, peers);
+  return `${infoTxt} ${statusTxt}`;
+}
+
+function formatSize(sizeMb: number) {
+  return sizeMb ? `${(sizeMb / 1000).toFixed(1)}GB` : null;
+}
+
+function formatPeers(peers: number): string|null {
+  return peers ? `${peers}x` : null;
+}
+
+function formatProgress(progress: number) {
+  return progress ? `${progress.toFixed(1)}%` : null;
 }

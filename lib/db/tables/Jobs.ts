@@ -18,6 +18,7 @@ export default class Jobs extends Base {
       runCount INTEGER,
       startAt DATETIME,
       nextRunAt DATETIME,
+      isDone INTEGER DEFAULT 0,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -48,6 +49,10 @@ export default class Jobs extends Base {
     const nextRunAt = new Date(Date.now() + interval * 1000);
     await this.db.run('UPDATE jobs SET nextRunAt=?, intervalS=?, runCount=? WHERE id=?',
       [nextRunAt, interval, runCount + 1, id]);
+  }
+
+  public async markCompleted(jobId: number): Promise<void> {
+    await this.db.run('UPDATE jobs SET isDone=1 WHERE id=?', [jobId]);
   }
 
   public async deleteForVideo(videoId: number): Promise<void> {

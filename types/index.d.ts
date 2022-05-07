@@ -104,6 +104,7 @@ declare interface DBJob {
   runCount: number;
   startAt: number;
   nextRunAt: number;
+  isDone: boolean;
 }
 
 declare type DBMedia = DBMovie|DBShow;

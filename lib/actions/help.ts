@@ -1,14 +1,13 @@
 import Swiper from '../Swiper';
 import * as commands from './_helpcommands.json';
 
-const ALL_CMDS = [...commands.basic, ...commands.monitoring, ...commands.advanced];
+const ALL_CMDS = [...commands.basic, ...commands.advanced];
 
 export function help(this: Swiper, convo: Conversation): SwiperReply {
   if (!convo.input) {
     return {
       data: `\`COMMANDS\`\n` +
         `\`  \`${cmdGroup(commands.basic)}\n` +
-        `\`  \`${cmdGroup(commands.monitoring)}\n` +
         `\`  \`${cmdGroup(commands.advanced)}\n\n` +
         `help \`command\` for details`,
       final: true

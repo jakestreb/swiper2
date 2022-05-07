@@ -19,8 +19,8 @@ export default class Worker {
   }
 
   public async addJob(job: JobDescription) {
-    const jobClass = this.getJobClass(job.type);
-    const { schedule, initDelayS } = jobClass;
+    const JobClass = this.getJobClass(job.type);
+    const { schedule, initDelayS } = JobClass;
     await db.jobs.insert({ ...job, schedule, initDelayS });
     this.start();
   }
@@ -49,9 +49,12 @@ export default class Worker {
     log.debug(`Running ${job.type} job: ${job.videoId}`);
     this.nextRunTs = null;
     this.currentTimeout = null;
-    const jobInst = new this.jobs[job.type](this, this.swiper);
-    const success = jobInst.run(job.videoId);
-    if (!success) {
+    const JobClass = this.getJobClass(job.type);
+    const jobInst = new JobClass(this, this.swiper);
+    const success = await jobInst.run(job.videoId);
+    if (success || JobClass.schedule === 'once') {
+      await db.jobs.markCompleted(job.id);
+    } else {
       // Reschedule repeat jobs on failure
       await db.jobs.reschedule(job);
       this.start();
