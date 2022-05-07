@@ -46,7 +46,6 @@ export default class Worker {
   }
 
   private async runJob(job: DBJob) {
-    console.warn('job', job);
     log.debug(`Running ${job.type} job: ${job.videoId}`);
     this.nextRunTs = null;
     this.currentTimeout = null;
