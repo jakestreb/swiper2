@@ -21,7 +21,7 @@ export default class Videos {
   }
 
   public async addTorrents(video: Video): Promise<TVideo> {
-    const torrents = await this.db.torrents.getForVideo(video);
+    const torrents = await this.db.torrents.getForVideo(video.id);
     return { ...video, torrents };
   }
 
@@ -36,8 +36,10 @@ export default class Videos {
 
   public async setQueueOrder(videos: Video[]): Promise<void> {
     await Promise.all(videos.map((v, i) => {
-      const table = v.type === 'movie' ? 'movies' : 'episodes';
-      return this.db.run(`UPDATE ? SET queueIndex=? WHERE id=?`, [table, i, v.id]);
+      if (v.type === 'movie') {
+        return this.db.run(`UPDATE movies SET queueIndex=? WHERE id=?`, [i, v.id]);
+      }
+      return this.db.run(`UPDATE episodes SET queueIndex=? WHERE id=?`, [i, v.id]);
     }));
   }
 }

@@ -7,12 +7,18 @@ export class AddTorrent extends Base {
 	public static schedule: JobSchedule = 'backoff';
 	public static initDelayS: number = 60 * 15;
 
-	public static async run(videoId: number): Promise<boolean> {
+	public async run(videoId: number): Promise<boolean> {
 		const video = await db.videos.get(videoId);
 		if (!video) {
 			throw new Error(`AddTorrent job run on invalid videoId: ${videoId}`);
 		}
 		const torrent = await TorrentSearch.addBestTorrent(video);
-		return !!torrent;
+		if (torrent) {
+			await db.videos.setStatus(video, 'downloading');
+			await db.torrents.insert(torrent);
+			this.swiper.downloadManager.ping();
+			return true;
+		}
+		return false;
 	}
 }

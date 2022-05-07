@@ -19,6 +19,7 @@ export class DownloadManager {
 
   private managingPromise: Promise<void>;
   private inProgress: boolean = false;
+  private isStarted: boolean = false;
 
   constructor() {
     const downloadRoot = DownloadManager.DOWNLOAD_ROOT;
@@ -85,10 +86,11 @@ export class DownloadManager {
     sortedTorrents.forEach(vt => {
       const progressMb = this.downloadClient.getProgress(vt.magnet).receivedMb;
       const allocateMb = vt.sizeMb - progressMb;
-      if (storageRemaining - allocateMb > 0) {
+      console.warn(`queue ${getDescription(vt.video)}?`, storageRemaining, allocateMb);
+      if (true || storageRemaining - allocateMb > 0) {
         // Allocate
         storageRemaining -= allocateMb;
-        if (vt.status === 'paused') {
+        if (!this.isStarted || vt.status === 'paused') {
           toStart.push(vt);
         }
       } else if (vt.status !== 'paused') {
@@ -99,18 +101,35 @@ export class DownloadManager {
     log.debug(`DownloadManager: manageDownloads() starting ${toStart.length}`);
     log.debug(`DownloadManager: manageDownloads() stopping ${toPause.length}`);
 
-    toStart.forEach(vt => this.startDownload(vt));
-    toPause.forEach(vt => this.stopDownload(vt));
+    toStart.forEach(vt => {
+      this.startDownload(vt)
+        .catch(err => {
+          log.error(`Downloading ${getDescription(vt.video)} failed: ${err}`);
+        });
+    });
+    toPause.forEach(vt => {
+      this.stopDownload(vt)
+        .catch(err => {
+          log.error(`Stopping download ${getDescription(vt.video)} failed: ${err}`);
+        });
+    });
 
     // Update queueNums
-    await db.videos.setQueueOrder(sorted);
-    await db.torrents.setQueueOrder(sortedTorrents);
+    Promise.all([
+      db.videos.setQueueOrder(sorted),
+      db.torrents.setQueueOrder(sortedTorrents)
+    ]).catch(err => {
+      log.error(`Failed to set queue order: ${err}`);
+    })
+
+    this.isStarted = true;
   }
 
   private async startDownload(torrent: VTorrent): Promise<void> {
     log.debug(`DownloadManager: startDownload(${getDescription(torrent.video)})`);
 
     // Run the download
+    await db.torrents.setStatus(torrent, 'downloading');
     const downloadPaths = await this.downloadClient.download(torrent.magnet);
 
     // On completion, mark the video status as uploading.
@@ -122,11 +141,14 @@ export class DownloadManager {
         log.subProcessError(`Failed to export video files: ${err}`);
       });
 
+    await db.videos.setStatus(torrent.video, 'completed');
+
     // Ping since the database changed.
     this.ping();
   }
 
   private async stopDownload(torrent: VTorrent): Promise<void> {
+    await db.torrents.setStatus(torrent, 'paused');
     await this.downloadClient.stopDownload(torrent.magnet);
   }
 

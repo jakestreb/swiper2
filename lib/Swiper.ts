@@ -4,7 +4,7 @@ import * as log from './common/logger';
 import {filterMediaEpisodes} from './common/media';
 import {splitFirst} from './common/util';
 import db from './db';
-import worker from './worker';
+import Worker from './worker';
 import {DownloadManager} from './DownloadManager';
 
 // import {check} from './actions/check';
@@ -24,11 +24,11 @@ export default class Swiper {
   // Should be called to build a Swiper instance.
   public static async create(sendMsg: (id: number, msg: SwiperReply) => Promise<void>): Promise<Swiper> {
     await db.init();
-    await worker.start();
     return new Swiper(sendMsg);
   }
 
   public downloadManager: DownloadManager;
+  public worker: Worker;
 
   private _conversations: {[id: number]: Conversation} = {};
 
@@ -37,6 +37,8 @@ export default class Swiper {
     private _sendMsg: (id: number, msg: SwiperReply) => Promise<void>
   ) {
     this.downloadManager = new DownloadManager();
+    this.worker = new Worker(this);
+    this.worker.start();
   }
 
   public async handleMsg(id: number, msg?: string): Promise<void> {

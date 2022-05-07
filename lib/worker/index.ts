@@ -2,11 +2,14 @@ import db from '../db';
 import * as log from '../common/logger';
 import BaseJob from './jobs/Base';
 import * as jobs from './jobs';
+import Swiper from '../Swiper';
 
-export class Worker {
+export default class Worker {
   private jobs: {[type: string]: typeof BaseJob} = jobs;
   private nextRunTs: number|null = null;
   private currentTimeout: NodeJS.Timeout|null = null;
+
+  constructor(public swiper: Swiper) {}
 
   public start() {
     this.ping()
@@ -36,7 +39,6 @@ export class Worker {
     const nextJob = await db.jobs.getNext();
     if (nextJob && (!this.nextRunTs || nextJob.nextRunAt < this.nextRunTs)) {
       clearTimeout(this.currentTimeout!);
-      console.warn('NEXT JOB', nextJob);
       this.nextRunTs = nextJob.nextRunAt;
       this.currentTimeout = setTimeout(async () => this.runJob(nextJob),
         this.nextRunTs - Date.now());
@@ -44,9 +46,12 @@ export class Worker {
   }
 
   private async runJob(job: DBJob) {
+    console.warn('job', job);
+    log.debug(`Running ${job.type} job: ${job.videoId}`);
     this.nextRunTs = null;
     this.currentTimeout = null;
-    const success = await this.jobs[job.type].run(job.videoId);
+    const jobInst = new this.jobs[job.type](this, this.swiper);
+    const success = jobInst.run(job.videoId);
     if (!success) {
       // Reschedule repeat jobs on failure
       await db.jobs.reschedule(job);
@@ -54,5 +59,3 @@ export class Worker {
     }
   }
 }
-
-export default new Worker();

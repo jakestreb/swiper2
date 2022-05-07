@@ -1,11 +1,16 @@
-export default abstract class Base {
+import Swiper from '../../Swiper';
+import Worker from '../';
+
+export default class Base {
   public static schedule: JobSchedule = 'once';
   public static initDelayS: number = 0;
 
-  constructor() {}
+  constructor(public worker: Worker, public swiper: Swiper) {
+
+  }
 
   // Result represents success value - should stop repeated execution on success
-  public static run(videoId: number): Promise<boolean> {
+  public run(videoId: number): Promise<boolean> {
     throw new Error('Not implemented');
   }
 }

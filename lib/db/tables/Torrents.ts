@@ -20,9 +20,17 @@ export default class Torrents extends Base {
     return this.db.all(`SELECT * FROM torrents WHERE videoId=?`, [videoId]);
   }
 
+  public async setStatus(torrent: DBTorrent, status: TorrentStatus): Promise<DBTorrent> {
+    if (torrent.status === status) {
+      return torrent;
+    }
+    await this.db.run('UPDATE torrents SET status=? WHERE magnet=?', [status, torrent.magnet]);
+    return { ...torrent, status };
+  }
+
   public async insert(arg: DBTorrent): Promise<void> {
     await this.db.run(`INSERT INTO torrents (magnet, videoId, quality, resolution, sizeMb, status)`
-    	+ ` VALUES (?, ?, ?, ?, ?)`,
+    	+ ` VALUES (?, ?, ?, ?, ?, ?)`,
         [arg.magnet, arg.videoId, arg.quality, arg.resolution, arg.sizeMb, arg.status]);
   }
 
