@@ -1,14 +1,11 @@
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 import Client from 'ftp';
 import * as path from 'path';
 import rmfr from 'rmfr';
-import { promisify } from 'util';
 
 import * as log from './common/logger';
 import * as mediaUtil from './common/media';
 import * as fileUtil from './common/files';
-
-const readdir = promisify(fs.readdir);
 
 export default class ExportHandler {
 
@@ -41,11 +38,11 @@ export default class ExportHandler {
     // Move the files to the final directory.
     log.debug(`exportVideo: Copying videos to ${useFtp ? 'FTP server at ' : ''}${exportPath}`);
     const torrentPath = path.join(this.downloadRoot, mediaUtil.getTorrentPath(vt));
-    const files = await readdir(torrentPath);
+    const files = await fs.readdir(torrentPath);
     const copyActions = files.map(filePath => {
       const from = path.join(torrentPath, filePath);
       const to = path.join(exportPath, path.basename(filePath));
-      return useFtp ? this.ftpCopy(from, to) : copy(from, to);
+      return useFtp ? this.ftpCopy(from, to) : fs.copy(from, to);
     });
     await Promise.all(copyActions);
 
@@ -78,21 +75,4 @@ export default class ExportHandler {
       c.connect({ host: hostIp });
     });
   }
-}
-
-function copy(src: string, dst: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const rd = fs.createReadStream(src);
-    rd.on("error", err => {
-      reject(err);
-    });
-    const wr = fs.createWriteStream(dst);
-    wr.on("error", err => {
-      reject(err);
-    });
-    wr.on("close", () => {
-      resolve();
-    });
-    rd.pipe(wr);
-  });
 }
