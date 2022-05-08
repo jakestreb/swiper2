@@ -2,13 +2,13 @@
   "name": "swiper2",
   "version": "1.0.0",
   "description": "",
-  "main": "lib/server",
+  "main": "lib/index",
   "typings": "dist/index",
   "scripts": {
     "lint": "tslint -p tsconfig.json",
     "build": "tsc",
-    "start": "npm run build && node dist/server.js",
-    "dev": "ts-node server.ts",
+    "start": "npm run build && node dist/index.js",
+    "dev": "ts-node index.ts",
     "reset": "rm records.db",
     "lines": "git -C lib grep ^ | wc -l"
   },

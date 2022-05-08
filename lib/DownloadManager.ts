@@ -7,7 +7,7 @@ import ExportHandler from './ExportHandler';
 import MemoryManager from './MemoryManager';
 import {DownloadClient} from './DownloadClient';
 
-export class DownloadManager {
+export default class DownloadManager {
 
   private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
 

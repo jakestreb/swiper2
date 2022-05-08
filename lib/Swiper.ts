@@ -5,7 +5,8 @@ import {filterMediaEpisodes} from './common/media';
 import {splitFirst} from './common/util';
 import db from './db';
 import Worker from './worker';
-import {DownloadManager} from './DownloadManager';
+import CommManager from './CommManager';
+import DownloadManager from './DownloadManager';
 
 import {download} from './actions/download';
 import {help} from './actions/help';
@@ -15,24 +16,26 @@ import {status} from './actions/status';
 // import {info} from './actions/info';
 
 export default class Swiper {
-  // Should be called to build a Swiper instance.
-  public static async create(sendMsg: (id: number, msg: SwiperReply) => Promise<void>): Promise<Swiper> {
+
+  // Should be called to build a Swiper instance
+  public static async create(): Promise<Swiper> {
     await db.init();
-    return new Swiper(sendMsg);
+    return new Swiper();
   }
 
+  public commManager: CommManager;
   public downloadManager: DownloadManager;
   public worker: Worker;
 
   private _conversations: {[id: number]: Conversation} = {};
 
-  // Should NOT be called publicly. Uses Swiper.create for building a Swiper instance.
-  constructor(
-    private _sendMsg: (id: number, msg: SwiperReply) => Promise<void>
-  ) {
+  // Should NOT be called publicly - use Swiper.create
+  constructor() {
     this.downloadManager = new DownloadManager();
     this.worker = new Worker(this);
     this.worker.start();
+    this.commManager = new CommManager(this.handleMsg.bind(this));
+    this.commManager.start();
   }
 
   public async handleMsg(id: number, msg?: string): Promise<void> {
@@ -69,7 +72,7 @@ export default class Swiper {
     }
 
     // Send a response to the client.
-    await this._sendMsg(id, reply);
+    await this.commManager.sendMsgToClient(id, reply);
   }
 
   public cancel(convo: Conversation): SwiperReply {
