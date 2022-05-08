@@ -56,6 +56,7 @@ export class DownloadManager {
   }
 
   // Should be called when:
+  // - a new download is added
   // - a new torrent is added to a video
   // - a download completes
   // - a torrent download is marked/unmarked as 'slow'
