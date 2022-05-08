@@ -4,12 +4,8 @@ import rmfr from 'rmfr';
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
 import * as log from './common/logger';
+import * as fileUtil from './common/files';
 import * as mediaUtil from './common/media';
-import * as fs from 'fs';
-import {promisify} from 'util';
-
-const readdir = promisify(fs.readdir);
-const stat = promisify(fs.stat);
 
 export class DownloadClient extends events.EventEmitter {
   private _client: WebTorrent.Instance|null;
@@ -24,8 +20,10 @@ export class DownloadClient extends events.EventEmitter {
 
   public async download(vt: VTorrent): Promise<void> {
     log.debug(`DownloadClient: download(${mediaUtil.getDescription(vt.video)})`);
+    const subDirs = mediaUtil.getTorrentPath(vt);
+    const downloadPath = await fileUtil.createSubdirs(this.downloadRoot, subDirs);
     const opts = {
-      path: path.join(this.downloadRoot, mediaUtil.getTorrentPath(vt)),
+      path: downloadPath,
       destroyStoreOnDestroy: true,
     };
     return new Promise((resolve, reject) => {
@@ -108,7 +106,6 @@ export class DownloadClient extends events.EventEmitter {
 }
 
 async function getDirectorySizeMb(directory: string): Promise<number> {
-  const files = await readdir(directory);
-  const stats = await Promise.all(files.map(file => stat(path.join(directory, file))));
-  return stats.reduce((accumulator, { size }) => accumulator + (size / 1000000), 0);
+  const getFolderSize = (await import("get-folder-size")).default;
+  return (await getFolderSize.loose(directory)) / 1000000;
 }

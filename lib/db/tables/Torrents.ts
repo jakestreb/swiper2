@@ -13,7 +13,7 @@ export default class Torrents extends Base {
   public async init(): Promise<this> {
     await this.db.run(`CREATE TABLE IF NOT EXISTS torrents (
       id INTEGER PRIMARY KEY,
-      magnet TEXT ON CONFLICT REPLACE,
+      magnet TEXT UNIQUE,
       videoId INTEGER,
       quality TEXT,
       resolution TEXT,

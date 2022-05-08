@@ -2,13 +2,12 @@ import * as fs from 'fs';
 import Client from 'ftp';
 import * as path from 'path';
 import rmfr from 'rmfr';
-import {promisify} from 'util';
+import { promisify } from 'util';
 
 import * as log from './common/logger';
 import * as mediaUtil from './common/media';
+import * as fileUtil from './common/files';
 
-const access = promisify(fs.access);
-const mkdir = promisify(fs.mkdir);
 const readdir = promisify(fs.readdir);
 
 export default class ExportHandler {
@@ -28,24 +27,16 @@ export default class ExportHandler {
     const useFtp = ExportHandler.USE_FTP;
 
     const safeTitle = mediaUtil.getFileSafeTitle(vt.video);
-    const dirs = vt.video.type === 'movie' ? ['movies', safeTitle] :
-      ['tv', safeTitle, `Season ${vt.video.seasonNum}`];
+    const dirs = vt.video.type === 'movie' ? path.join('movies', safeTitle) :
+      path.join('tv', safeTitle, `Season ${vt.video.seasonNum}`);
 
-    let exportPath = exportRoot;
-    if (!useFtp) { log.debug(`exportVideo: Creating missing folders in export directory`); }
-    for (const pathElem of dirs) {
-      exportPath = path.join(exportPath, pathElem);
-      if (!useFtp) {
-        // The FTP copy process creates any folders needed in the FTP directory, but the
-        // normal copy process does not.
-        try {
-          await access(exportPath, fs.constants.F_OK);
-        } catch {
-          // Throws when path does not exist
-          await mkdir(exportPath);
-        }
-      }
+    if (!useFtp) {
+      // The FTP copy process creates any folders needed in the FTP directory, but the
+      // normal copy process does not.
+      log.debug(`exportVideo: Creating missing folders in export directory`);
+      await fileUtil.createSubdirs(exportRoot, dirs);
     }
+    const exportPath = path.join(exportRoot, dirs);
 
     // Move the files to the final directory.
     log.debug(`exportVideo: Copying videos to ${useFtp ? 'FTP server at ' : ''}${exportPath}`);

@@ -26,7 +26,7 @@ export default class Jobs extends Base {
   }
 
   public getNext(): Promise<DBJob|null> {
-    return this.db.get('SELECT * FROM jobs ORDER BY nextRunAt LIMIT 1');
+    return this.db.get('SELECT * FROM jobs WHERE isDone=0 ORDER BY nextRunAt LIMIT 1');
   }
 
   // Note that this should only be called by the worker
@@ -51,7 +51,7 @@ export default class Jobs extends Base {
       [nextRunAt, interval, runCount + 1, id]);
   }
 
-  public async markCompleted(jobId: number): Promise<void> {
+  public async markDone(jobId: number): Promise<void> {
     await this.db.run('UPDATE jobs SET isDone=1 WHERE id=?', [jobId]);
   }
 

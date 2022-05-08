@@ -41,11 +41,10 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
     const torrentStrs = video.torrents.map(t => {
       const { sizeMb, resolution, status } = t;
       const { progress, peers } = this.downloadManager.getProgress(t);
-      const torrentRowTxt = formatTorrentRow({ sizeMb, resolution, peers, progress, status });
-      return `\`  \`${torrentRowTxt}`;
+      return formatTorrentRow({ sizeMb, resolution, peers, progress, status });
     });
     const details = torrentStrs.length > 0 ? torrentStrs.join('\n') : SEARCHING;
-    return `\`${statusIcon} \`${getDescription(video)}\n_${details}_`;
+    return `\`${statusIcon} \`${getDescription(video)}\n\`  \`_${details}_`;
   });
 
   const strs = [];
@@ -79,7 +78,7 @@ function formatTorrentRow(info: TorrentInfo): string {
   const elems = [resolution, formatSize(sizeMb), formatPeers(peers), formatProgress(progress)];
   const infoTxt = elems.filter(x => x).join(' | ');
   const statusTxt = getTorrentStatusText(status, peers);
-  return `${infoTxt} ${statusTxt}`;
+  return [infoTxt, statusTxt].join(' ');
 }
 
 function formatSize(sizeMb: number) {

@@ -59,7 +59,7 @@ export class DownloadManager {
   // - a download completes
   // - a torrent download is marked/unmarked as 'slow'
   private async manageDownloads(): Promise<void> {
-    log.debug(`DownloadManager: _manageDownloads()`);
+    log.debug(`DownloadManager: manageDownloads()`);
 
     const downloads: Video[] = await db.videos.getWithStatus('downloading');
     const withTorrents = await Promise.all(downloads.map(d => db.videos.addTorrents(d)));
@@ -69,7 +69,7 @@ export class DownloadManager {
 
     const sortedTorrents: VTorrent[] = [];
     sorted.forEach(v => {
-      const ts = priorityUtil.sortByPriority(v.torrents, this.getTorrentPriority.bind(this))
+      const ts = priorityUtil.sortByPriority(v.torrents, this.getTorrentPriority.bind(this));
       const vts = ts.map(t => ({ ...t, video: v }));
       sortedTorrents.push(...vts);
     });
@@ -81,7 +81,7 @@ export class DownloadManager {
     // Once all the space is allocated, pause any remaining torrents
     let storageRemaining = this.memoryManager.freeMb;
 
-    sortedTorrents.reduce(async (prevPromise, vt) => {
+    await sortedTorrents.reduce(async (prevPromise, vt) => {
       await prevPromise;
       const progressMb = await this.downloadClient.getDownloadedMb(vt);
       const allocateMb = vt.sizeMb - progressMb;

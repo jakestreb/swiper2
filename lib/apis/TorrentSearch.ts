@@ -61,11 +61,11 @@ export default class TorrentSearch {
     const torrents = await this.search(video);
     const best = this.getBestTorrent(video, torrents);
     if (!best) {
-      log.debug(`SearchClient: getBestTorrent(${getDescription(video)}) failed (no torrent found)`);
+      log.debug(`TorrentSearch: getBestTorrent(${getDescription(video)}) failed (no torrent found)`);
       // TODO: Schedule search
       return false;
     }
-    log.debug(`SearchClient: getBestTorrent(${getDescription(video)}) succeeded`);
+    log.debug(`TorrentSearch: getBestTorrent(${getDescription(video)}) succeeded`);
     const torrent = { ...best, status: 'paused' as TorrentStatus, videoId: video.id };
     await db.torrents.insert(torrent);
     return !!torrent;

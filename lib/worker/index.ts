@@ -53,7 +53,7 @@ export default class Worker {
     const jobInst = new JobClass(this, this.swiper);
     const success = await jobInst.run(job.videoId, job.runCount);
     if (success || JobClass.schedule === 'once') {
-      await db.jobs.markCompleted(job.id);
+      await db.jobs.markDone(job.id);
     } else {
       // Reschedule repeat jobs on failure
       await db.jobs.reschedule(job);
