@@ -49,4 +49,8 @@ export default class Torrents extends Base {
       return this.db.run(`UPDATE torrents SET queueIndex=? WHERE magnet=?`, [i, t.magnet]);
     }));
   }
+
+  public async delete(...ids: number[]): Promise<void> {
+    await this.db.run(`DELETE FROM torrents WHERE id IN (${ids.map(e => '?')})`, ids);
+  }
 }

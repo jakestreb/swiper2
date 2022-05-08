@@ -14,7 +14,7 @@ export class CheckForRelease extends Base {
       throw new Error(`CheckForRelease job run on invalid videoId: ${videoId}`);
     }
     const existing = await db.torrents.getForVideo(videoId);
-    if (existing) {
+    if (existing.length > 0) {
       // If video already has a torrent added, cancel job
       return true;
     }

@@ -43,7 +43,7 @@ export default class ExportHandler {
     const torrentPath = path.join(this.downloadRoot, mediaUtil.getTorrentPath(vt));
     const files = await readdir(torrentPath);
     const copyActions = files.map(filePath => {
-      const from = path.join(this.downloadRoot, torrentPath, filePath);
+      const from = path.join(torrentPath, filePath);
       const to = path.join(exportPath, path.basename(filePath));
       return useFtp ? this.ftpCopy(from, to) : copy(from, to);
     });

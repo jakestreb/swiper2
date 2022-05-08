@@ -9,11 +9,11 @@ export default class MemoryManager {
   }
 
   public get freeMb() {
-    return os.freemem() / 1000000;
+    return os.freemem() / 1024 / 1024;
   }
 
   public get totalMb() {
-    return os.totalmem() / 1000000;
+    return os.totalmem() / 1024 / 1024;
   }
 
   public get availableMb() {

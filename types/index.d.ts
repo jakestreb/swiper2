@@ -1,7 +1,8 @@
+declare module 'get-folder-size';
 declare module 'parse-torrent-name';
 
 declare type Status = 'identified'|'unreleased'|'searching'|'downloading'|'uploading'|'completed';
-declare type TorrentStatus = 'downloading'|'slow'|'paused';
+declare type TorrentStatus = 'downloading'|'slow'|'paused'|'completed';
 declare type MediaType = 'movie'|'tv'|'episode';
 declare type JobType = 'AddTorrent'|'CheckForRelease'|'DeleteVideo'|'MonitorDownload'|'StartSearching';
 declare type JobSchedule = 'once'|'repeated'|'backoff';

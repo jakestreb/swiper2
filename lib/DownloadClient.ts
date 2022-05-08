@@ -1,11 +1,14 @@
-import db from './db';
 import * as events from 'events';
+import getFolderSize from 'get-folder-size';
 import rmfr from 'rmfr';
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
 import * as log from './common/logger';
 import * as fileUtil from './common/files';
 import * as mediaUtil from './common/media';
+import { promisify } from 'util';
+
+const getFolderSizeAsync = promisify(getFolderSize);
 
 export class DownloadClient extends events.EventEmitter {
   private _client: WebTorrent.Instance|null;
@@ -30,12 +33,6 @@ export class DownloadClient extends events.EventEmitter {
       this.client.add(vt.magnet, opts, wtTorrent => {
         wtTorrent.on('done', async () => {
           log.subProcess(`Torrent done`);
-          // Destroy all torrents for video
-          const torrents = await db.torrents.getForVideo(vt.videoId);
-          const magnets = new Set(torrents.map(t => t.magnet));
-          this.client.torrents
-            .filter(ct => magnets.has(ct.magnetURI))
-            .map(ct => ct.destroy());
           resolve();
         });
         wtTorrent.on('error', async (err) => {
@@ -89,6 +86,14 @@ export class DownloadClient extends events.EventEmitter {
     }
   }
 
+  public async destroyTorrents(torrents: DBTorrent[]): Promise<void> {
+    // Destroy all torrents for video
+    const magnets = new Set(torrents.map(t => t.magnet));
+    this.client.torrents
+      .filter(ct => magnets.has(ct.magnetURI))
+      .map(ct => ct.destroy());
+  }
+
   // Getter ensures the existence of the WebTorrent instance
   private get client(): WebTorrent.Instance {
     // If the client has shut down, restart it.
@@ -106,6 +111,5 @@ export class DownloadClient extends events.EventEmitter {
 }
 
 async function getDirectorySizeMb(directory: string): Promise<number> {
-  const getFolderSize = (await import("get-folder-size")).default;
-  return (await getFolderSize.loose(directory)) / 1000000;
+  return (await getFolderSizeAsync(directory)) / 1024 / 1024;
 }

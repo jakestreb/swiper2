@@ -27,6 +27,7 @@ export class DownloadManager {
     this.exportHandler = new ExportHandler(downloadRoot);
 
     this.ping();
+    this.startUploads();
   }
 
   // A non-async public wrapper is used to prevent accidental waiting on the ping function.
@@ -137,24 +138,43 @@ export class DownloadManager {
     await db.torrents.setStatus(torrent, 'downloading');
     await this.downloadClient.download(torrent);
 
-    // On completion, mark the video status as uploading.
+    // On completion, mark the video status as uploading
+    await db.torrents.setStatus(torrent, 'completed');
     await db.videos.setStatus(torrent.video, 'uploading');
 
-    // Export the video (run separately).
-    await this.exportHandler.export(torrent)
+    this.upload(torrent.videoId)
       .catch(err => {
-        log.subProcessError(`Failed to export video files: ${err}`);
+        log.error(`Upload error: ${err}`);
       });
-
-    await db.videos.setStatus(torrent.video, 'completed');
-
-    // Ping since the database changed.
-    this.ping();
   }
 
   private async stopDownload(torrent: VTorrent): Promise<void> {
     await db.torrents.setStatus(torrent, 'paused');
     await this.downloadClient.stopDownload(torrent.magnet);
+  }
+
+  private async startUploads() {
+    const videos = await db.videos.getWithStatus('uploading');
+    Promise.all(videos.map(v => this.upload(v.id)))
+      .catch(err => {
+        log.error(`Upload error: ${err}`);
+      });
+  }
+
+  private async upload(videoId: number): Promise<void> {
+    const video: Video = (await db.videos.get(videoId))!;
+    const torrents = await db.torrents.getForVideo(video.id);
+    const completed = torrents.find(t => t.status === 'completed');
+    if (!completed) {
+      throw new Error('Export error: no torrents completed');
+    }
+    await this.exportHandler.export({ ...completed, video });
+    await this.downloadClient.destroyTorrents(torrents);
+    await db.torrents.delete(...torrents.map(t => t.id));
+    await db.videos.setStatus(video, 'completed');
+
+    // Ping since the database changed.
+    this.ping();
   }
 
   private getVideoPriority(video: TVideo): number[] {
