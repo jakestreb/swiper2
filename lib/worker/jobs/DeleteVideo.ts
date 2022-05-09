@@ -7,8 +7,15 @@ export class DeleteVideo extends Base {
 	public static initDelayS: number = 0;
 
 	public async run(videoId: number): Promise<boolean> {
-		await this.worker.removeJobs(videoId);
-		await db.videos.delete(videoId);
+		const video = await db.videos.get(videoId);
+		if (!video) {
+			throw new Error(`DeleteVideo job run on invalid videoId: ${videoId}`);
+		}
+		// Only delete video if status is completed
+		if (video.status === 'completed') {
+			await this.worker.removeJobs(videoId);
+			await db.videos.delete(videoId);
+		}
 		return true;
 	}
 }

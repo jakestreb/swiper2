@@ -26,6 +26,7 @@ export default class TMDB {
   private static URL_V4 = 'https://api.themoviedb.org/4';
 
   public static async search(info: MediaQuery): Promise<TMDBMedia> {
+    log.debug(`TMDB.search ${info.title}`);
     const { title, year, type } = info;
     const url = this.getSearchUrl(title, year, type);
     return this.makeMediaRequest(url, year);

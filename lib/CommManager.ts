@@ -23,7 +23,12 @@ export default class CommManager {
     }
   }
 
-  public async sendMsgToClient(id: number, msg: SwiperReply): Promise<void> {
+  // Sent unprompted message to client
+  public notifyClient(id: number, msg: string) {
+    this.replyToClient(id, { data: msg });
+  }
+
+  public replyToClient(id: number, msg: SwiperReply): void {
     const commType = this.clientCommTypes[id];
     if (commType === 'cli') {
       if (msg.data) {
@@ -57,10 +62,7 @@ export default class CommManager {
       .catch(err => {
         log.error(`Error handling cli request "${line.trim()}": ${err}`);
         log.info('\n');
-        this.sendMsgToClient(this.commandLineId, {err: `Something went wrong`})
-        .catch(_err => {
-          log.error(`Error sending msg to client: ${_err}`);
-        });
+        this.replyToClient(this.commandLineId, {err: `Something went wrong`})
       });
     });
   }
@@ -72,10 +74,7 @@ export default class CommManager {
       .catch(err => {
         log.error(`Error handling telegram request "${message}": ${err}`);
         log.info('\n');
-        this.sendMsgToClient(message.chat.id, {err: `Something went wrong`})
-        .catch(_err => {
-          log.error(`Error sending msg to client: ${_err}`);
-        });
+        this.replyToClient(message.chat.id, {err: `Something went wrong`})
       });
     });
 

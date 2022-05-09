@@ -31,7 +31,7 @@ export default class Swiper {
 
   // Should NOT be called publicly - use Swiper.create
   constructor() {
-    this.downloadManager = new DownloadManager();
+    this.downloadManager = new DownloadManager(this);
     this.worker = new Worker(this);
     this.worker.start();
     this.commManager = new CommManager(this.handleMsg.bind(this));
@@ -72,7 +72,12 @@ export default class Swiper {
     }
 
     // Send a response to the client.
-    await this.commManager.sendMsgToClient(id, reply);
+    this.commManager.replyToClient(id, reply);
+  }
+
+  // Send unprompted message to client
+  public async notifyClient(id: number, msg: string) {
+    this.commManager.notifyClient(id, msg);
   }
 
   public cancel(convo: Conversation): SwiperReply {

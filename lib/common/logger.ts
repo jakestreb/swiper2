@@ -1,3 +1,4 @@
+import axios from 'axios';
 import {terminal as term} from 'terminal-kit';
 import * as winston from 'winston';
 
@@ -11,6 +12,16 @@ const logger = winston.createLogger({
     new winston.transports.File({ filename: 'debug.log' })
   ]
 });
+
+axios.interceptors.request.use(request => {
+  info(`Request: ${request.method} ${request.url}`);
+  return request
+})
+
+axios.interceptors.response.use(response => {
+  info(`Response: ${JSON.stringify(response)}`);
+  return response
+})
 
 logger.info("Starting up...");
 

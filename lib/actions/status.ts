@@ -4,7 +4,7 @@ import {getAiredStr, getMorning} from '../common/util';
 import Swiper from '../Swiper';
 
 const UP_ARROW = '\u2191';
-const DOWN_ARROW = '\u2193';
+const DOWN_ARROW = '\u2913';
 const HOURGLASS = '\u29D6';
 
 const NO_PEERS = '(awaiting peers)';
@@ -36,7 +36,10 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
     }
   }).join('\n');
 
-  const downloadingStr = downloadingWithTorrents.map((video, i) => {
+  const downloadingStr = downloadingWithTorrents.map(video => {
+    if (video.status === 'completed') {
+      return formatCompleted(video);
+    }
     const statusIcon = getVideoStatusIcon(video);
     const torrentStrs = video.torrents.map(t => {
       const { sizeMb, resolution, status } = t;
@@ -44,7 +47,7 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
       return formatTorrentRow({ sizeMb, resolution, peers, progress, status });
     });
     const details = torrentStrs.length > 0 ? torrentStrs.join('\n') : SEARCHING;
-    return `\`${statusIcon} \`${getDescription(video)}\n\`  \`_${details}_`;
+    return `\`${statusIcon} \`${getDescription(video)}\n\` \`_${details}_`;
   });
 
   const strs = [];
@@ -61,7 +64,14 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
   };
 }
 
+function formatCompleted(video: Video) {
+  return `~~${getDescription(video)}~~`
+}
+
 function getVideoStatusIcon(video: TVideo) {
+  if (video.status === 'completed') {
+    return '';
+  }
   const isDownloading = video.torrents.some(t => t.status === 'downloading');
   const isUploading = video.status === 'uploading';
   return isDownloading ? DOWN_ARROW : (isUploading ? UP_ARROW : HOURGLASS);

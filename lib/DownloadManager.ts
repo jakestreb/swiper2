@@ -6,6 +6,7 @@ import * as priorityUtil from './common/priority';
 import ExportHandler from './ExportHandler';
 import MemoryManager from './MemoryManager';
 import {DownloadClient} from './DownloadClient';
+import Swiper from './Swiper';
 
 export default class DownloadManager {
 
@@ -19,7 +20,7 @@ export default class DownloadManager {
   private inProgress: boolean = false;
   private isStarted: boolean = false;
 
-  constructor() {
+  constructor(public swiper: Swiper) {
     const downloadRoot = DownloadManager.DOWNLOAD_ROOT;
 
     this.downloadClient = new DownloadClient(downloadRoot);
@@ -169,10 +170,21 @@ export default class DownloadManager {
     if (!completed) {
       throw new Error('Export error: no torrents completed');
     }
+
+    // Export and cleanup torrents
     await this.exportHandler.export({ ...completed, video });
     await this.downloadClient.destroyTorrents(torrents);
     await db.torrents.delete(...torrents.map(t => t.id));
+
+    // Mark video as completed and delete in 24 hours
     await db.videos.setStatus(video, 'completed');
+    await this.swiper.worker.addJob({
+      type: 'DeleteVideo',
+      videoId: video.id,
+      startAt: Date.now() + 24 * 60 * 60 * 1000,
+    });
+
+    this.swiper.notifyClient(video.addedBy!, `${getDescription(video)} upload complete`);
 
     // Ping since the database changed.
     this.ping();

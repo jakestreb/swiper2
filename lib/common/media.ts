@@ -1,4 +1,4 @@
-import {getMorning, padZeros} from './util';
+import {getMorning} from './util';
 import * as path from 'path';
 
 export function getVideoPath(videoId: number): string {
@@ -66,7 +66,7 @@ export function getFileSafeTitle(video: Video): string {
 
 export function getDescription(anyMedia: Movie|Show|Episode): string {
   if (anyMedia.type === 'episode') {
-    return `*${anyMedia.showTitle}* (S${padZeros(anyMedia.seasonNum)}E${padZeros(anyMedia.episodeNum)})`;
+    return `*${anyMedia.showTitle}* (S${anyMedia.seasonNum} E${anyMedia.episodeNum})`;
   } else if (anyMedia.type === 'tv') {
     return `*${anyMedia.title}* (${getExpandedEpisodeStr(anyMedia.episodes)})`;
   } else {
@@ -97,18 +97,18 @@ function getExpandedEpisodeStr(episodes: Episode[]): string {
     const si = episode.seasonNum;
     const ei = episode.episodeNum;
     if (lastSeason === -1 && lastEpisode === -1) {
-      str += `S${padZeros(si)}E${padZeros(ei)}`;
+      str += `S${si} E${ei}`;
     } else if (si > lastSeason) {
       // New season
-      str += `-${padZeros(lastEpisode)}, S${padZeros(si)}E${padZeros(ei)}`;
+      str += `-${lastEpisode}, S${si} E${ei}`;
       chain = 0;
     } else if (si === lastSeason && (ei > lastEpisode + 1)) {
       // Same season, later episode
-      str += `${chain > 0 ? `-${padZeros(lastEpisode)}` : ``} & E${padZeros(ei)}`;
+      str += `${chain > 0 ? `-${lastEpisode}` : ``} & E${ei}`;
       chain = 0;
     } else if (i === episodes.length - 1) {
       // Last episode
-      str += `-${padZeros(ei)}`;
+      str += `-${ei}`;
     } else {
       chain++;
     }
