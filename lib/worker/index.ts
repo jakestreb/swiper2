@@ -47,21 +47,24 @@ export default class Worker {
 
   private async runJob(job: DBJob) {
     log.debug(`Running ${job.type} job: ${job.videoId}`);
-    try {
-      this.nextRunTs = null;
-      this.currentTimeout = null;
-      const JobClass = this.getJobClass(job.type);
-      const jobInst = new JobClass(this, this.swiper);
-      const success = await jobInst.run(job.videoId, job.runCount);
-      if (success || JobClass.schedule === 'once') {
-        await db.jobs.markDone(job.id);
-      } else {
-        // Reschedule repeat jobs on failure
-        await db.jobs.reschedule(job);
-        this.start();
-      }
-    } catch (err) {
-      log.error(`Failed to run ${job.type} job: ${err}`);
+    this.doRunJob(job)
+      .catch(err => {
+        log.error(`Failed to run ${job.type} job: ${err}`);
+      });
+  }
+
+  private async doRunJob(job: DBJob): Promise<void> {
+    this.nextRunTs = null;
+    this.currentTimeout = null;
+    const JobClass = this.getJobClass(job.type);
+    const jobInst = new JobClass(this, this.swiper);
+    const success = await jobInst.run(job.videoId, job.runCount);
+    if (success || JobClass.schedule === 'once') {
+      await db.jobs.markDone(job.id);
+    } else {
+      // Reschedule repeat jobs on failure
+      await db.jobs.reschedule(job);
+      this.start();
     }
   }
 }

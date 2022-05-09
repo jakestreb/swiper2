@@ -75,7 +75,8 @@ export default class TMDB {
   }
 
   public static async getImdbId(info: TMDBMedia): Promise<string> {
-    const url = this.getExternalIdsUrl(info.id, info.media_type);
+    const type = isMovie(info) ? 'movie' : 'tv';
+    const url = this.getExternalIdsUrl(info.id, type);
     const data = await this.makeRequest<any>(url);
     return data.imdb_id;
   }
@@ -134,6 +135,10 @@ function parseImdbId(imdbId: string): number {
 function getYear(tmdbDate: string): string {
   const date = getDateFromStr(tmdbDate);
   return date ? `${date.getFullYear()}` : '';
+}
+
+function isMovie(tmdbMedia: TMDBMedia): tmdbMedia is TMDBMovie {
+  return !(tmdbMedia as any).first_air_date;
 }
 
 // interface TMDBPopularity {

@@ -17,7 +17,7 @@ export default class Videos {
     if (video.type === 'movie') {
       return this.db.movies.setStatus(video as Movie, status);
     }
-    return this.db.episodes.insert(video as Episode, status);
+    return this.db.episodes.setStatus(video as Episode, status);
   }
 
   public async addTorrents(video: Video): Promise<TVideo> {

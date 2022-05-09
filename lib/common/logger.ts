@@ -14,12 +14,12 @@ const logger = winston.createLogger({
 });
 
 axios.interceptors.request.use(request => {
-  info(`Request: ${request.method} ${request.url}`);
+  info(`${request.method!.toUpperCase()} ${request.url}`);
   return request
 })
 
 axios.interceptors.response.use(response => {
-  info(`Response: ${JSON.stringify(response)}`);
+  info(`-> ${response.status}`);
   return response
 })
 

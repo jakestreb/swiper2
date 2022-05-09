@@ -5,6 +5,7 @@ import Torrents from './tables/Torrents';
 import Jobs from './tables/Jobs';
 import Media from './helpers/Media';
 import Videos from './helpers/Videos';
+import * as log from '../common/logger';
 import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 
@@ -37,6 +38,7 @@ export class DBManager {
 
   public async all(sql: string, params: any[] = []): Promise<({ [column: string]: any })[]> {
     return new Promise((resolve, reject) => {
+      log.debug(`${sql} (${params})`);
       this._db.all(sql, params, function(err, rows) {
         if (err) {
           reject(err);
@@ -56,6 +58,7 @@ export class DBManager {
 
   public async run(sql: string, params: any[] = []): Promise<void> {
     return new Promise((resolve, reject) => {
+      log.debug(`${sql} (${params})`);
       this._db.run(sql, params, function(err) {
         if (err) {
           reject(err);

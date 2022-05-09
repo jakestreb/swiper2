@@ -1,5 +1,6 @@
 import db from '../db';
 import {getDescription, getNextToAir} from '../common/media';
+import * as priorityUtil from '../common/priority';
 import {getAiredStr, getMorning} from '../common/util';
 import Swiper from '../Swiper';
 
@@ -23,6 +24,7 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
   const monitored = await db.media.getWithStatus('unreleased');
   const downloading = await db.videos.getWithStatus('searching', 'downloading', 'uploading', 'completed');
   const downloadingWithTorrents = await Promise.all(downloading.map(d => db.videos.addTorrents(d)));
+  const sorted = priorityUtil.sortByPriority(downloadingWithTorrents, getSortPriority);
 
   const monitoredStr = monitored.map(media => {
     if (media.type === 'movie') {
@@ -36,7 +38,7 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
     }
   }).join('\n');
 
-  const downloadingStr = downloadingWithTorrents.map(video => {
+  const downloadingStr = sorted.map(video => {
     if (video.status === 'completed') {
       return formatCompleted(video);
     }
@@ -55,7 +57,7 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
     strs.push(`\`MONITORING\`\n${monitoredStr}`);
   }
   if (downloadingStr) {
-    strs.push(`\`DOWNLOADING\`\n${downloadingStr}`);
+    strs.push(`\`DOWNLOADING\`\n${downloadingStr.join('\n')}`);
   }
   const str = strs.join('\n');
   return {
@@ -101,4 +103,13 @@ function formatPeers(peers: number): string|null {
 
 function formatProgress(progress: number) {
   return progress ? `${progress.toFixed(1)}%` : null;
+}
+
+function getSortPriority(video: Video): number[] {
+  return [
+    Number(video.status === 'uploading'),
+    Number(video.status === 'downloading') && video.queueIndex!,
+    Number(video.status === 'searching'),
+    Number(video.status === 'completed'),
+  ];
 }

@@ -52,7 +52,7 @@ export default class Jobs extends Base {
   }
 
   public async markDone(jobId: number): Promise<void> {
-    await this.db.run('UPDATE jobs SET isDone=1 WHERE id=?', [jobId]);
+    await this.db.run('UPDATE jobs SET isDone=1, runCount=runCount+1 WHERE id=?', [jobId]);
   }
 
   public async deleteForVideo(videoId: number): Promise<void> {

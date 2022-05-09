@@ -72,6 +72,7 @@ export default class TorrentSearch {
   }
 
   public static getBestTorrent(video: Video, torrents: TorrentResult[]): TorrentResult|null {
+    log.debug(`TorrentSearch: getBestTorrent(${getDescription(video)})`);
     let bestTorrent = null;
     let bestTier = 0;
     torrents.forEach(t => {
