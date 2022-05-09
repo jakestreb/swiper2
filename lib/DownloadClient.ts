@@ -111,5 +111,13 @@ export class DownloadClient extends events.EventEmitter {
 }
 
 async function getDirectorySizeMb(directory: string): Promise<number> {
-  return (await getFolderSizeAsync(directory)) / 1024 / 1024;
+  try {
+    const folderSize = await getFolderSizeAsync(directory);
+    return folderSize / 1024 / 1024;
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return 0;
+    }
+    throw err;
+  }
 }

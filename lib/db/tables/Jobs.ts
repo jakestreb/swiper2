@@ -47,8 +47,9 @@ export default class Jobs extends Base {
     interval = Math.max(interval, Jobs.MAX_INTERVAL_SECONDS);
 
     const nextRunAt = new Date(Date.now() + interval * 1000);
-    await this.db.run('UPDATE jobs SET nextRunAt=?, intervalS=?, runCount=? WHERE id=?',
-      [nextRunAt, interval, runCount + 1, id]);
+    await this.db.run('UPDATE jobs SET nextRunAt=?, intervalS=?, '
+      + 'runCount=runCount+1, isDone=0 WHERE id=?',
+      [nextRunAt, interval, id]);
   }
 
   public async markDone(jobId: number): Promise<void> {

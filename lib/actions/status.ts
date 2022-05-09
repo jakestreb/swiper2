@@ -105,11 +105,14 @@ function formatProgress(progress: number) {
   return progress ? `${progress.toFixed(1)}%` : null;
 }
 
-function getSortPriority(video: Video): number[] {
+function getSortPriority(video: Video) {
+  const queueIndex = video.queueIndex!;
   return [
-    Number(video.status === 'uploading'),
-    Number(video.status === 'downloading') && video.queueIndex!,
-    Number(video.status === 'searching'),
-    Number(video.status === 'completed'),
+    video.status === 'uploading',
+    video.status === 'downloading',
+    video.status === 'searching',
+    video.status === 'completed',
+    queueIndex >= 0,
+    -queueIndex,
   ];
 }

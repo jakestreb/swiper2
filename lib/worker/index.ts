@@ -56,12 +56,11 @@ export default class Worker {
   private async doRunJob(job: DBJob): Promise<void> {
     this.nextRunTs = null;
     this.currentTimeout = null;
+    await db.jobs.markDone(job.id);
     const JobClass = this.getJobClass(job.type);
     const jobInst = new JobClass(this, this.swiper);
     const success = await jobInst.run(job.videoId, job.runCount);
-    if (success || JobClass.schedule === 'once') {
-      await db.jobs.markDone(job.id);
-    } else {
+    if (!success && JobClass.schedule !== 'once') {
       // Reschedule repeat jobs on failure
       await db.jobs.reschedule(job);
       this.start();
