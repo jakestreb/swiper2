@@ -1,7 +1,6 @@
 import * as fs from 'fs-extra';
 import Client from 'ftp';
 import * as path from 'path';
-import rmfr from 'rmfr';
 
 import * as log from './common/logger';
 import * as mediaUtil from './common/media';
@@ -45,11 +44,6 @@ export default class ExportHandler {
       return useFtp ? this.ftpCopy(from, to) : fs.copy(from, to);
     });
     await Promise.all(copyActions);
-
-    // Remove the entire video download directory
-    log.debug(`exportVideo: Removing download directory`);
-    const videoPath = path.join(this.downloadRoot, mediaUtil.getVideoPath(vt.videoId));
-    await rmfr(videoPath);
   }
 
   private ftpCopy(src: string, dst: string): Promise<void> {

@@ -40,7 +40,7 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
 
   const downloadRows = sorted.map(video => {
     if (video.status === 'completed') {
-      return formatCompleted(video);
+      return `\`  \`${formatCompleted(video)}`;
     }
     const statusIcon = getVideoStatusIcon(video);
     const torrentStrs = video.torrents.map(t => {
@@ -61,6 +61,7 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
   }
   const str = strs.join('\n');
   this.downloadManager.memoryManager.log(); // TODO: Remove
+  this.downloadManager.downloadClient.logTorrents(); // TODO: Remove
   return {
     data: str || 'No downloads',
     final: true

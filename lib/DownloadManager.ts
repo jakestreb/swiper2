@@ -13,8 +13,8 @@ export default class DownloadManager {
   private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
 
   public memoryManager: MemoryManager; // TODO: Make private
+  public downloadClient: DownloadClient; // TODO: Make private
 
-  private downloadClient: DownloadClient;
   private exportHandler: ExportHandler;
 
   private managingPromise: Promise<void>;
@@ -25,7 +25,7 @@ export default class DownloadManager {
     const downloadRoot = DownloadManager.DOWNLOAD_ROOT;
 
     this.downloadClient = new DownloadClient(downloadRoot);
-    this.memoryManager = new MemoryManager();
+    this.memoryManager = new MemoryManager(downloadRoot);
     this.exportHandler = new ExportHandler(downloadRoot);
 
     this.ping();
@@ -43,8 +43,8 @@ export default class DownloadManager {
     return this.downloadClient.getProgress(torrent.magnet);
   }
 
-  public destroyAndDeleteFiles(torrents: DBTorrent[]): Promise<void> {
-    return this.downloadClient.destroyAndDeleteFiles(torrents);
+  public destroyAndDeleteFiles(video: TVideo): Promise<void> {
+    return this.downloadClient.destroyAndDeleteFiles(video);
   }
 
   // This function should generally not be awaited.
@@ -87,7 +87,8 @@ export default class DownloadManager {
 
     // Round robin iterate through videos starting any torrents where there's space
     // Once all the space is allocated, pause any remaining torrents
-    let storageRemaining = this.memoryManager.freeMb;
+    const originalFree = await this.memoryManager.getFreeMb();
+    let storageRemaining = originalFree;
 
     await sortedTorrents.reduce(async (prevPromise, vt) => {
       await prevPromise;
@@ -97,11 +98,10 @@ export default class DownloadManager {
         storageRemaining,
         allocateMb,
         progressMb,
-        freeMb: this.memoryManager.freeMb,
-        totalMb: this.memoryManager.totalMb,
+        freeMb: originalFree,
+        totalMb: await this.memoryManager.getTotalMb(),
       });
-      // TODO!!!!!!!
-      if (true || storageRemaining - allocateMb > 0) {
+      if (storageRemaining - allocateMb > 0) {
         // Allocate
         storageRemaining -= allocateMb;
         if (!this.isStarted || vt.status === 'paused') {
@@ -146,6 +146,8 @@ export default class DownloadManager {
     await db.torrents.setStatus(torrent, 'downloading');
     await this.downloadClient.download(torrent);
 
+    console.warn('DONE DOWNLOADING!', getDescription(torrent.video));
+
     // On completion, mark the video status as uploading
     await db.torrents.setStatus(torrent, 'completed');
     await db.videos.setStatus(torrent.video, 'uploading');
@@ -179,7 +181,7 @@ export default class DownloadManager {
 
     // Export and cleanup torrents
     await this.exportHandler.export({ ...completed, video });
-    await this.downloadClient.destroyTorrents(torrents);
+    await this.downloadClient.destroyAndDeleteFiles({ ...video, torrents });
     await db.torrents.delete(...torrents.map(t => t.id));
 
     // Mark video as completed and delete in 24 hours

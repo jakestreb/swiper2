@@ -61,6 +61,6 @@ export default class Jobs extends Base {
   }
 
   public async deleteForVideo(videoId: number): Promise<void> {
-    await this.db.run(`DELETE FROM jobs WHERE videoId=?)`, videoId);
+    await this.db.run(`DELETE FROM jobs WHERE videoId=?`, videoId);
   }
 }

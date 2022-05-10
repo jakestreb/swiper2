@@ -32,7 +32,6 @@ export default class Shows extends Base {
   }
 
   public search(input: string): Promise<Show[]> {
-    console.warn('SERCH INPUT', input);
     return this.all('SELECT * FROM shows WHERE title LIKE ?', [`%${input}%`]);
   }
 
@@ -50,7 +49,7 @@ export default class Shows extends Base {
 
   private async rowToShow(row: DBShow): Promise<Show> {
     const show = rowToEmptyShow(row);
-    show.episodes = await this.db.episodes.getFromShow(show);
+    show.episodes = await this.db.episodes.getFromShow(show.id);
     return show;
   }
 }

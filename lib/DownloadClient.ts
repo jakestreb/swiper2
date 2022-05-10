@@ -17,6 +17,11 @@ export class DownloadClient extends events.EventEmitter {
     super();
   }
 
+  // TODO: Remove
+  public logTorrents() {
+    console.warn('TORRENTS', this.client.torrents.map(t => t.magnetURI));
+  }
+
   public getDownloadedMb(t: DBTorrent): Promise<number> {
     return getDirectorySizeMb(path.join(this.downloadRoot, mediaUtil.getTorrentPath(t)));
   }
@@ -32,7 +37,7 @@ export class DownloadClient extends events.EventEmitter {
     return new Promise((resolve, reject) => {
       this.client.add(vt.magnet, opts, wtTorrent => {
         wtTorrent.on('done', async () => {
-          log.subProcess(`Torrent done`);
+          log.subProcess(`Torrent done ${mediaUtil.getDescription(vt.video)}`);
           resolve();
         });
         wtTorrent.on('error', async (err) => {
@@ -71,12 +76,20 @@ export class DownloadClient extends events.EventEmitter {
     });
   }
 
-  public async destroyAndDeleteFiles(torrents: DBTorrent[]): Promise<void> {
-    await this.destroyTorrents(torrents);
-    await Promise.all(torrents.map(t => this.deleteTorrentFiles(t)));
+  public async destroyAndDeleteFiles(video: TVideo): Promise<void> {
+    await Promise.all(video.torrents.map(t => this.destroyTorrent(t)));
+    await this.deleteVideoFiles(video.id);
   }
 
-  public async deleteTorrentFiles(torrent: DBTorrent): Promise<void> {
+  private async deleteVideoFiles(videoId: number): Promise<void> {
+    try {
+      await rmfr(path.join(this.downloadRoot, mediaUtil.getVideoPath(videoId)));
+    } catch (err) {
+      log.subProcessError(`Error deleting video files: ${err}`);
+    }
+  }
+
+  private async deleteTorrentFiles(torrent: DBTorrent): Promise<void> {
     try {
       await rmfr(path.join(this.downloadRoot, mediaUtil.getTorrentPath(torrent)));
     } catch (err) {
@@ -84,19 +97,21 @@ export class DownloadClient extends events.EventEmitter {
     }
   }
 
-  public allDownloadsCompleted(): void {
-    if (this._client) {
-      this._client.destroy();
-      this._client = null;
+  private async destroyTorrent(torrent: DBTorrent): Promise<void> {
+    const torrentPath = path.join(this.downloadRoot, mediaUtil.getTorrentPath(torrent));
+    const toDestroy = this.client.torrents.find(ct => ct.path === torrentPath);
+    if (!toDestroy) {
+      throw new Error(`Failed to identify torrent for destruction: ${torrent}`);
     }
-  }
-
-  public async destroyTorrents(torrents: DBTorrent[]): Promise<void> {
-    // Destroy all torrents for video
-    const magnets = new Set(torrents.map(t => t.magnet));
-    this.client.torrents
-      .filter(ct => magnets.has(ct.magnetURI))
-      .map(ct => ct.destroy());
+    return new Promise((resolve, reject) => {
+      toDestroy.destroy((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
   }
 
   // Getter ensures the existence of the WebTorrent instance

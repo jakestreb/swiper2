@@ -133,7 +133,7 @@ export default class Swiper {
   public async removeMedia(media: Media): Promise<void> {
     const promises = mediaUtil.getVideos(media).map(async video => {
       const withTorrents = await db.videos.addTorrents(video);
-      await this.downloadManager.destroyAndDeleteFiles(withTorrents.torrents);
+      await this.downloadManager.destroyAndDeleteFiles(withTorrents);
       await this.worker.removeJobs(video.id);
       await db.torrents.delete(...withTorrents.torrents.map(t => t.id));
     });
@@ -143,7 +143,7 @@ export default class Swiper {
   }
 
   // Requires mediaQuery to be set.
-  public async addStoredMediaIfFound(convo: Conversation): Promise<SwiperReply|void> {
+  public async addStoredMediaIfFound(convo: Conversation): Promise<void> {
     const mediaQuery = convo.mediaQuery;
     if (!mediaQuery) {
       throw new Error(`addStoredMediaIfFound requires mediaQuery`);

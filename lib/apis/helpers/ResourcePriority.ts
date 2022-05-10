@@ -10,6 +10,10 @@ export default abstract class ResourcePriority<T> {
     if (index === -1) {
       return -1;
     }
-    return (this.ranks.length - index - 1) / (this.ranks.length - 1);
+    if (this.ranks.length === 1) {
+      return 0;
+    }
+    const score = (this.ranks.length - index - 1) / (this.ranks.length - 1);
+    return score * this.scale;
   }
 }

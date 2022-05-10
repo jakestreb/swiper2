@@ -51,8 +51,6 @@ export default class TorrentRanker {
       new SizePriority(this.video).getScore(t),
       new TitlePriority(this.video).getScore(t),
     ];
-    console.warn('TORRENT', t);
-    console.warn('SCORES', scores);
 
     if (scores.some(x => x === -1)) {
       return 0;

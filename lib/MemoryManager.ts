@@ -1,24 +1,30 @@
-import * as os from 'os';
+import checkDiskSpace from 'check-disk-space'
 
 export default class MemoryManager {
 
   private static MARGIN_MB = 250;
 
-  constructor() {}
+  constructor(public downloadRoot: string) {}
 
-  public get freeMb() {
-    return os.freemem() / 1024 / 1024;
+  public async getAvailableMb() {
+    const free = await this.getFreeMb();
+    return free - MemoryManager.MARGIN_MB;
   }
 
-  public get totalMb() {
-    return os.totalmem() / 1024 / 1024;
+  public async getTotalMb() {
+    const { size } = await checkDiskSpace(this.downloadRoot);
+    return size / 1024 / 1024;
   }
 
-  public get availableMb() {
-    return this.freeMb - MemoryManager.MARGIN_MB;
+  public async getFreeMb() {
+    // return os.freemem() / 1024 / 1024;
+    const { free } = await checkDiskSpace(this.downloadRoot);
+    return free / 1024 / 1024;
   }
 
-  public log() {
-    console.warn('free / total', this.freeMb, this.totalMb);
+  public async log() {
+    const total = await this.getTotalMb();
+    const free = await this.getFreeMb();
+    console.warn('free / total', free, total);
   }
 }
