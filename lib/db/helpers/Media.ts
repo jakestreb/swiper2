@@ -28,7 +28,7 @@ export default class MediaHandler {
     if (media.type === 'movie') {
       await this.db.movies.delete(media.id);
     } else {
-      await this.db.episodes.delete(media.episodes.map(e => e.id));
+      await this.db.episodes.delete(...media.episodes.map(e => e.id));
     }
   }
 
