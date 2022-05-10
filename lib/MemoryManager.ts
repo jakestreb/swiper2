@@ -4,9 +4,7 @@ export default class MemoryManager {
 
   private static MARGIN_MB = 250;
 
-  constructor() {
-    setInterval(() => this.log(), 30000);
-  }
+  constructor() {}
 
   public get freeMb() {
     return os.freemem() / 1024 / 1024;

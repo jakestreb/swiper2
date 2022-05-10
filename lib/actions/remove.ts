@@ -1,4 +1,3 @@
-import db from '../db';
 import {getDescription} from '../common/media';
 import {matchYesNo} from '../common/util';
 import Swiper from '../Swiper';
@@ -22,9 +21,7 @@ export async function remove(this: Swiper, convo: Conversation): Promise<SwiperR
       // If yes or no, shift the task to 'complete' it, then remove it from the database.
       const media: Media = storedMedia.shift()!;
       if (match === 'yes') {
-        await db.media.delete(media);
-        // After a removal, ping the download manager.
-        this.downloadManager.ping();
+        await this.removeMedia(media);
       }
     }
   }

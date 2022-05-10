@@ -21,12 +21,12 @@ interface TorrentInfo {
 }
 
 export async function status(this: Swiper, convo: Conversation): Promise<SwiperReply> {
-  const monitored = await db.media.getWithStatus('unreleased');
+  const unreleased = await db.media.getWithStatus('unreleased');
   const downloading = await db.videos.getWithStatus('searching', 'downloading', 'uploading', 'completed');
   const downloadingWithTorrents = await Promise.all(downloading.map(d => db.videos.addTorrents(d)));
   const sorted = priorityUtil.sortByPriority(downloadingWithTorrents, getSortPriority);
 
-  const monitoredStr = monitored.map(media => {
+  const unreleasedRows = unreleased.map(media => {
     if (media.type === 'movie') {
       const release = media.streamingRelease && (media.streamingRelease > getMorning().getTime());
       const releaseStr = release ? ` _Streaming ${new Date(media.streamingRelease!).toDateString()}_` : ` _${media.year}_`;
@@ -36,9 +36,9 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
       return `${getDescription(media)}` +
         ((next && next.airDate) ? ` _${getAiredStr(new Date(next!.airDate!))}_` : '');
     }
-  }).join('\n');
+  })
 
-  const downloadingStr = sorted.map(video => {
+  const downloadRows = sorted.map(video => {
     if (video.status === 'completed') {
       return formatCompleted(video);
     }
@@ -53,15 +53,16 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
   });
 
   const strs = [];
-  if (monitoredStr) {
-    strs.push(`\`MONITORING\`\n${monitoredStr}`);
+  if (unreleasedRows.length > 0) {
+    strs.push(`\`UPCOMING\`\n${unreleasedRows.join('\n')}`);
   }
-  if (downloadingStr) {
-    strs.push(`\`DOWNLOADING\`\n${downloadingStr.join('\n')}`);
+  if (downloadRows.length > 0) {
+    strs.push(`\`DOWNLOADING\`\n${downloadRows.join('\n')}`);
   }
   const str = strs.join('\n');
+  this.downloadManager.memoryManager.log(); // TODO: Remove
   return {
-    data: str || "Nothing to report",
+    data: str || 'No downloads',
     final: true
   };
 }

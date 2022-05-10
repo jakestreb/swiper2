@@ -27,7 +27,6 @@ export default class Worker {
 
   public async removeJobs(videoId: number) {
     await db.jobs.deleteForVideo(videoId);
-    this.start();
   }
 
   private getJobClass(type: JobType) {
@@ -54,6 +53,11 @@ export default class Worker {
   }
 
   private async doRunJob(job: DBJob): Promise<void> {
+    if (!await db.jobs.get(job.id)) {
+      // Check if the job was since removed
+      this.start();
+      return;
+    }
     this.nextRunTs = null;
     this.currentTimeout = null;
     await db.jobs.markDone(job.id);

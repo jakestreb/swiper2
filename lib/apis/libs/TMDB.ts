@@ -92,6 +92,7 @@ export default class TMDB {
 
   private static getSearchUrl(title: string, year: string|null, type: 'movie'|'tv'|null): string {
     const safeTitle = encodeURIComponent(title);
+    console.warn('SAFE TITLE', safeTitle);
     if (type) {
       const yearParam = type === 'movie' ? 'primary_release_year' : 'first_air_date_year';
       const yearQuery = year ? `&${yearParam}=${year}` : '';

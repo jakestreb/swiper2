@@ -71,6 +71,11 @@ export class DownloadClient extends events.EventEmitter {
     });
   }
 
+  public async destroyAndDeleteFiles(torrents: DBTorrent[]): Promise<void> {
+    await this.destroyTorrents(torrents);
+    await Promise.all(torrents.map(t => this.deleteTorrentFiles(t)));
+  }
+
   public async deleteTorrentFiles(torrent: DBTorrent): Promise<void> {
     try {
       await rmfr(path.join(this.downloadRoot, mediaUtil.getTorrentPath(torrent)));

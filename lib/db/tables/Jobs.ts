@@ -25,6 +25,10 @@ export default class Jobs extends Base {
     return this;
   }
 
+  public async get(id: number): Promise<DBJob|null> {
+    return this.db.get('SELECT * FROM jobs WHERE id=? LIMIT 1', [id]);
+  }
+
   public getNext(): Promise<DBJob|null> {
     return this.db.get('SELECT * FROM jobs WHERE isDone=0 ORDER BY nextRunAt LIMIT 1');
   }

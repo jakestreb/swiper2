@@ -12,8 +12,9 @@ export default class DownloadManager {
 
   private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
 
+  public memoryManager: MemoryManager; // TODO: Make private
+
   private downloadClient: DownloadClient;
-  private memoryManager: MemoryManager;
   private exportHandler: ExportHandler;
 
   private managingPromise: Promise<void>;
@@ -40,6 +41,10 @@ export default class DownloadManager {
 
   public getProgress(torrent: DBTorrent): DownloadProgress {
     return this.downloadClient.getProgress(torrent.magnet);
+  }
+
+  public destroyAndDeleteFiles(torrents: DBTorrent[]): Promise<void> {
+    return this.downloadClient.destroyAndDeleteFiles(torrents);
   }
 
   // This function should generally not be awaited.

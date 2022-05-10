@@ -85,6 +85,13 @@ export function getVideo(media: Media): Video|null {
   }
 }
 
+export function getVideos(media: Media): Video[] {
+  if (media.type === 'movie') {
+    return [media];
+  }
+  return media.episodes;
+}
+
 /**
  * Returns a string giving all seasons and episodes for a show already fetched from TVDB.
  */

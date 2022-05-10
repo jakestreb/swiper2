@@ -1,12 +1,11 @@
 import ptn from 'parse-torrent-name';
 import {delay, padZeros} from '../common/util';
-import * as settings from '../_settings.json';
-import {getDescription, getFileSafeTitle} from '../common/media';
+import {getDescription} from '../common/media';
 import * as log from '../common/logger';
+import TorrentRanker from './helpers/TorrentRanker';
 import db from '../db';
 
 // Typescript doesn't recognize the default export of TSA.
-// tslint:disable-next-line
 const TorrentSearchApi = require('torrent-search-api');
 TorrentSearchApi.enablePublicProviders();
 
@@ -76,7 +75,7 @@ export default class TorrentSearch {
     let bestTorrent = null;
     let bestTier = 0;
     torrents.forEach(t => {
-      const tier = getTorrentTier(video, t);
+      const tier = new TorrentRanker(video).getScore(t);
       if (tier > bestTier) {
         bestTorrent = t;
         bestTier = tier;
@@ -128,7 +127,7 @@ export default class TorrentSearch {
     return {
       title: result.title,
       parsedTitle: parsed.title,
-      sizeMb: getSizeInMB(result.size) || -1,
+      sizeMb: getSizeInMb(result.size) || -1,
       seeders: result.seeds || 0,
       leechers: result.peers || 0,
       uploadTime: result.time,
@@ -137,44 +136,6 @@ export default class TorrentSearch {
       resolution: parsed.resolution || '',
     };
   }
-}
-
-// Get download quality tier. The tiers range from 0 <-> (2 * number of quality preferences)
-function getTorrentTier(video: Video, torrent: TorrentResult): number {
-  // Check if any insta-reject strings match (ex. CAMRip).
-  const rejected = settings.reject.find(r =>
-    torrent.title.match(new RegExp(`\\b${r}\\b`, 'gi')));
-  if (rejected) { return 0; }
-
-  // Check if the size is too big or too small.
-  const sizeRule = settings.size[video.type].find(_sr => torrent.sizeMb >= _sr.minMB);
-  const sizePoints = sizeRule ? sizeRule.points : 0;
-  if (!sizePoints) { return 0; }
-
-  // Get the quality preference index.
-  const qualityPrefOrder = settings.quality[video.type];
-  const qualityIndex = qualityPrefOrder.findIndex(q =>
-    torrent.title.match(new RegExp(q, 'gi')));
-  if (qualityIndex === -1) { return 0; }
-
-  let score = 0;
-
-  // Make sure the title matches.
-  const wrongTitle = torrent.parsedTitle !== getFileSafeTitle(video);
-  if (!wrongTitle) { score += 1.5; }
-
-  // Prioritize minSeeders over having the best quality.
-  const seederRule = settings.seeders.find(_sr => torrent.seeders >= _sr.min);
-  const points = seederRule ? seederRule.points : 0;
-  score += points;
-
-  // Add a point relative to the index in the quality preference array.
-  score += qualityPrefOrder.length - qualityIndex - 1;
-
-  // Add correct size points
-  score += sizePoints;
-
-  return score;
 }
 
 function getSearchTerm(video: Video): string {
@@ -190,7 +151,7 @@ function getSearchTerm(video: Video): string {
 }
 
 // Expects a string which starts with a decimal number and either GiB, MiB, or kiB
-function getSizeInMB(sizeStr: string): number|null {
+function getSizeInMb(sizeStr: string): number|null {
   const factorMap: {[prefix: string]: number} = {g: 1000.0, m: 1.0, k: 0.001};
   const [valStr, units] = sizeStr.replace(/,/g, '').split(/\s/g);
   const val = parseFloat(valStr);

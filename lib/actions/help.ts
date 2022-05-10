@@ -1,6 +1,42 @@
 import Swiper from '../Swiper';
-import * as commands from './_helpcommands.json';
 
+// TODO: Update/refactor
+const commands = {
+  "basic": [{
+    "name": "status",
+    "description": "shows all downloading/monitored items",
+    "emphasize": true
+  }, {
+    "name": "download",
+    "description": "downloads a movie/show",
+    "emphasize": true,
+    "examples": [
+      "download the lion king",
+      "download batman 1989",
+      "download stranger things s2",
+      "download the office s1e2-4 & e6"
+    ]
+  }, {
+    "name": "remove",
+    "description": "removes a downloading/monitored item",
+    "emphasize": true,
+    "examples": [
+      "remove the outsider"
+    ]
+  }, {
+    "name": "cancel",
+    "description": "ends the current conversation"
+  }],
+
+  "advanced": [{
+    "name": "search",
+    "description": "gives a list of options for a movie/episode",
+    "examples": [
+      "search old yeller",
+      "search game of thrones s1e2"
+    ]
+  }]
+};
 const ALL_CMDS = [...commands.basic, ...commands.advanced];
 
 export function help(this: Swiper, convo: Conversation): SwiperReply {
