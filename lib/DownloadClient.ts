@@ -27,13 +27,13 @@ export class DownloadClient extends events.EventEmitter {
   }
 
   public async download(vt: VTorrent): Promise<void> {
-    log.debug(`DownloadClient: download(${mediaUtil.getDescription(vt.video)})`);
+    log.debug(`DownloadClient: download(${mediaUtil.stringify(vt.video)})`);
     const subDirs = mediaUtil.getTorrentPath(vt);
     const downloadPath = await fileUtil.createSubdirs(this.downloadRoot, subDirs);
     return new Promise((resolve, reject) => {
       this.client.add(vt.magnet, { path: downloadPath }, wtTorrent => {
         wtTorrent.on('done', async () => {
-          log.subProcess(`Torrent done ${mediaUtil.getDescription(vt.video)}`);
+          log.subProcess(`Torrent done ${mediaUtil.stringify(vt.video)}`);
           resolve();
         });
         wtTorrent.on('error', async (err) => {

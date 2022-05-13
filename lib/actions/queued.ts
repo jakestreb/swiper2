@@ -1,8 +1,7 @@
 import db from '../db';
-import {getDescription, getNextToAir} from '../common/media';
 import * as priorityUtil from '../common/priority';
-import {getAiredStr, getMorning} from '../common/util';
 import Swiper from '../Swiper';
+import TextFormatter from '../io/formatters/TextFormatter';
 
 const UP_ARROW = '\u2191';
 const DOWN_ARROW = '\u2913';
@@ -20,27 +19,14 @@ interface TorrentInfo {
   status: TorrentStatus;
 }
 
-export async function status(this: Swiper, convo: Conversation): Promise<SwiperReply> {
-  const unreleased = await db.media.getWithStatus('unreleased');
+export async function queued(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   const downloading = await db.videos.getWithStatus('searching', 'downloading', 'uploading', 'completed');
   const downloadingWithTorrents = await Promise.all(downloading.map(d => db.videos.addTorrents(d)));
   const sorted = priorityUtil.sortByPriority(downloadingWithTorrents, getSortPriority);
 
-  const unreleasedRows = unreleased.map(media => {
-    if (media.type === 'movie') {
-      const release = media.streamingRelease && (media.streamingRelease > getMorning().getTime());
-      const releaseStr = release ? ` _Streaming ${new Date(media.streamingRelease!).toDateString()}_` : ` _${media.year}_`;
-      return `*${media.title}*${releaseStr}`;
-    } else {
-      const next = getNextToAir(media.episodes);
-      return `${getDescription(media)}` +
-        ((next && next.airDate) ? ` _${getAiredStr(new Date(next!.airDate!))}_` : '');
-    }
-  })
-
   const downloadRows = sorted.map(video => {
     if (video.status === 'completed') {
-      return `\`  \`${formatCompleted(video)}`;
+      return `\`  \`${formatCompleted(video, f)}`;
     }
     const statusIcon = getVideoStatusIcon(video);
     const torrentStrs = video.torrents.map(t => {
@@ -49,27 +35,19 @@ export async function status(this: Swiper, convo: Conversation): Promise<SwiperR
       return formatTorrentRow({ sizeMb, resolution, peers, progress, status });
     });
     const details = torrentStrs.length > 0 ? torrentStrs.join('\n') : SEARCHING;
-    return `\`${statusIcon} \`${getDescription(video)}\n\` \`_${details}_`;
+    return `${statusIcon}${f.sp(1)}${f.res(video)}\n${f.sp(1)}${f.i(details)}`;
   });
 
-  const strs = [];
-  if (unreleasedRows.length > 0) {
-    strs.push(`\`UPCOMING\`\n${unreleasedRows.join('\n')}`);
-  }
-  if (downloadRows.length > 0) {
-    strs.push(`\`DOWNLOADING\`\n${downloadRows.join('\n')}`);
-  }
-  const str = strs.join('\n');
   this.downloadManager.memoryManager.log(); // TODO: Remove
   this.downloadManager.downloadClient.logTorrents(); // TODO: Remove
   return {
-    data: str || 'No downloads',
+    data: downloadRows.length > 0 ? downloadRows.join('\n') : 'No downloads',
     final: true
   };
 }
 
-function formatCompleted(video: Video) {
-  return `~~${getDescription(video)}~~`
+function formatCompleted(video: Video, f: TextFormatter) {
+  return f.s(f.res(video));
 }
 
 function getVideoStatusIcon(video: TVideo) {

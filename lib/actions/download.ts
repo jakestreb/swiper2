@@ -1,10 +1,11 @@
 import db from '../db';
-import {getDescription, getVideo} from '../common/media';
+import * as mediaUtil from '../common/media';
 import Swiper from '../Swiper';
+import TextFormatter from '../io/formatters/TextFormatter';
 
-export async function download(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+export async function download(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   const media = convo.media as Media;
-  const video: Video|null = getVideo(media);
+  const video: Video|null = mediaUtil.getVideo(media);
   if (video) {
     await db.media.insert(media, {
       addedBy: convo.id,
@@ -22,7 +23,7 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
     }));
   }
   return {
-    data: `Queued ${getDescription(media)} for download`,
+    data: `Queued ${f.res(media)} for download`,
     final: true
   };
 }

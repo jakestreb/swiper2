@@ -1,4 +1,5 @@
 import Swiper from '../Swiper';
+import TextFormatter from '../io/formatters/TextFormatter';
 
 // TODO: Update/refactor
 const commands = {
@@ -39,7 +40,7 @@ const commands = {
 };
 const ALL_CMDS = [...commands.basic, ...commands.advanced];
 
-export function help(this: Swiper, convo: Conversation): SwiperReply {
+export function help(this: Swiper, convo: Conversation, f: TextFormatter): SwiperReply {
   if (!convo.input) {
     return {
       data: `\`COMMANDS\`\n` +

@@ -1,6 +1,8 @@
 import TelegramBot from 'node-telegram-bot-api';
 import * as readline from 'readline';
-import * as log from './common/logger';
+import * as log from '../common/logger';
+import TextFormatter from './formatters/TextFormatter';
+import TelegramFormatter from './formatters/TelegramFormatter';
 
 type CommType = 'cli'|'telegram';
 type SwiperMsgHandler = (id: number, msg?: string) => Promise<void>
@@ -11,6 +13,10 @@ export default class CommManager {
   private static ENABLE_TELEGRAM = Boolean(parseInt(process.env.ENABLE_TELEGRAM || "0", 10));
 
   private clientCommTypes: {[clientId: number]: CommType} = {};
+  private textFormatters: {[commType in CommType]: TextFormatter} = {
+    'cli': new TextFormatter(),
+    'telegram': new TelegramFormatter(),
+  };
   private telegramBotInst: TelegramBot|null = null;
   private readonly commandLineId = -1;
 
@@ -23,13 +29,19 @@ export default class CommManager {
     }
   }
 
-  // Sent unprompted message to client
-  public notifyClient(id: number, msg: string) {
-    this.replyToClient(id, { data: msg });
+  // Returns the TextFormatter for the given client
+  public getTextFormatter(clientId: number): TextFormatter {
+    const commType = this.clientCommTypes[clientId];
+    return this.textFormatters[commType];
   }
 
-  public replyToClient(id: number, msg: SwiperReply): void {
-    const commType = this.clientCommTypes[id];
+  // Sent unprompted message to client
+  public notifyClient(clientId: number, msg: string) {
+    this.replyToClient(clientId, { data: msg });
+  }
+
+  public replyToClient(clientId: number, msg: SwiperReply): void {
+    const commType = this.clientCommTypes[clientId];
     if (commType === 'cli') {
       if (msg.data) {
         log.info(msg.data);
@@ -44,7 +56,7 @@ export default class CommManager {
         log.foreignInputError(msg.err);
       }
       const msgText = msg.data ? msg.data : msg.err;
-      this.telegramBot.sendMessage(id, msgText || '', {parse_mode: 'Markdown'});
+      this.telegramBot.sendMessage(clientId, msgText || '', {parse_mode: 'HTML'});
     }
   }
 

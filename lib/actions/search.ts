@@ -1,14 +1,15 @@
 import db from '../db';
 import * as log from '../common/logger';
-import {getDescription} from '../common/media';
+import {stringify} from '../common/media';
 import {matchNumber} from '../common/util';
 import Swiper from '../Swiper';
 import TorrentSearch from '../apis/TorrentSearch';
+import TextFormatter from '../io/formatters/TextFormatter';
 
 // Number of torrents to show per page
 const PER_PAGE = 4;
 
-export async function search(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+export async function search(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   log.debug(`Swiper: search`);
 
   const media = convo.media as Media;
@@ -17,14 +18,14 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
-    log.info(`Searching for ${getDescription(video)} downloads`);
+    log.info(`Searching for ${stringify(video)} downloads`);
     convo.torrents = await TorrentSearch.search(video);
     convo.pageNum = 0;
   }
 
-  if (convo.torrents.length === 0) {
+  if (convo.torrents!.length === 0) {
     return {
-      data: `No torrents found`,
+      data: 'No torrents found',
       final: true
     };
   }
@@ -33,7 +34,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   convo.pageNum = convo.pageNum || 0;
 
   const showPage = () => showTorrents(convo.torrents!, convo.pageNum!,
-    videoWithTorrents.torrents);
+    videoWithTorrents.torrents, f);
 
   const startIndex = PER_PAGE * convo.pageNum;
   const navs = [];
@@ -70,7 +71,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   this.downloadManager.ping();
 
   return {
-    data: `Queued ${getDescription(video)} for download`,
+    data: `Queued ${f.res(video)} for download`,
     final: true
   };
 }
@@ -80,6 +81,7 @@ function showTorrents(
   torrents: TorrentResult[],
   pageNum: number,
   currentTorrents: DBTorrent[],
+  f: TextFormatter,
 ): SwiperReply {
   const startIndex = PER_PAGE * pageNum;
   const prev = startIndex > 0;
@@ -88,19 +90,11 @@ function showTorrents(
   const torrentRows = someTorrents.map((t, i) => {
     const isRepeat = currentTorrents.find(ct => t.magnet === ct.magnet);
     const repeatStr = isRepeat ? '(Prev selection) ' : '';
-    return `\` ${startIndex + i + 1} \`_${repeatStr}_${getTorrentString(t)}`;
+    return `${startIndex + i + 1} ${f.i(repeatStr)}${f.torrentResult(t)}`;
   });
-  const respStr = prev && next ? `\`prev\` or \`next\`` : (next ? `\`next\`` : (prev ? `\`prev\`` : ``));
+  const respStr = prev && next ? `prev or next` : (next ? `next` : (prev ? `prev` : ``));
   const str = torrentRows.join(`\n`);
   return {
-    data: `${str}\n\nGive \`num\` to download` + (respStr ? ` or ${respStr} to see more` : ``)
+    data: `${str}\n\nGive ${f.m('num')} to download` + (respStr ? ` or ${respStr} to see more` : ``)
   };
-}
-
-function getTorrentString(torrent: TorrentResult): string {
-  const seed = torrent.seeders ? `${torrent.seeders} peers ` : '';
-  // const leech = torrent.leechers ? `${torrent.leechers} leech ` : '';
-  return `*${torrent.title.replace(/\./g, ' ')}*\n` +
-    `\`       \`_${torrent.sizeMb}MB with ${seed}_\n` +
-    `\`       \`_${torrent.uploadTime}_`;
 }

@@ -18,7 +18,7 @@ export default class ExportHandler {
 
   // Save a video in the correct directory, adding any necessary directories.
   public async export(vt: VTorrent): Promise<void> {
-    log.debug(`ExportHandler.export(${mediaUtil.getDescription(vt.video)})`);
+    log.debug(`ExportHandler.export(${mediaUtil.stringify(vt.video)})`);
     const exportRoot = ExportHandler.EXPORT_ROOT;
     const useFtp = ExportHandler.USE_FTP;
 

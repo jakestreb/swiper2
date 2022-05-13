@@ -1,7 +1,7 @@
 import * as path from 'path';
 import db from './db';
 import * as log from './common/logger';
-import {getDescription} from './common/media';
+import {stringify} from './common/media';
 import * as priorityUtil from './common/priority';
 import ExportHandler from './ExportHandler';
 import MemoryManager from './MemoryManager';
@@ -94,7 +94,7 @@ export default class DownloadManager {
       await prevPromise;
       const progressMb = await this.downloadClient.getDownloadedMb(vt);
       const allocateMb = vt.sizeMb - progressMb;
-      console.warn(`queue ${getDescription(vt.video)}?`, {
+      console.warn(`queue ${stringify(vt.video)}?`, {
         storageRemaining,
         allocateMb,
         progressMb,
@@ -118,13 +118,13 @@ export default class DownloadManager {
     toStart.forEach(vt => {
       this.startDownload(vt)
         .catch(err => {
-          log.error(`Downloading ${getDescription(vt.video)} failed: ${err}`);
+          log.error(`Downloading ${stringify(vt.video)} failed: ${err}`);
         });
     });
     toPause.forEach(vt => {
       this.stopDownload(vt)
         .catch(err => {
-          log.error(`Stopping download ${getDescription(vt.video)} failed: ${err}`);
+          log.error(`Stopping download ${stringify(vt.video)} failed: ${err}`);
         });
     });
 
@@ -140,13 +140,13 @@ export default class DownloadManager {
   }
 
   private async startDownload(torrent: VTorrent): Promise<void> {
-    log.debug(`DownloadManager: startDownload(${getDescription(torrent.video)})`);
+    log.debug(`DownloadManager: startDownload(${stringify(torrent.video)})`);
 
     // Run the download
     await db.torrents.setStatus(torrent, 'downloading');
     await this.downloadClient.download(torrent);
 
-    console.warn('DONE DOWNLOADING!', getDescription(torrent.video));
+    console.warn('DONE DOWNLOADING!', stringify(torrent.video));
 
     // On completion, mark the video status as uploading
     await db.torrents.setStatus(torrent, 'completed');
@@ -192,7 +192,7 @@ export default class DownloadManager {
       startAt: Date.now() + 24 * 60 * 60 * 1000,
     });
 
-    this.swiper.notifyClient(video.addedBy!, `${getDescription(video)} upload complete`);
+    this.swiper.notifyClient(video.addedBy!, `${stringify(video)} upload complete`);
 
     // Ping since the database changed.
     this.ping();

@@ -5,14 +5,15 @@ import * as mediaUtil from './common/media';
 import {splitFirst} from './common/util';
 import db from './db';
 import Worker from './worker';
-import CommManager from './CommManager';
+import CommManager from './io/CommManager';
 import DownloadManager from './DownloadManager';
 
 import {download} from './actions/download';
 import {help} from './actions/help';
 import {remove} from './actions/remove';
 import {search} from './actions/search';
-import {status} from './actions/status';
+import {scheduled} from './actions/scheduled';
+import {queued} from './actions/queued';
 // import {info} from './actions/info';
 
 export default class Swiper {
@@ -27,7 +28,7 @@ export default class Swiper {
   public downloadManager: DownloadManager;
   public worker: Worker;
 
-  private _conversations: {[id: number]: Conversation} = {};
+  private _conversations: {[clientId: number]: Conversation} = {};
 
   // Should NOT be called publicly - use Swiper.create
   constructor() {
@@ -80,47 +81,52 @@ export default class Swiper {
     this.commManager.notifyClient(id, msg);
   }
 
-  public cancel(convo: Conversation): SwiperReply {
-    log.debug(`Swiper: cancel`);
-    return {
-      data: `Ok`,
-      final: true
-    };
-  }
-
   @requireMedia
   public async download(convo: Conversation): Promise<SwiperReply> {
     log.debug(`Swiper: download`);
-    return download.call(this, convo);
-  }
-
-  public help(convo: Conversation): SwiperReply {
-    log.debug(`Swiper: help`);
-    return help.call(this, convo);
+    return download.call(this, convo, this.commManager.getTextFormatter(convo.id));
   }
 
   @requireVideo
   public async search(convo: Conversation): Promise<SwiperReply> {
     log.debug(`Swiper: search`);
-    return search.call(this, convo);
+    return search.call(this, convo, this.commManager.getTextFormatter(convo.id));
   }
 
   @requireMediaQuery
   public async remove(convo: Conversation): Promise<SwiperReply> {
     log.debug(`Swiper: remove`);
-    return remove.call(this, convo);
+    return remove.call(this, convo, this.commManager.getTextFormatter(convo.id));
   }
 
-  public async status(convo: Conversation): Promise<SwiperReply> {
-    log.debug(`Swiper: status`);
-    return status.call(this, convo);
+  public async queued(convo: Conversation): Promise<SwiperReply> {
+    log.debug(`Swiper: queued`);
+    return queued.call(this, convo, this.commManager.getTextFormatter(convo.id));
+  }
+
+  public async scheduled(convo: Conversation): Promise<SwiperReply> {
+    log.debug(`Swiper: scheduled`);
+    return scheduled.call(this, convo, this.commManager.getTextFormatter(convo.id));
+  }
+
+  public help(convo: Conversation): SwiperReply {
+    log.debug(`Swiper: help`);
+    return help.call(this, convo, this.commManager.getTextFormatter(convo.id));
+  }
+
+  public cancel(convo: Conversation): SwiperReply {
+    log.debug(`Swiper: cancel`);
+    return {
+      data: 'Ok',
+      final: true
+    };
   }
 
   public reboot(convo: Conversation): SwiperReply {
     log.debug(`Swiper: reboot`);
     setTimeout(() => process.kill(process.pid, 'SIGINT'), 2000);
     return {
-      data: `Rebooting`,
+      data: 'Rebooting',
       final: true
     };
   }
@@ -173,13 +179,14 @@ export default class Swiper {
       case "delete":
       case "rm":
         return () => this.remove(convo);
-      case "status":
-      case "progress":
-      case "state":
-      case "downloads":
-      case "stat":
+      case "scheduled":
+      case "schedule":
       case "s":
-        return () => this.status(convo);
+        return () => this.scheduled(convo);
+      case "queued":
+      case "queue":
+      case "q":
+        return () => this.queued(convo);
       case "help":
       case "commands":
         return () => this.help(convo);

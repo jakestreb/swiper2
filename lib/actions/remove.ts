@@ -1,10 +1,11 @@
 import * as mediaUtil from '../common/media';
 import * as util from '../common/util';
 import db from '../db';
+import TextFormatter from '../io/formatters/TextFormatter';
 
 import Swiper from '../Swiper';
 
-export async function remove(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+export async function remove(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   await addStoredMediaIfFound(convo);
   const storedMedia: Media[]|null = convo.storedMedia || null;
   if (!storedMedia) {
@@ -25,7 +26,7 @@ export async function remove(this: Swiper, convo: Conversation): Promise<SwiperR
   }
   // If there are still items or the match failed, send a confirm string.
   if (storedMedia.length > 0) {
-    return { data: getConfirmRemovalString(storedMedia[0]) };
+    return { data: getConfirmRemovalString(storedMedia[0], f) };
   }
 
   return {
@@ -74,6 +75,6 @@ async function addStoredMediaIfFound(convo: Conversation): Promise<void> {
 }
 
 // Given either a Movie or Show, create a string to confirm removal with the user.
-function getConfirmRemovalString(media: Media): string {
-  return `Remove ${mediaUtil.getDescription(media)}?`;
+function getConfirmRemovalString(media: Media, f: TextFormatter): string {
+  return `Remove ${f.res(media)}?`;
 }

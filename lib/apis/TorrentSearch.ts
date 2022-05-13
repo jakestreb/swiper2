@@ -1,6 +1,6 @@
 import ptn from 'parse-torrent-name';
 import {delay, padZeros} from '../common/util';
-import {getDescription} from '../common/media';
+import {stringify} from '../common/media';
 import * as log from '../common/logger';
 import ConcurrencyLock from './helpers/ConcurrencyLock';
 import TorrentRanker from './helpers/TorrentRanker';
@@ -30,7 +30,7 @@ export default class TorrentSearch {
   public static lock = new ConcurrencyLock(TorrentSearch.searchConcurrency);
 
   public static search(video: Video): Promise<TorrentResult[]> {
-    log.debug(`TorrentSearch.search ${getDescription(video)}`);
+    log.debug(`TorrentSearch.search ${stringify(video)}`);
     const searchTerm = getSearchTerm(video);
     return this.lock.acquire(() => this.doRetrySearch(searchTerm));
   }
@@ -39,17 +39,17 @@ export default class TorrentSearch {
     const torrents = await this.search(video);
     const best = this.getBestTorrent(video, torrents);
     if (!best) {
-      log.debug(`TorrentSearch: getBestTorrent(${getDescription(video)}) failed (no torrent found)`);
+      log.debug(`TorrentSearch: getBestTorrent(${stringify(video)}) failed (no torrent found)`);
       return false;
     }
-    log.debug(`TorrentSearch: getBestTorrent(${getDescription(video)}) succeeded`);
+    log.debug(`TorrentSearch: getBestTorrent(${stringify(video)}) succeeded`);
     const torrent = { ...best, status: 'paused' as TorrentStatus, videoId: video.id };
     await db.torrents.insert(torrent);
     return !!torrent;
   }
 
   public static getBestTorrent(video: Video, torrents: TorrentResult[]): TorrentResult|null {
-    log.debug(`TorrentSearch: getBestTorrent(${getDescription(video)})`);
+    log.debug(`TorrentSearch: getBestTorrent(${stringify(video)})`);
     let bestTorrent = null;
     let bestTier = 0;
     torrents.forEach(t => {

@@ -64,13 +64,13 @@ export function getFileSafeTitle(video: Video): string {
   }
 }
 
-export function getDescription(anyMedia: Movie|Show|Episode): string {
-  if (anyMedia.type === 'episode') {
-    return `*${anyMedia.showTitle}* (S${anyMedia.seasonNum} E${anyMedia.episodeNum})`;
-  } else if (anyMedia.type === 'tv') {
-    return `*${anyMedia.title}* (${getExpandedEpisodeStr(anyMedia.episodes)})`;
+export function stringify(media: Movie|Show|Episode): string {
+  if (media.type === 'episode') {
+    return `${media.showTitle} (S${media.seasonNum} E${media.episodeNum})`;
+  } else if (media.type === 'tv') {
+    return `${media.title} (${getExpandedEpisodeStr(media.episodes)})`;
   } else {
-    return `*${anyMedia.title}*`;
+    return media.title;
   }
 }
 
@@ -95,7 +95,7 @@ export function getVideos(media: Media): Video[] {
 /**
  * Returns a string giving all seasons and episodes for a show already fetched from TVDB.
  */
-function getExpandedEpisodeStr(episodes: Episode[]): string {
+export function getExpandedEpisodeStr(episodes: Episode[]): string {
   let str = "";
   let chain = 0;
   let lastEpisode = -1;
