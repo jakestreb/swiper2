@@ -171,6 +171,7 @@ export default class Swiper {
         return () => this.search(convo);
       case "remove":
       case "delete":
+      case "rm":
         return () => this.remove(convo);
       case "status":
       case "progress":

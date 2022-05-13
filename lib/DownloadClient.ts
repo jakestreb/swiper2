@@ -30,12 +30,8 @@ export class DownloadClient extends events.EventEmitter {
     log.debug(`DownloadClient: download(${mediaUtil.getDescription(vt.video)})`);
     const subDirs = mediaUtil.getTorrentPath(vt);
     const downloadPath = await fileUtil.createSubdirs(this.downloadRoot, subDirs);
-    const opts = {
-      path: downloadPath,
-      destroyStoreOnDestroy: true,
-    };
     return new Promise((resolve, reject) => {
-      this.client.add(vt.magnet, opts, wtTorrent => {
+      this.client.add(vt.magnet, { path: downloadPath }, wtTorrent => {
         wtTorrent.on('done', async () => {
           log.subProcess(`Torrent done ${mediaUtil.getDescription(vt.video)}`);
           resolve();
@@ -66,7 +62,7 @@ export class DownloadClient extends events.EventEmitter {
 
   public async stopDownload(magnet: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.client.remove(magnet, err => {
+      this.client.remove(magnet, {}, err => {
         if (err) {
           reject(err);
         } else {
@@ -104,7 +100,7 @@ export class DownloadClient extends events.EventEmitter {
       throw new Error(`Failed to identify torrent for destruction: ${torrent}`);
     }
     return new Promise((resolve, reject) => {
-      toDestroy.destroy((err) => {
+      toDestroy.destroy({}, (err) => {
         if (err) {
           reject(err);
         } else {

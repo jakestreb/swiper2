@@ -2,6 +2,7 @@ import ptn from 'parse-torrent-name';
 import {delay, padZeros} from '../common/util';
 import {getDescription} from '../common/media';
 import * as log from '../common/logger';
+import ConcurrencyLock from './helpers/ConcurrencyLock';
 import TorrentRanker from './helpers/TorrentRanker';
 import db from '../db';
 
@@ -22,38 +23,16 @@ type TSAResultWithMagnet = TSAResult & {
   magnet: string
 }
 
-// TODO: If concurrent searches is a problem, add queue logic
-// // Array of search delay promise resolvers.
-// private _searchPendingQueue: Array<() => void> = [];
-// private _activeSearchCount = 0;
-// private readonly _maxActiveSearches = 1;
-
-// // Perform the search, delaying searches so that no more than the maxActiveSearches count occur
-// // concurrently.
-// public async search(video: Video): Promise<TorrentResult[]> {
-//   this._activeSearchCount += 1;
-//   if (this._activeSearchCount > this._maxActiveSearches) {
-//     await new Promise(resolve => {
-//       this._searchPendingQueue.push(resolve as () => void);
-//     });
-//   }
-//   try {
-//     return await this.doSearch(video);
-//   } finally {
-//     if (this._searchPendingQueue.length > 0) {
-//       const resolver = this._searchPendingQueue.shift()!;
-//       resolver();
-//     }
-//     this._activeSearchCount -= 1;
-//   }
-// }
-
 export default class TorrentSearch {
-  public static RETRY_COUNT = 1;
+  public static searchRetryCount = 2;
+  public static searchConcurrency = 1;
+
+  public static lock = new ConcurrencyLock(TorrentSearch.searchConcurrency);
 
   public static search(video: Video): Promise<TorrentResult[]> {
+    log.debug(`TorrentSearch.search ${getDescription(video)}`);
     const searchTerm = getSearchTerm(video);
-    return this.doRetrySearch(searchTerm);
+    return this.lock.acquire(() => this.doRetrySearch(searchTerm));
   }
 
   public static async addBestTorrent(video: Video): Promise<boolean> {
@@ -61,7 +40,6 @@ export default class TorrentSearch {
     const best = this.getBestTorrent(video, torrents);
     if (!best) {
       log.debug(`TorrentSearch: getBestTorrent(${getDescription(video)}) failed (no torrent found)`);
-      // TODO: Schedule search
       return false;
     }
     log.debug(`TorrentSearch: getBestTorrent(${getDescription(video)}) succeeded`);
@@ -86,15 +64,25 @@ export default class TorrentSearch {
 
   private static doRetrySearch(searchTerm: string): Promise<TorrentResult[]> {
     const doRetrySearch: (retries: number) => Promise<TorrentResult[]> = async retries => {
-      const res = await this.doSearch(searchTerm);
-      if (res.length === 0 && retries > 0) {
-        await delay(100);
-        return doRetrySearch(retries - 1);
-      } else {
-        return res;
+      log.debug(`TorrentSearch: performing search ${searchTerm}`);
+      let results;
+      try {
+        results = await this.doSearch(searchTerm);
+        if (results.length === 0 && retries > 0) {
+          throw new Error('No torrents found with retries remaining');
+        }
+        return results;
+      } catch (err) {
+        log.error(`TorrentSearch search failed: ${err}`);
+        if (retries > 0) {
+          await delay(100);
+          log.debug(`TorrentSearch: retrying search ${searchTerm}`);
+          return doRetrySearch(retries - 1);
+        }
+        throw err;
       }
     };
-    return doRetrySearch(TorrentSearch.RETRY_COUNT);
+    return doRetrySearch(TorrentSearch.searchRetryCount);
   }
 
   private static async doSearch(searchTerm: string): Promise<TorrentResult[]> {

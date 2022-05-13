@@ -9,7 +9,7 @@
     "build": "tsc",
     "start": "npm run build && node dist/index.js",
     "dev": "ts-node index.ts",
-    "reset": "rm records.db",
+    "reset": "rm records.db & rm -rf downloads/*",
     "lines": "git -C lib grep ^ | wc -l"
   },
   "repository": {
@@ -36,7 +36,7 @@
     "@types/terminal-kit": "^1.28.4",
     "@types/torrent-search-api": "^2.0.0",
     "@types/utf8": "^2.1.6",
-    "@types/webtorrent": "^0.98.4",
+    "@types/webtorrent": "^0.109.3",
     "ts-node": "^7.0.1",
     "typescript": "^3.2.4"
   },
@@ -57,7 +57,7 @@
     "sqlite3": "^5.0.2",
     "terminal-kit": "^1.26.10",
     "torrent-search-api": "^2.1.4",
-    "webtorrent": "^0.103.0",
+    "webtorrent": "^1.8.19",
     "winston": "^3.2.1"
   }
 }

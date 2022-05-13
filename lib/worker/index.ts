@@ -9,6 +9,9 @@ export default class Worker {
   private nextRunTs: number|null = null;
   private currentTimeout: NodeJS.Timeout|null = null;
 
+  private pingInProgress: boolean = false;
+  private pingLock: Promise<any>;
+
   constructor(public swiper: Swiper) {}
 
   public start() {
@@ -35,37 +38,54 @@ export default class Worker {
 
   // Do not await
   private async ping() {
-    const nextJob = await db.jobs.getNext();
-    if (nextJob && (!this.nextRunTs || nextJob.nextRunAt < this.nextRunTs)) {
-      clearTimeout(this.currentTimeout!);
-      this.nextRunTs = nextJob.nextRunAt;
-      this.currentTimeout = setTimeout(async () => this.runJob(nextJob),
-        this.nextRunTs - Date.now());
+    await this.pingLock;
+    // If after waiting, the ping is in process again, the goal of the ping
+    // is already being accomplished, so this ping can return.
+    if (!this.pingInProgress) {
+      this.pingInProgress = true;
+      this.pingLock = db.jobs.getNext();
+      const nextJob: DBJob = await this.pingLock;
+      if (nextJob && (!this.nextRunTs || nextJob.nextRunAt < this.nextRunTs)) {
+        clearTimeout(this.currentTimeout!);
+        this.nextRunTs = nextJob.nextRunAt;
+        this.currentTimeout = setTimeout(async () => this.runJob(nextJob),
+          this.nextRunTs - Date.now());
+      }
+      this.pingInProgress = false;
     }
   }
 
   private async runJob(job: DBJob) {
-    log.debug(`Running ${job.type} job: ${job.videoId}`);
+    log.debug(`Running ${job.type} job ${job.videoId}`);
+    await db.jobs.markDone(job.id);
+    this.nextRunTs = null;
+    this.currentTimeout = null;
     this.doRunJob(job)
       .catch(err => {
-        log.error(`Failed to run ${job.type} job: ${err}`);
+        log.error(`Failed to run ${job.type} job ${job.videoId}: ${err}`);
       });
+    this.start();
   }
 
   private async doRunJob(job: DBJob): Promise<void> {
     if (!await db.jobs.get(job.id)) {
       // Check if the job was since removed
-      this.start();
       return;
     }
-    this.nextRunTs = null;
-    this.currentTimeout = null;
-    await db.jobs.markDone(job.id);
     const JobClass = this.getJobClass(job.type);
     const jobInst = new JobClass(this, this.swiper);
-    const success = await jobInst.run(job.videoId, job.runCount);
-    if (!success && JobClass.schedule !== 'once') {
-      // Reschedule repeat jobs on failure
+    let success = false;
+    try {
+      success = await jobInst.run(job.videoId, job.runCount);
+      if (!success && JobClass.schedule !== 'once') {
+        log.debug(`Rescheduling ${job.type} job ${job.videoId}`);
+        // Reschedule repeat jobs on failure
+        await db.jobs.reschedule(job);
+        this.start();
+      }
+    } catch (err) {
+      log.error(`Error running ${job.type} job ${job.videoId}: ${err}`);
+      // Reschedule all jobs on error
       await db.jobs.reschedule(job);
       this.start();
     }

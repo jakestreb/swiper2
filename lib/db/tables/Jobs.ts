@@ -43,16 +43,15 @@ export default class Jobs extends Base {
   }
 
   public async reschedule(job: DBJob): Promise<void> {
-    const { id, schedule, intervalS, runCount } = job;
+    const { id, schedule, intervalS } = job;
     if (schedule === 'once') {
       return;
     }
-    let interval = job.schedule === 'backoff' ? intervalS * Math.pow(2, runCount - 1) : intervalS;
+    let interval = job.schedule === 'backoff' ? intervalS * 2 : intervalS;
     interval = Math.max(interval, Jobs.MAX_INTERVAL_SECONDS);
 
     const nextRunAt = new Date(Date.now() + interval * 1000);
-    await this.db.run('UPDATE jobs SET nextRunAt=?, intervalS=?, '
-      + 'runCount=runCount+1, isDone=0 WHERE id=?',
+    await this.db.run('UPDATE jobs SET nextRunAt=?, intervalS=?, isDone=0 WHERE id=?',
       [nextRunAt, interval, id]);
   }
 

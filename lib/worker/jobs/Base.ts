@@ -9,7 +9,7 @@ export default class Base {
 
   }
 
-  // Result represents success value - should stop repeated execution on success
+  // Should reschedule on failure / stop repeated execution on success
   public run(videoId: number, runCount: number): Promise<boolean> {
     throw new Error('Not implemented');
   }

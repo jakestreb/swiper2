@@ -6,12 +6,20 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
   const media = convo.media as Media;
   const video: Video|null = getVideo(media);
   if (video) {
-    await db.media.insert(media, { addedBy: convo.id, status: 'searching' });
+    await db.media.insert(media, {
+      addedBy: convo.id,
+      status: isUnreleased(video) ? 'unreleased' : 'searching',
+    });
     await checkOrAwaitRelease(this, video);
   } else {
     const show = media as Show;
     await db.shows.insert(show, { addedBy: convo.id, status: 'searching' });
-    await Promise.all(show.episodes.map(async e => checkOrAwaitRelease(this, e)));
+    await Promise.all(show.episodes.map(async e => {
+      if (isUnreleased(e)) {
+        await db.episodes.setStatus(e, 'unreleased');
+      }
+      await checkOrAwaitRelease(this, e);
+    }));
   }
   return {
     data: `Queued ${getDescription(media)} for download`,
@@ -19,8 +27,17 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
   };
 }
 
+function getDefinitiveRelease(video: Video): number|undefined {
+  return (video as Movie).streamingRelease || (video as Episode).airDate;
+}
+
+function isUnreleased(video: Video) {
+  const definitiveRelease = getDefinitiveRelease(video);
+  return definitiveRelease && new Date(definitiveRelease) > new Date();
+}
+
 function checkOrAwaitRelease(swiper: Swiper, video: Video) {
-  const definitiveRelease = (video as Movie).streamingRelease || (video as Episode).airDate;
+  const definitiveRelease = getDefinitiveRelease(video);
   if (definitiveRelease) {
     return swiper.worker.addJob({
       type: 'StartSearching',
