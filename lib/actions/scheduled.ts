@@ -1,40 +1,51 @@
 import db from '../db';
-import * as mediaUtil from '../common/media';
 import {getAiredStr, getMorning} from '../common/util';
 import Swiper from '../Swiper';
 import TextFormatter from '../io/formatters/TextFormatter';
 
-// const UP_ARROW = '\u2191';
-// const DOWN_ARROW = '\u2913';
-// const HOURGLASS = '\u29D6';
+const CIRCLE_ARROW = '\u21BB'
+const HOURGLASS = '\u29D6';
 
 export async function scheduled(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   const unreleased = await db.media.getWithStatus('unreleased');
 
-  const unreleasedRows = unreleased.map(media => {
-    if (media.type === 'movie') {
-      const release = media.streamingRelease && (media.streamingRelease > getMorning().getTime());
-      const releaseStr = release ? ` _Streaming ${new Date(media.streamingRelease!).toDateString()}_` : ` _${media.year}_`;
-      return `${f.b(media.title)}${releaseStr}`;
-    } else {
-      const next = mediaUtil.getNextToAir(media.episodes);
-      return `${f.res(media)}` +
-        ((next && next.airDate) ? ` ${f.i(getAiredStr(new Date(next!.airDate!)))}` : '');
-    }
-  });
+  const shows: string[] = unreleased
+    .filter(media => media.type === 'movie')
+    .map(movie => formatMovieRow(movie as Movie, f));
+  const movies: string[] = unreleased
+    .filter(media => media.type === 'tv')
+    .map(show => formatShowRow(show as Show, f));
+
+  let rows: string[] = [];
+  if (shows.length > 0 && movies.length > 0) {
+    rows = [f.u('TV'), ...shows, f.u('Movies'), ...movies];
+  } else {
+    rows = [...shows, ...movies];
+  }
 
   return {
-    data: unreleasedRows.length > 0 ? unreleasedRows.join('\n') : 'No scheduled downloads',
+    data: rows.join('\n') || 'No scheduled downloads',
     final: true
   };
 }
 
-// function formatMovieRow(movie: Movie) {
-//   const release = media.streamingRelease && (media.streamingRelease > getMorning().getTime());
-//   const releaseStr = release ? ` _Streaming ${new Date(media.streamingRelease!).toDateString()}_` : ` _${media.year}_`;
-//   return `*${media.title}*${releaseStr}`;
-// }
+function formatMovieRow(movie: Movie, f: TextFormatter) {
+  // TODO: Calculate expected release
+  const release = movie.theatricalRelease;
+  const items = [getIcon(release), f.b(movie.title)];
+  if (release) {
+    items.push(getAiredStr(new Date(release)));
+  }
+  return items.join(' ');
+}
 
-// function formatShowRow(show: Show) {
+function formatShowRow(show: Show, f: TextFormatter) {
+  const release =
+  return `${f.res(media)}` +
+    ((next && next.airDate) ? ` ${f.i(getAiredStr(new Date(next!.airDate!)))}` : '');
+}
 
-// }
+function getIcon(release?: number) {
+  const isChecking = !release || (release <= Date.now());
+  return isChecking ? CIRCLE_ARROW : HOURGLASS;
+}
