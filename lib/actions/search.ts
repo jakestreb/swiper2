@@ -9,12 +9,16 @@ import TextFormatter from '../io/formatters/TextFormatter';
 // Number of torrents to show per page
 const PER_PAGE = 4;
 
+const STAR = '\u2605';
+
+const SELECTED = '(selected)';
+
 export async function search(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   log.debug(`Swiper: search`);
 
   const media = convo.media as Media;
-  const video = media.type === 'tv' ? media.episodes[0] : media;
-  const videoWithTorrents = await db.videos.addTorrents(video);
+  const rawVideo = media.type === 'tv' ? media.episodes[0] : media;
+  const video = await db.videos.addTorrents(rawVideo);
 
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
@@ -33,8 +37,12 @@ export async function search(this: Swiper, convo: Conversation, f: TextFormatter
   // Display the torrents to the user.
   convo.pageNum = convo.pageNum || 0;
 
-  const showPage = () => showTorrents(convo.torrents!, convo.pageNum!,
-    videoWithTorrents.torrents, f);
+  const showPage = () => {
+    const { torrents, pageNum } = convo;
+    return {
+      data: formatSelection(torrents!, pageNum!, video.torrents, f);
+    };
+  };
 
   const startIndex = PER_PAGE * convo.pageNum;
   const navs = [];
@@ -77,24 +85,43 @@ export async function search(this: Swiper, convo: Conversation, f: TextFormatter
 }
 
 // Show a subset of the torrents decided by the pageNum.
-function showTorrents(
+function formatSelection(
   torrents: TorrentResult[],
   pageNum: number,
-  currentTorrents: DBTorrent[],
+  active: DBTorrent[],
   f: TextFormatter,
-): SwiperReply {
+): string {
   const startIndex = PER_PAGE * pageNum;
-  const prev = startIndex > 0;
-  const next = (startIndex + PER_PAGE) < torrents.length;
+  const endIndex = startIndex + PER_PAGE - 1;
   const someTorrents = torrents.slice(startIndex, startIndex + PER_PAGE);
   const torrentRows = someTorrents.map((t, i) => {
-    const isRepeat = currentTorrents.find(ct => t.magnet === ct.magnet);
-    const repeatStr = isRepeat ? '(Prev selection) ' : '';
-    return `${startIndex + i + 1} ${f.i(repeatStr)}${f.torrentResult(t)}`;
+    const isSelected = !!active.find(at => t.magnet === at.magnet);
+    return [f.b(i), formatTorrent(t, isSelected, f)].join(f.sp(1));
   });
-  const respStr = prev && next ? `prev or next` : (next ? `next` : (prev ? `prev` : ``));
-  const str = torrentRows.join(`\n`);
-  return {
-    data: `${str}\n\nGive ${f.m('num')} to download` + (respStr ? ` or ${respStr} to see more` : ``)
-  };
+  const commands = formatCommands([startIndex, endIndex], torrents.length, f);
+  return [torrentRows.join('\n'), commands].join('\n\n');
+}
+
+function formatTorrent(torrent: TorrentResult, isSelected: boolean, f: TextFormatter): string {
+  const peers = `${torrent.seeders} peers`;
+  const size = `${torrent.sizeMb}MB`;
+  const rating = STAR.repeat(torrent.starRating);
+  let data = f.dataRow(peers, size, rating);
+  if (isSelected) {
+    data = [data, SELECTED].join(' ');
+  }
+  const title = torrent.title.replace(/\./g, ' ');
+  // TODO: Parse and format
+  const date = torrent.uploadTime;
+  return [data, [title, date].join(' ')].join('\n');
+}
+
+function formatCommands(range: number[], total: number, f: TextFormatter): string {
+  const prev = range[0] === 0 ? '' : 'prev';
+  const next = range[1] === total - 1 ? '' : 'next';
+  const rangeTotal = (range[1] - range[0]) + 1;
+  const spread = [...Array(rangeTotal).keys()]
+    .map(n => n + range[0])
+    .join('/');
+  return f.commands(f.b(spread), f.b(prev), f.b(next));
 }

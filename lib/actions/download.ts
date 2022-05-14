@@ -4,16 +4,20 @@ import Swiper from '../Swiper';
 import TextFormatter from '../io/formatters/TextFormatter';
 
 export async function download(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
+  let isFullyUnreleased = false;
+
   const media = convo.media as Media;
   const video: Video|null = mediaUtil.getVideo(media);
   if (video) {
+    isFullyUnreleased = isUnreleased(video);
     await db.media.insert(media, {
       addedBy: convo.id,
-      status: isUnreleased(video) ? 'unreleased' : 'searching',
+      status: isFullyUnreleased ? 'unreleased' : 'searching',
     });
     await checkOrAwaitRelease(this, video);
   } else {
     const show = media as Show;
+    isFullyUnreleased = !show.episodes.some(e => !isUnreleased(e));
     await db.shows.insert(show, { addedBy: convo.id, status: 'searching' });
     await Promise.all(show.episodes.map(async e => {
       if (isUnreleased(e)) {
@@ -23,7 +27,7 @@ export async function download(this: Swiper, convo: Conversation, f: TextFormatt
     }));
   }
   return {
-    data: `Queued ${f.res(media)} for download`,
+    data: `${isFullyUnreleased ? 'Scheduled' : 'Queued'} ${f.res(media)} for download`,
     final: true
   };
 }
@@ -34,7 +38,7 @@ function getDefinitiveRelease(video: Video): number|undefined {
 
 function isUnreleased(video: Video) {
   const definitiveRelease = getDefinitiveRelease(video);
-  return definitiveRelease && new Date(definitiveRelease) > new Date();
+  return Boolean(definitiveRelease && new Date(definitiveRelease) > new Date());
 }
 
 function checkOrAwaitRelease(swiper: Swiper, video: Video) {

@@ -31,8 +31,7 @@ export default class TorrentSearch {
 
   public static search(video: Video): Promise<TorrentResult[]> {
     log.debug(`TorrentSearch.search ${stringify(video)}`);
-    const searchTerm = getSearchTerm(video);
-    return this.lock.acquire(() => this.doRetrySearch(searchTerm));
+    return this.lock.acquire(() => this.doRetrySearch(video));
   }
 
   public static async addBestTorrent(video: Video): Promise<boolean> {
@@ -62,12 +61,12 @@ export default class TorrentSearch {
     return bestTorrent;
   }
 
-  private static doRetrySearch(searchTerm: string): Promise<TorrentResult[]> {
+  private static doRetrySearch(video: Video): Promise<TorrentResult[]> {
     const doRetrySearch: (retries: number) => Promise<TorrentResult[]> = async retries => {
-      log.debug(`TorrentSearch: performing search ${searchTerm}`);
+      log.debug(`TorrentSearch: performing search ${stringify(video)}`);
       let results;
       try {
-        results = await this.doSearch(searchTerm);
+        results = await this.doSearch(video);
         if (results.length === 0 && retries > 0) {
           throw new Error('No torrents found with retries remaining');
         }
@@ -76,7 +75,7 @@ export default class TorrentSearch {
         log.error(`TorrentSearch search failed: ${err}`);
         if (retries > 0) {
           await delay(100);
-          log.debug(`TorrentSearch: retrying search ${searchTerm}`);
+          log.debug(`TorrentSearch: retrying search ${stringify(video)}`);
           return doRetrySearch(retries - 1);
         }
         throw err;
@@ -85,14 +84,15 @@ export default class TorrentSearch {
     return doRetrySearch(TorrentSearch.searchRetryCount);
   }
 
-  private static async doSearch(searchTerm: string): Promise<TorrentResult[]> {
+  private static async doSearch(video: Video): Promise<TorrentResult[]> {
+    const searchTerm = getSearchTerm(video);
     const results: TSAResult[] = await TorrentSearchApi.search(searchTerm);
     const filtered: TSAResult[] = results.filter((res: TSAResult) => res.title && res.size);
     const filteredWithMagnet: (TSAResultWithMagnet|null)[] = await Promise.all(
       filtered.map((res: TSAResult) => this.addMissingMagnet(res))
     );
     const torrents = filteredWithMagnet.filter(notNull)
-      .map((res: TSAResultWithMagnet) => this.createTorrent(res))
+      .map((res: TSAResultWithMagnet) => this.createTorrent(res, video))
       .filter((torrent: TorrentResult) => torrent.sizeMb > -1);
     // Sort by peers desc
     torrents.sort((a, b) => b.seeders - a.seeders || b.leechers - a.leechers);
@@ -110,9 +110,9 @@ export default class TorrentSearch {
     return { ...result, magnet };
   }
 
-  private static createTorrent(result: TSAResultWithMagnet): TorrentResult {
+  private static createTorrent(result: TSAResultWithMagnet, video: Video): TorrentResult {
     const parsed = ptn(result.title);
-    return {
+    const partial = {
       title: result.title,
       parsedTitle: parsed.title,
       sizeMb: getSizeInMb(result.size) || -1,
@@ -122,6 +122,10 @@ export default class TorrentSearch {
       magnet: result.magnet,
       quality: parsed.quality || '',
       resolution: parsed.resolution || '',
+    };
+    return {
+      ...partial,
+      starRating: new TorrentRanker(video).getStars(partial),
     };
   }
 }

@@ -26,16 +26,19 @@ export async function queued(this: Swiper, convo: Conversation, f: TextFormatter
 
   const downloadRows = sorted.map(video => {
     if (video.status === 'completed') {
-      return `\`  \`${formatCompleted(video, f)}`;
+      return `${f.sp(2)}${formatCompleted(video, f)}`;
     }
-    const statusIcon = getVideoStatusIcon(video);
-    const torrentStrs = video.torrents.map(t => {
+    const torrentRows = video.torrents.map(t => {
       const { sizeMb, resolution, status } = t;
       const { progress, peers } = this.downloadManager.getProgress(t);
       return formatTorrentRow({ sizeMb, resolution, peers, progress, status });
     });
-    const details = torrentStrs.length > 0 ? torrentStrs.join('\n') : SEARCHING;
-    return `${statusIcon}${f.sp(1)}${f.res(video)}\n${f.sp(1)}${f.i(details)}`;
+    const details = torrentRows.length > 0 ? torrentRows.join('\n') : SEARCHING;
+    const rows = [
+      `${getIcon(video)}${f.sp(1)}${f.res(video)}`,
+      `${f.sp(2)}${f.i(details)}`,
+    ];
+    return rows.join('\n');
   });
 
   this.downloadManager.memoryManager.log(); // TODO: Remove
@@ -50,7 +53,7 @@ function formatCompleted(video: Video, f: TextFormatter) {
   return f.s(f.res(video));
 }
 
-function getVideoStatusIcon(video: TVideo) {
+function getIcon(video: TVideo) {
   if (video.status === 'completed') {
     return '';
   }

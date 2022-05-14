@@ -1,5 +1,6 @@
 import db from '../db';
-import {getAiredStr, getMorning} from '../common/util';
+import * as util from '../common/util';
+import * as mediaUtil from '../common/media';
 import Swiper from '../Swiper';
 import TextFormatter from '../io/formatters/TextFormatter';
 
@@ -32,17 +33,25 @@ export async function scheduled(this: Swiper, convo: Conversation, f: TextFormat
 function formatMovieRow(movie: Movie, f: TextFormatter) {
   // TODO: Calculate expected release
   const release = movie.theatricalRelease;
-  const items = [getIcon(release), f.b(movie.title)];
+  const items = [getIcon(release), f.res(movie)];
   if (release) {
-    items.push(getAiredStr(new Date(release)));
+    const airedStr = util.getAiredStr(new Date(release));
+    items.push(f.i(airedStr));
   }
   return items.join(' ');
 }
 
 function formatShowRow(show: Show, f: TextFormatter) {
-  const release =
-  return `${f.res(media)}` +
-    ((next && next.airDate) ? ` ${f.i(getAiredStr(new Date(next!.airDate!)))}` : '');
+  const { episodes } = show;
+  const next = mediaUtil.getNextToAir(episodes);
+  const last = mediaUtil.getLastAired(episodes);
+  const release = next ? next.airDate : (last ? last.airDate : undefined);
+  const items = [getIcon(release), f.res(show)];
+  if (release) {
+    const airedStr = util.getAiredStr(new Date(release));
+    items.push(f.i(airedStr));
+  }
+  return items.join(' ');
 }
 
 function getIcon(release?: number) {

@@ -2,6 +2,14 @@ import ResourcePriority from './ResourcePriority';
 import * as mediaUtil from '../../common/media';
 import * as util from '../../common/util';
 
+interface PartialTorrent {
+  title: string;
+  parsedTitle: string;
+  seeders: number;
+  resolution: string;
+  sizeMb: number;
+}
+
 class ResolutionPriority extends ResourcePriority<string> {
   public ranks = ['1080p', '720p'];
   public predicate = (v: string, t: TorrentResult) => t.resolution === v;
@@ -23,7 +31,7 @@ class SizePriority extends ResourcePriority<[number, number]> {
 
 class TitlePriority extends ResourcePriority<boolean> {
   public ranks = [true, false];
-  public predicate = (v: boolean, t: TorrentResult) =>
+  public predicate = (v: boolean, t: PartialTorrent) =>
     v === (t.parsedTitle === mediaUtil.getFileSafeTitle(this.video));
   public scale = 1.5;
 }
@@ -35,9 +43,18 @@ export default class TorrentRanker {
     "SUBS", "KORSUB", "KOR", "TS-?RIP"
   ];
 
-  constructor(public video: Video) {}
+  private priorities: ResourcePriority<any>[] = [];
 
-  public getScore(t: TorrentResult) {
+  constructor(public video: Video) {
+    this.priorities = [
+      new ResolutionPriority(this.video),
+      new SeederPriority(this.video),
+      new SizePriority(this.video),
+      new TitlePriority(this.video),
+    ];
+  }
+
+  public getScore(t: PartialTorrent) {
     const rejected = TorrentRanker.AUTO_REJECT.find(r =>
       t.title.match(new RegExp(`\\b${r}\\b`, 'gi')));
 
@@ -45,17 +62,18 @@ export default class TorrentRanker {
       return 0;
     }
 
-    const scores = [
-      new ResolutionPriority(this.video).getScore(t),
-      new SeederPriority(this.video).getScore(t),
-      new SizePriority(this.video).getScore(t),
-      new TitlePriority(this.video).getScore(t),
-    ];
-
+    const scores = this.priorities.map(p => p.getScore(t));
     if (scores.some(x => x === -1)) {
       return 0;
     }
-
     return util.sum(scores);
+  }
+
+  // Gives a star rating from 1-4
+  public getStars(t: PartialTorrent): 1|2|3|4 {
+    const maxRating = util.sum(this.priorities.map(p => p.scale));
+    const maxStars = 4;
+    const frac = this.getScore(t) / maxRating;
+    return Math.min(Math.ceil(frac * maxStars), 1) as 1|2|3|4;
   }
 }

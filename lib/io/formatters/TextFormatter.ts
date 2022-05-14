@@ -6,21 +6,26 @@ export default class TextFormatter {
 	public res(any: Movie|Show|Episode): string {
     const f = this;
 	  if (any.type === 'episode') {
-	    return `${f.b(any.showTitle)} (S${any.seasonNum} E${any.episodeNum})`;
+	    return f.b(`${any.showTitle} S${any.seasonNum} E${any.episodeNum}`);
 	  } else if (any.type === 'tv') {
 	    return `${f.b(any.title)} (${mediaUtil.getExpandedEpisodeStr(any.episodes)})`;
 	  } else {
-	    return `${f.b(any.title)}`;
+	    return f.b(any.title);
 	  }
 	}
 
-  public torrentResult(torrent: TorrentResult): string {
-    const f = this;
-  const seed = torrent.seeders ? `${torrent.seeders} peers ` : '';
-  // const leech = torrent.leechers ? `${torrent.leechers} leech ` : '';
-  return `${f.b(torrent.title.replace(/\./g, ' '))}\n` +
-    f.i(`${f.sp(7)}${torrent.sizeMb}MB with ${seed}\n`) +
-    f.i(`${f.sp(7)}${torrent.uploadTime}`);
+  public dataRow(...items: string[]) {
+  	return items
+  		.filter(x => x)
+  		.join(' | ');
+  }
+
+  public commands(...rows: string[]) {
+  	const f = this;
+  	return rows
+  		.filter(x => x)
+  		.map(r => f.m(`> ${r}`))
+  		.join('\n');
   }
 
   public sp(length: number = 1) {
