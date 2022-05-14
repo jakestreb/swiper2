@@ -1,19 +1,24 @@
 import {getMorning} from './util';
 import * as path from 'path';
 
-export function getVideoPath(videoId: number): string {
-  return `${videoId}`;
-}
-
-export function getTorrentPath(t: DBTorrent): string {
-  return path.join(`${t.videoId}`, `${t.id}`);
-}
-
+// TODO: Move to res
 export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor): Episode[] {
-  if (filter === 'new') {
+  if (filter === 'upcoming') {
     // Unaired episodes only
     const morning = getMorning();
     return episodes.filter(ep => ep.airDate && (new Date(ep.airDate) > morning));
+  } else if (filter === 'latest season') {
+    const seasonEp = getNextToAir(episodes) || getLastAired(episodes);
+    if (!seasonEp) {
+      throw new Error('Cannot find latest season');
+    }
+    return episodes.filter(ep => ep.seasonNum === seasonEp.seasonNum);
+  } else if (filter === 'latest episode') {
+    const ep = getLastAired(episodes);
+    if (!ep) {
+      throw new Error('Cannot find latest episode');
+    }
+    return [ep];
   } else if (filter === 'all') {
     return episodes;
   } else {
@@ -23,6 +28,14 @@ export function filterEpisodes(episodes: Episode[], filter: EpisodesDescriptor):
       return season && (season === 'all' || season.includes(ep.episodeNum));
     });
   }
+}
+
+export function getVideoPath(videoId: number): string {
+  return `${videoId}`;
+}
+
+export function getTorrentPath(t: DBTorrent): string {
+  return path.join(`${t.videoId}`, `${t.id}`);
 }
 
 // Filters all shows episodes in the media array, and removes any shows without episodes.

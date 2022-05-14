@@ -24,7 +24,7 @@ declare interface SeasonEpisodes {
   [season: string]: number[]|'all';
 }
 
-declare type EpisodesDescriptor = SeasonEpisodes|'new'|'all';
+declare type EpisodesDescriptor = SeasonEpisodes|'upcoming'|'latest season'|'latest episode'|'all';
 
 declare type CommandFn = (input?: string) => Promise<SwiperReply>|SwiperReply;
 

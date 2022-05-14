@@ -1,5 +1,3 @@
-import {requireMedia, requireMediaQuery} from './common/decorators';
-import {requireVideo} from './common/decorators';
 import * as log from './common/logger';
 import * as mediaUtil from './common/media';
 import {splitFirst} from './common/util';
@@ -7,7 +5,9 @@ import db from './db';
 import Worker from './worker';
 import CommManager from './io/CommManager';
 import DownloadManager from './DownloadManager';
+import TextFormatter from './io/formatters/TextFormatter';
 
+import {reqMediaQuery, reqMedia, reqVideo, reqFullMedia} from './actions/helpers/decorators';
 import {download} from './actions/download';
 import {help} from './actions/help';
 import {remove} from './actions/remove';
@@ -81,43 +81,43 @@ export default class Swiper {
     this.commManager.notifyClient(id, msg);
   }
 
-  @requireMedia
-  public async download(convo: Conversation): Promise<SwiperReply> {
+  @reqMedia
+  public async download(convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
     log.debug(`Swiper: download`);
-    return download.call(this, convo, this.commManager.getTextFormatter(convo.id));
+    return download.call(this, convo, f);
   }
 
-  @requireVideo
-  public async search(convo: Conversation): Promise<SwiperReply> {
+  @reqVideo
+  public async search(convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
     log.debug(`Swiper: search`);
-    return search.call(this, convo, this.commManager.getTextFormatter(convo.id));
+    return search.call(this, convo, f);
   }
 
-  @requireMediaQuery
-  public async remove(convo: Conversation): Promise<SwiperReply> {
+  @reqMediaQuery
+  public async remove(convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
     log.debug(`Swiper: remove`);
-    return remove.call(this, convo, this.commManager.getTextFormatter(convo.id));
+    return remove.call(this, convo, f);
   }
 
-  public async queued(convo: Conversation): Promise<SwiperReply> {
+  public async queued(convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
     log.debug(`Swiper: queued`);
-    return queued.call(this, convo, this.commManager.getTextFormatter(convo.id));
+    return queued.call(this, convo, f);
   }
 
-  public async scheduled(convo: Conversation): Promise<SwiperReply> {
+  public async scheduled(convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
     log.debug(`Swiper: scheduled`);
-    return scheduled.call(this, convo, this.commManager.getTextFormatter(convo.id));
+    return scheduled.call(this, convo, f);
   }
 
-  @requireMedia
-  public async info(convo: Conversation): Promise<SwiperReply> {
+  @reqFullMedia
+  public async info(convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
     log.debug(`Swiper: info`);
-    return info.call(this, convo, this.commManager.getTextFormatter(convo.id));
+    return info.call(this, convo, f);
   }
 
-  public help(convo: Conversation): SwiperReply {
+  public help(convo: Conversation, f: TextFormatter): SwiperReply {
     log.debug(`Swiper: help`);
-    return help.call(this, convo, this.commManager.getTextFormatter(convo.id));
+    return help.call(this, convo, f);
   }
 
   public cancel(convo: Conversation): SwiperReply {
@@ -175,33 +175,34 @@ export default class Swiper {
   }
 
   private _getCommandFn(convo: Conversation, command: string): CommandFn|null {
+    const f = this.commManager.getTextFormatter(convo.id);
     switch (command) {
       case "download":
       case "get":
       case "d":
-        return () => this.download(convo);
+        return () => this.download(convo, f);
       case "search":
-        return () => this.search(convo);
+        return () => this.search(convo, f);
       case "remove":
       case "delete":
       case "rm":
       case "r":
-        return () => this.remove(convo);
+        return () => this.remove(convo, f);
       case "scheduled":
       case "schedule":
       case "s":
-        return () => this.scheduled(convo);
+        return () => this.scheduled(convo, f);
       case "queued":
       case "queue":
       case "q":
-        return () => this.queued(convo);
+        return () => this.queued(convo, f);
       case "info":
       case "i":
-        return () => this.info(convo);
+        return () => this.info(convo, f);
       case "help":
       case "commands":
       case "h":
-        return () => this.help(convo);
+        return () => this.help(convo, f);
       case "restart":
       case "reset":
       case "reboot":
