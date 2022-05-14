@@ -40,7 +40,7 @@ export async function search(this: Swiper, convo: Conversation, f: TextFormatter
   const showPage = () => {
     const { torrents, pageNum } = convo;
     return {
-      data: formatSelection(torrents!, pageNum!, video.torrents, f);
+      data: formatSelection(torrents!, pageNum!, video.torrents, f),
     };
   };
 
@@ -96,7 +96,7 @@ function formatSelection(
   const someTorrents = torrents.slice(startIndex, startIndex + PER_PAGE);
   const torrentRows = someTorrents.map((t, i) => {
     const isSelected = !!active.find(at => t.magnet === at.magnet);
-    return [f.b(i), formatTorrent(t, isSelected, f)].join(f.sp(1));
+    return [f.b(`${i}`), formatTorrent(t, isSelected, f)].join(f.sp(1));
   });
   const commands = formatCommands([startIndex, endIndex], torrents.length, f);
   return [torrentRows.join('\n'), commands].join('\n\n');

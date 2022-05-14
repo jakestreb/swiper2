@@ -1,8 +1,8 @@
-import {filterEpisodes, getVideo} from '../common/media';
-import MediaSearch from '../apis/MediaSearch';
-import {execCapture, removePrefix} from '../common/util';
-import * as logger from '../common/logger';
-import TextFormatter from '../io/formatters/TextFormatter';
+import {filterEpisodes, getVideo} from '../../common/media';
+import MediaSearch from '../../apis/MediaSearch';
+import {execCapture, removePrefix} from '../../common/util';
+import * as logger from '../../common/logger';
+import TextFormatter from '../../io/formatters/TextFormatter';
 import EpisodeParser from './EpisodeParser';
 
 interface ParserOptions {

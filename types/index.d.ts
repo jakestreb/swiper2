@@ -40,16 +40,19 @@ declare interface Conversation {
   pageNum?: number;
 }
 
-declare interface TorrentResult {
+declare interface PartialTorrent {
   title: string;
   parsedTitle: string;
   seeders: number;
+  resolution: string;
+  sizeMb: number;
+}
+
+declare type TorrentResult = PartialTorrent & {
   leechers: number;
   uploadTime: string;
   magnet: string;
   quality: string;
-  resolution: string;
-  sizeMb: number;
   starRating: 1|2|3|4;
 }
 

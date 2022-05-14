@@ -2,29 +2,21 @@ import ResourcePriority from './ResourcePriority';
 import * as mediaUtil from '../../common/media';
 import * as util from '../../common/util';
 
-interface PartialTorrent {
-  title: string;
-  parsedTitle: string;
-  seeders: number;
-  resolution: string;
-  sizeMb: number;
-}
-
 class ResolutionPriority extends ResourcePriority<string> {
   public ranks = ['1080p', '720p'];
-  public predicate = (v: string, t: TorrentResult) => t.resolution === v;
+  public predicate = (v: string, t: PartialTorrent) => t.resolution === v;
   public scale = 1;
 }
 
 class SeederPriority extends ResourcePriority<number> {
   public ranks = [30, 25, 20, 16, 12, 8, 4, 0];
-  public predicate = (v: number, t: TorrentResult) => t.seeders >= v;
+  public predicate = (v: number, t: PartialTorrent) => t.seeders >= v;
   public scale = 3.5;
 }
 
 class SizePriority extends ResourcePriority<[number, number]> {
   public ranks: [number, number][] = [[1200, 4000], [1000, 5000], [800, 8000], [200, 10000]];
-  public predicate = (v: [number, number], t: TorrentResult) =>
+  public predicate = (v: [number, number], t: PartialTorrent) =>
       t.sizeMb >= v[0] && t.sizeMb <= v[1];
   public scale = 1.5;
 }
