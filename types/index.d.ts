@@ -50,6 +50,7 @@ declare interface TorrentResult {
   quality: string;
   resolution: string;
   sizeMb: number;
+  starRating: 1|2|3|4;
 }
 
 declare interface JobDescription {

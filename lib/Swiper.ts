@@ -14,7 +14,7 @@ import {remove} from './actions/remove';
 import {search} from './actions/search';
 import {scheduled} from './actions/scheduled';
 import {queued} from './actions/queued';
-// import {info} from './actions/info';
+import {info} from './actions/info';
 
 export default class Swiper {
 
@@ -109,6 +109,12 @@ export default class Swiper {
     return scheduled.call(this, convo, this.commManager.getTextFormatter(convo.id));
   }
 
+  @requireMedia
+  public async info(convo: Conversation): Promise<SwiperReply> {
+    log.debug(`Swiper: info`);
+    return info.call(this, convo, this.commManager.getTextFormatter(convo.id));
+  }
+
   public help(convo: Conversation): SwiperReply {
     log.debug(`Swiper: help`);
     return help.call(this, convo, this.commManager.getTextFormatter(convo.id));
@@ -187,6 +193,9 @@ export default class Swiper {
       case "queue":
       case "q":
         return () => this.queued(convo);
+      case "info":
+      case "i":
+        return () => this.info(convo);
       case "help":
       case "commands":
         return () => this.help(convo);

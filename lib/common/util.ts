@@ -134,6 +134,10 @@ export function padZeros(int: number): string {
   return ('00' + int).slice(-2);
 }
 
+export function getMonthRange(from: Date, to: Date): string {
+  return `${months[from.getMonth()]} - ${months[to.getMonth()]} ${to.getFullYear()}`;
+}
+
 export function getAiredStr(date: Date): string {
   const oneDay = 86400000;
   const oneWeek = 7 * oneDay;

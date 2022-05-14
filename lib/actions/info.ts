@@ -1,60 +1,122 @@
-// import {getLastAired, getNextToAir} from '../common/media';
-// import {getAiredStr, padZeros} from '../common/util';
-// import Swiper from '../Swiper';
+import * as mediaUtil from '../common/media';
+import * as util from '../common/util';
+import Swiper from '../Swiper';
+import TextFormatter from '../io/formatters/TextFormatter';
 
-// export async function info(this: Swiper, convo: Conversation): Promise<SwiperReply> {
-//   const media = convo.media as Media;
-//   if (media.type === 'movie') {
-//     // For movies, give release and DVD release.
-//     const movie = media as Movie;
-//     return {
-//       data: `${movie.title}\n` +
-//         `Release: ${movie.release || 'N/A'} | DVD Release: ${movie.dvd || 'N/A'}`,
-//       final: true
-//     };
-//   } else {
-//     // For shows, give how many seasons and episodes per season. Also give last and next air date.
-//     const show = media as Show;
-//     const leastOld = getLastAired(show.episodes);
-//     const leastNew = getNextToAir(show.episodes);
-//     const lastAired = leastOld ? getAiredStr(leastOld.airDate!) : '';
-//     const nextAirs = leastNew ? getAiredStr(leastNew.airDate!) : '';
-//     return {
-//       data: `${show.title}\n` +
-//         `${getEpisodesPerSeasonStr(show.episodes)}\n` +
-//         `${lastAired}${(lastAired && nextAirs) ? ' | ' : ''}${nextAirs}`,
-//       final: true
-//     };
-//   }
-// }
+const FULL = '\u25A0';
+const HALF = '\u25A4';
+const EMPTY = '\u25A1';
 
-// // Returns a string of the form: "S01 - S04: 6 episodes, S05: 8 episodes"
-// function getEpisodesPerSeasonStr(episodes: Episode[]): string {
-//   if (episodes.length === 0) {
-//     return 'No episodes';
-//   }
-//   const counts: {[seasonNum: string]: number} = {};
-//   episodes.forEach(ep => { counts[ep.seasonNum] = counts[ep.seasonNum] ? counts[ep.seasonNum] + 1 : 1; });
-//   const order = Object.keys(counts).map(seasonStr => parseInt(seasonStr, 10)).sort((a, b) => a - b);
-//   let streakStart: number = order[0];
-//   let str = '';
-//   order.forEach((s: number, i: number) => {
-//     if (i > 0 && counts[s] !== counts[s - 1]) {
-//       const eachStr = streakStart === s - 1 ? '' : ' each';
-//       str += _getStreakStr('S', streakStart, s - 1) + `: ${counts[s - 1]} episodes${eachStr}, \n`;
-//       streakStart = s;
-//     }
-//     if (i === order.length - 1) {
-//       const eachStr = streakStart === s ? '' : ' each';
-//       str += _getStreakStr('S', streakStart, s) + `: ${counts[s]} episodes${eachStr}, \n`;
-//     }
-//   });
-//   // Remove ending comma.
-//   return str.slice(0, str.length - 3);
-// }
+const NEXT = '(next)';
 
-// // Helper for getEpisodesStr and getSeasonEpisodesStr to give a streak string.
-// function _getStreakStr(prefix: 'S'|'E', start: number, end: number, suffix: string = ''): string {
-//   return start < 0 ? '' : (start < end ? `${prefix}${padZeros(start)} - ` : '') +
-//     prefix + padZeros(end) + suffix;
-// }
+export async function info(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
+  const media = convo.media as Media;
+
+  let data;
+  if (media.type === 'movie') {
+    data = formatMovie(media as Movie, f);
+  } else {
+    data = formatShow(media as Show, f);
+  }
+
+  return {
+    data,
+    final: true,
+  };
+}
+
+function formatMovie(movie: Movie, f: TextFormatter) {
+  const { title, theatricalRelease, streamingRelease } = movie;
+  const theatrical = theatricalRelease && new Date(theatricalRelease);
+  const streaming = streamingRelease && new Date(streamingRelease);
+
+  // TODO: Add expected date
+  return [
+    f.u(title),
+    theatrical ? [f.b('Theatrical'), f.i(util.getAiredStr(theatrical))].join(' ') : '',
+    streaming ? [f.b('Streaming'), f.i(util.getAiredStr(streaming))].join(' ') : '',
+  ]
+  .filter(x => x)
+  .join('\n');
+}
+
+function formatShow(show: Show, f: TextFormatter) {
+  const { episodes } = show;
+
+  const episodesBySeason: { [seasonNum: number]: Episode[] } = {};
+  episodes.forEach((e, i) => {
+    const current = episodesBySeason[e.seasonNum] || [];
+    episodesBySeason[e.seasonNum] = [...current, e];
+  });
+
+  const unaired = mediaUtil.getNextToAir(show.episodes);
+  let details: Episode[] = [];
+  if (unaired) {
+    const index = show.episodes.findIndex(e => e.id === unaired.id);
+    const startIndex = Math.max(index - 1, 0);
+    details = episodes.slice(startIndex, startIndex + 2);
+  }
+
+  const contentRows = Object.keys(episodesBySeason)
+    .map(seasonNum => {
+      const isPartialSeason = details.length > 0 && `${details[0].seasonNum}` === seasonNum;
+      const seasonEpisodes = episodesBySeason[Number(seasonNum)];
+      const first = seasonEpisodes[0];
+      const last = seasonEpisodes[seasonEpisodes.length - 1];
+      const rows = [formatSeasonRow(first, last, f)];
+      if (isPartialSeason) {
+        rows.push(formatEpisodeRows(details, f));
+      }
+      return rows.join('\n');
+    });
+
+  return [f.u(show.title), ...contentRows].join('\n');
+}
+
+function formatSeasonRow(first: Episode, last: Episode, f: TextFormatter) {
+  const items = [
+    f.b(`S${last.seasonNum}`),
+    getSeasonIcon(first, last),
+    `(E${first.episodeNum}-${last.episodeNum})`
+  ];
+  if (first.airDate && last.airDate) {
+    items.push(util.getMonthRange(new Date(first.airDate), new Date(last.airDate)));
+  }
+  return items.join(' ');
+}
+
+function formatEpisodeRows(episodes: Episode[], f: TextFormatter): string {
+  const nextToAir = mediaUtil.getNextToAir(episodes);
+  return episodes
+    .map(e => {
+      const items = [f.sp(3), getEpisodeIcon(e), `E${e.episodeNum}`];
+      if (e.airDate) {
+        items.push(util.getAiredStr(new Date(e.airDate)))
+      }
+      if (nextToAir && nextToAir.id === e.id) {
+        items.push(f.i(NEXT));
+      }
+      return items.join('');
+    })
+    .join('\n');
+}
+
+function getSeasonIcon(first: Episode, last: Episode) {
+  if (!first.airDate || !last.airDate) {
+    return FULL;
+  }
+  const now = new Date();
+  const firstDate = new Date(first.airDate);
+  const lastDate = new Date(last.airDate);
+  if (now < firstDate) {
+    return EMPTY;
+  } else if (now > lastDate) {
+    return FULL;
+  } else {
+    return HALF;
+  }
+}
+
+function getEpisodeIcon(e: Episode) {
+  return e.airDate && new Date(e.airDate) <= new Date() ? EMPTY : FULL;
+}
