@@ -14,7 +14,7 @@ export default class TextFormatter {
 	  }
 	}
 
-  public dataRow(...items: string[]) {
+  public dataRow(...items: Array<string|null>) {
   	return items
   		.filter(x => x)
   		.join(' | ');

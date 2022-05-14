@@ -31,7 +31,7 @@ export async function queued(this: Swiper, convo: Conversation, f: TextFormatter
     const torrentRows = video.torrents.map(t => {
       const { sizeMb, resolution, status } = t;
       const { progress, peers } = this.downloadManager.getProgress(t);
-      return formatTorrentRow({ sizeMb, resolution, peers, progress, status });
+      return formatTorrentRow({ sizeMb, resolution, peers, progress, status }, f);
     });
     const details = torrentRows.length > 0 ? torrentRows.join('\n') : SEARCHING;
     const rows = [
@@ -68,12 +68,16 @@ function getTorrentStatusText(status: TorrentStatus, peers: number) {
   return isPaused ? PAUSED : (!hasPeers ? NO_PEERS : '');
 }
 
-function formatTorrentRow(info: TorrentInfo): string {
+function formatTorrentRow(info: TorrentInfo, f: TextFormatter): string {
   const { sizeMb, resolution, peers, progress, status } = info;
-  const elems = [resolution, formatSize(sizeMb), formatPeers(peers), formatProgress(progress)];
-  const infoTxt = elems.filter(x => x).join(' | ');
+  const data = f.dataRow(
+    resolution,
+    formatSize(sizeMb),
+    formatPeers(peers),
+    formatProgress(progress)
+  );
   const statusTxt = getTorrentStatusText(status, peers);
-  return [infoTxt, statusTxt].join(' ');
+  return [data, statusTxt].join(' ');
 }
 
 function formatSize(sizeMb: number) {

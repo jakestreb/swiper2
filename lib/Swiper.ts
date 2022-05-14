@@ -178,12 +178,14 @@ export default class Swiper {
     switch (command) {
       case "download":
       case "get":
+      case "d":
         return () => this.download(convo);
       case "search":
         return () => this.search(convo);
       case "remove":
       case "delete":
       case "rm":
+      case "r":
         return () => this.remove(convo);
       case "scheduled":
       case "schedule":
@@ -198,12 +200,14 @@ export default class Swiper {
         return () => this.info(convo);
       case "help":
       case "commands":
+      case "h":
         return () => this.help(convo);
       case "restart":
       case "reset":
       case "reboot":
         return () => this.reboot(convo);
       case "cancel":
+      case "c":
         return () => this.cancel(convo);
       default:
         return null;
