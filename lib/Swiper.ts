@@ -15,6 +15,7 @@ import {search} from './actions/search';
 import {scheduled} from './actions/scheduled';
 import {queued} from './actions/queued';
 import {info} from './actions/info';
+import {unknown} from './actions/unknown';
 
 export default class Swiper {
 
@@ -28,7 +29,7 @@ export default class Swiper {
   public downloadManager: DownloadManager;
   public worker: Worker;
 
-  private _conversations: {[clientId: number]: Conversation} = {};
+  private conversations: {[clientId: number]: Conversation} = {};
 
   // Should NOT be called publicly - use Swiper.create
   constructor() {
@@ -42,34 +43,27 @@ export default class Swiper {
   public async handleMsg(id: number, msg?: string): Promise<void> {
     msg = (msg || '').toLowerCase().trim();
     // Initialize the conversation if it does not exist and get the command function.
-    const convo = this._updateConversation(id);
-    const existingCommandFn = this._conversations[id].commandFn;
+    const convo = this.updateConversation(id);
+    const existingCommandFn = this.conversations[id].commandFn;
     const [command, input] = splitFirst(msg);
-    const commandFn = this._getCommandFn(convo, command);
+    const commandFn = this.getCommandFn(convo, command);
 
     // Run a new command or an existing command.
     let reply: SwiperReply;
     if (commandFn) {
-      this._updateConversation(id, {commandFn, input});
+      this.updateConversation(id, {commandFn, input});
       reply = await commandFn();
     } else if (existingCommandFn) {
-      this._updateConversation(id, {input: msg});
+      this.updateConversation(id, {input: msg});
       reply = await existingCommandFn();
     } else {
-      const basic = `Everything you need to know\n\n` +
-        `\` download pulp fiction\`\n` +
-        `\` download batman 1989\`\n` +
-        `\` download game of thrones s04e05-8\`\n` +
-        `\` status\`\n` +
-        `\` remove game of thrones\`\n` +
-        `\` cancel\`\n\n` +
-        `Use \`help\` for a full command list`;
-      reply = { data: basic };
+      const f = this.commManager.getTextFormatter(convo.id);
+      reply = await this.unknown(convo, f);
     }
 
     // If the reply is marked as final, clear the conversation state.
     if (reply.final) {
-      delete this._conversations[convo.id];
+      delete this.conversations[convo.id];
     }
 
     // Send a response to the client.
@@ -120,6 +114,11 @@ export default class Swiper {
     return help.call(this, convo, f);
   }
 
+  public unknown(convo: Conversation, f: TextFormatter): SwiperReply {
+    log.debug(`Swiper: unknown`);
+    return unknown.call(this, convo, f);
+  }
+
   public cancel(convo: Conversation): SwiperReply {
     log.debug(`Swiper: cancel`);
     return {
@@ -145,7 +144,7 @@ export default class Swiper {
   public async removeMedia(media: Media): Promise<void> {
     const promises = mediaUtil.getVideos(media).map(async video => {
       const withTorrents = await db.videos.addTorrents(video);
-      await this.downloadManager.destroyAndDeleteFiles(withTorrents);
+      await this.downloadManager.destroyAndDeleteVideo(withTorrents);
       await this.worker.removeJobs(video.id);
       await db.torrents.delete(...withTorrents.torrents.map(t => t.id));
     });
@@ -174,7 +173,7 @@ export default class Swiper {
     }
   }
 
-  private _getCommandFn(convo: Conversation, command: string): CommandFn|null {
+  private getCommandFn(convo: Conversation, command: string): CommandFn|null {
     const f = this.commManager.getTextFormatter(convo.id);
     switch (command) {
       case "download":
@@ -216,10 +215,10 @@ export default class Swiper {
   }
 
   // Updates and returns the updated conversation.
-  private _updateConversation(id: number, update?: {[key: string]: any}): Conversation {
-    if (!this._conversations[id]) {
-      this._conversations[id] = {id};
+  private updateConversation(id: number, update?: {[key: string]: any}): Conversation {
+    if (!this.conversations[id]) {
+      this.conversations[id] = {id};
     }
-    return Object.assign(this._conversations[id], update || {});
+    return Object.assign(this.conversations[id], update || {});
   }
 }

@@ -43,8 +43,12 @@ export default class DownloadManager {
     return this.downloadClient.getProgress(torrent.magnet);
   }
 
-  public destroyAndDeleteFiles(video: TVideo): Promise<void> {
-    return this.downloadClient.destroyAndDeleteFiles(video);
+  public destroyAndDeleteVideo(video: TVideo): Promise<void> {
+    return this.downloadClient.destroyAndDeleteVideo(video);
+  }
+
+  public destroyAndDeleteTorrent(torrent: VTorrent): Promise<void> {
+    return this.downloadClient.destroyAndDeleteTorrent(torrent);
   }
 
   // This function should generally not be awaited.

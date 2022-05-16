@@ -3,7 +3,7 @@ import Base from './Base';
 export default class Movies extends Base {
   public async init(): Promise<this> {
     await this.db.run(`CREATE TABLE IF NOT EXISTS movies (
-      id INTEGER PRIMARY KEY ON CONFLICT REPLACE,
+      id INTEGER PRIMARY KEY,
       title TEXT,
       year TEXT,
       theatricalRelease DATETIME,

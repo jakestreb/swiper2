@@ -75,6 +75,7 @@ export async function search(this: Swiper, convo: Conversation, f: TextFormatter
   const torrent = convo.torrents[torrentNum - 1];
 
   await db.media.insert(media, { addedBy: convo.id, status: 'downloading' });
+  // TODO: If insertion fails, skip it
   await db.torrents.insert({ ...torrent, videoId: video.id, status: 'paused' });
   this.downloadManager.ping();
 
@@ -104,7 +105,7 @@ function formatSelection(
 
 function formatTorrent(torrent: TorrentResult, isSelected: boolean, f: TextFormatter): string {
   const peers = `${torrent.seeders} peers`;
-  const size = `${torrent.sizeMb}MB`;
+  const size = util.formatSize(torrent.sizeMb);
   const rating = STAR.repeat(torrent.starRating);
   let data = f.dataRow(peers, size, rating);
   if (isSelected) {

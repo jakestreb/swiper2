@@ -36,7 +36,7 @@ export default class TorrentSearch {
 
   public static async addBestTorrent(video: Video): Promise<boolean> {
     const torrents = await this.search(video);
-    const best = this.getBestTorrent(video, torrents);
+    const best = await this.getBestTorrent(video, torrents);
     if (!best) {
       log.debug(`TorrentSearch: getBestTorrent(${stringify(video)}) failed (no torrent found)`);
       return false;
@@ -47,17 +47,24 @@ export default class TorrentSearch {
     return !!torrent;
   }
 
-  public static getBestTorrent(video: Video, torrents: TorrentResult[]): TorrentResult|null {
+  public static async getBestTorrent(video: Video, torrents: TorrentResult[]): Promise<TorrentResult|null> {
     log.debug(`TorrentSearch: getBestTorrent(${stringify(video)})`);
+    const videoTorrents = await db.torrents.getForVideo(video.id);
+    const removed = videoTorrents.filter(t => t.status === 'removed');
+    const badMagnets = new Set(removed.map(t => t.magnet));
+
     let bestTorrent = null;
     let bestTier = 0;
-    torrents.forEach(t => {
-      const tier = new TorrentRanker(video).getScore(t);
-      if (tier > bestTier) {
-        bestTorrent = t;
-        bestTier = tier;
-      }
-    });
+    torrents
+      .filter(t => !badMagnets.has(t.magnet))
+      .forEach(t => {
+        const tier = new TorrentRanker(video).getScore(t);
+        if (tier > bestTier) {
+          bestTorrent = t;
+          bestTier = tier;
+        }
+      });
+
     return bestTorrent;
   }
 
@@ -144,7 +151,7 @@ function getSearchTerm(video: Video): string {
 
 // Expects a string which starts with a decimal number and either GiB, MiB, or kiB
 function getSizeInMb(sizeStr: string): number|null {
-  const factorMap: {[prefix: string]: number} = {g: 1000.0, m: 1.0, k: 0.001};
+  const factorMap: {[prefix: string]: number} = {g: 1024.0, m: 1.0, k: 0.00097656};
   const [valStr, units] = sizeStr.replace(/,/g, '').split(/\s/g);
   const val = parseFloat(valStr);
   if (units.length > 0 && units[0].toLowerCase() in factorMap) {

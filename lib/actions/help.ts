@@ -16,29 +16,30 @@ const COMMANDS = [{
   ]
 }, {
   name: 'download',
-  description: 'downloads a movie/show',
+  description: 'downloads a movie/show\nre-running adds the next best torrent',
   examples: [
     "download the lion king",
     "download batman 1989",
     "download stranger things s2",
-    "download the office s1e2-4 & e6"
+    "download the office s1 e2-4 & e6"
   ]
 }, {
   name: "remove",
-  description: "removes a queued/scheduled movie/show",
+  description: "removes a queued/scheduled movie/show, or a torrent of that movie/show",
   examples: [
     "remove pulp fiction",
-    "remove severance s2e1-3"
+    "remove severance s2",
+    "remove torrent severance"
   ]
 }, {
   name: "cancel",
   description: "ends the current conversation"
 }, {
   name: "search",
-  description: "gives a list of options for a movie/episode",
+  description: "gives a list of torrent options for a movie/episode",
   examples: [
     "search old yeller",
-    "search game of thrones s1e2"
+    "search game of thrones s1 e2"
   ]
 }];
 
@@ -47,7 +48,8 @@ export function help(this: Swiper, convo: Conversation, f: TextFormatter): Swipe
     const basics = [
       f.commands(
         `${f.b('download')} [show or movie]`,
-        `${f.b('remove')} [show or movie]`
+        `${f.b('remove')} [show or movie]`,
+        `${f.b('remove torrent')} [show or movie]`
       ),
       f.commands(
         f.b('queued'),

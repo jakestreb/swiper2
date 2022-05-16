@@ -29,6 +29,14 @@ export default class Jobs extends Base {
     return this.db.get('SELECT * FROM jobs WHERE id=? LIMIT 1', [id]);
   }
 
+  public async getNextRun(videoId: number, type: JobType): Promise<Date|null> {
+    const jobs: DBJob[] = await this.db.all('SELECT * FROM jobs WHERE videoId=?', [videoId]);
+    const nextRuns = jobs
+      .filter(job => job.type === type)
+      .map(job => job.nextRunAt);
+    return nextRuns.length > 0 ? new Date(Math.min(...nextRuns)) : null;
+  }
+
   public getNext(): Promise<DBJob|null> {
     return this.db.get('SELECT * FROM jobs WHERE isDone=0 ORDER BY nextRunAt LIMIT 1');
   }

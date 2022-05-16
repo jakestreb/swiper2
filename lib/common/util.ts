@@ -138,6 +138,30 @@ export function getMonthRange(from: Date, to: Date): string {
   return `${months[from.getMonth()]} - ${months[to.getMonth()]} ${to.getFullYear()}`;
 }
 
+// Format size with most appropriate suffix
+export function formatSize(sizeMb: number): string {
+  if (sizeMb < 1) {
+    return `${sizeMb * 1024}KB`;
+  } else if (sizeMb < 1024) {
+    return `${sizeMb}MB`;
+  }
+  return `${sizeMb / 1024}GB`;
+}
+
+// Format wait time
+export function formatWaitTime(date: Date): string {
+  const s = (date.getTime() - new Date().getTime()) / 1000;
+  const h = s / 60 / 60;
+  if (s < 60) {
+    return `${Math.max(s, 1)}s`;
+  } else if (s < 60 * 60) {
+    return `${s / 60}m`;
+  } else if (s < 60 * 60 * 48) {
+    return `${h}h ${s % (60 * 60)}m`;
+  }
+  return `${h / 24}d`;
+}
+
 export function getAiredStr(date: Date): string {
   const oneDay = 86400000;
   const oneWeek = 7 * oneDay;

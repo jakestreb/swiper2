@@ -3,7 +3,7 @@ import Base from './Base';
 export default class Episodes extends Base {
   public async init(): Promise<this> {
     await this.db.run(`CREATE TABLE IF NOT EXISTS episodes (
-      id INTEGER PRIMARY KEY ON CONFLICT REPLACE,
+      id INTEGER PRIMARY KEY,
       seasonNum INTEGER,
       episodeNum INTEGER,
       airDate DATETIME,

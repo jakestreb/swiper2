@@ -72,9 +72,14 @@ export class DownloadClient extends events.EventEmitter {
     });
   }
 
-  public async destroyAndDeleteFiles(video: TVideo): Promise<void> {
+  public async destroyAndDeleteVideo(video: TVideo): Promise<void> {
     await Promise.all(video.torrents.map(t => this.destroyTorrent(t)));
     await this.deleteVideoFiles(video.id);
+  }
+
+  public async destroyAndDeleteTorrent(torrent: VTorrent): Promise<void> {
+    await this.destroyTorrent(torrent);
+    await this.deleteTorrentFiles(torrent);
   }
 
   private async deleteVideoFiles(videoId: number): Promise<void> {

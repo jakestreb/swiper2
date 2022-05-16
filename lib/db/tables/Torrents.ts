@@ -13,7 +13,7 @@ export default class Torrents extends Base {
   public async init(): Promise<this> {
     await this.db.run(`CREATE TABLE IF NOT EXISTS torrents (
       id INTEGER PRIMARY KEY,
-      magnet TEXT UNIQUE,
+      magnet TEXT UNIQUE ON CONFLICT REPLACE,
       videoId INTEGER,
       quality TEXT,
       resolution TEXT,
@@ -34,7 +34,7 @@ export default class Torrents extends Base {
     if (torrent.status === status) {
       return torrent;
     }
-    await this.db.run('UPDATE torrents SET status=? WHERE magnet=?', [status, torrent.magnet]);
+    await this.db.run('UPDATE torrents SET status=? WHERE id=?', [status, torrent.id]);
     return { ...torrent, status };
   }
 
@@ -46,7 +46,7 @@ export default class Torrents extends Base {
 
   public async setQueueOrder(torrents: DBTorrent[]): Promise<void> {
     await Promise.all(torrents.map((t, i) => {
-      return this.db.run(`UPDATE torrents SET queueIndex=? WHERE magnet=?`, [i, t.magnet]);
+      return this.db.run(`UPDATE torrents SET queueIndex=? WHERE id=?`, [i, t.id]);
     }));
   }
 

@@ -9,16 +9,39 @@ export async function download(this: Swiper, convo: Conversation, f: TextFormatt
   const media = convo.media as Media;
   const video: Video|null = mediaUtil.getVideo(media);
   if (video) {
+    const existing = await db.torrents.getForVideo(video.id);
+    if (existing.length > 0) {
+      // For videos that already have torrents, add another
+      await this.worker.addJob({
+        type: 'AddTorrent',
+        videoId: video.id,
+        startAt: Date.now(),
+      });
+      return {
+        data: `Added new search for ${f.res(video)}`,
+        final: true
+      };
+    }
     isFullyUnreleased = isUnreleased(video);
     await db.media.insert(media, {
       addedBy: convo.id,
       status: isFullyUnreleased ? 'unreleased' : 'searching',
     });
+    // TODO: If insertion fails
+    // return {
+    //   data: 'Requested episodes overlap with episodes currently being managed',
+    //   final: true
+    // };
     await checkOrAwaitRelease(this, video);
   } else {
     const show = media as Show;
     isFullyUnreleased = !show.episodes.some(e => !isUnreleased(e));
     await db.shows.insert(show, { addedBy: convo.id, status: 'searching' });
+    // TODO: If insertion fails
+    // return {
+    //   data: 'Requested episodes overlap with episodes currently being managed',
+    //   final: true
+    // };
     await Promise.all(show.episodes.map(async e => {
       if (isUnreleased(e)) {
         await db.episodes.setStatus(e, 'unreleased');
@@ -48,7 +71,7 @@ function checkOrAwaitRelease(swiper: Swiper, video: Video) {
       type: 'StartSearching',
       videoId: video.id,
       startAt: definitiveRelease,
-    })
+    });
   }
   return swiper.worker.addJob({
     type: 'CheckForRelease',

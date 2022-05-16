@@ -2,8 +2,12 @@ declare module 'get-folder-size';
 declare module 'parse-torrent-name';
 
 declare type Status = 'identified'|'unreleased'|'searching'|'downloading'|'uploading'|'completed';
-declare type TorrentStatus = 'downloading'|'slow'|'paused'|'completed';
+
+// Note torrents should only have status 'removed' if they specifically were removed
+declare type TorrentStatus = 'downloading'|'slow'|'paused'|'completed'|'removed';
+
 declare type MediaType = 'movie'|'tv'|'episode';
+
 declare type JobType = 'AddTorrent'|'CheckForRelease'|'DeleteVideo'|'MonitorDownload'|'StartSearching';
 declare type JobSchedule = 'once'|'repeated'|'backoff';
 
@@ -15,7 +19,7 @@ declare interface SwiperReply {
 
 declare interface MediaQuery {
   title: string;
-  type: 'movie'|'tv'|null;
+  type: 'movie'|'tv'|'torrent'|null;
   episodes: EpisodesDescriptor|null;
   year: string|null;
 }
@@ -34,9 +38,9 @@ declare interface Conversation {
   commandFn?: CommandFn;
   mediaQuery?: MediaQuery;
   media?: Media;
-  position?: 'first'|'last';
   torrents?: TorrentResult[];
   storedMedia?: Media[];
+  storedVideos?: TVideo[];
   pageNum?: number;
 }
 
