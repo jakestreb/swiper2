@@ -54,7 +54,7 @@ export class DownloadClient extends events.EventEmitter {
     const wtTorrent = this.client.get(magnet);
     return {
       progress: wtTorrent ? wtTorrent.progress * 100 : 0,
-      speed: wtTorrent ? wtTorrent.downloadSpeed / (1000 * 1000) : 0,
+      speed: wtTorrent ? wtTorrent.downloadSpeed / (1024 * 1024) : 0, // MB/s
       remaining: wtTorrent ? Math.round(wtTorrent.timeRemaining / (60 * 1000)) : -1,
       peers: wtTorrent ? wtTorrent.numPeers : 0,
     };
