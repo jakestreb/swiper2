@@ -1,4 +1,3 @@
-import * as mediaUtil from '../common/media';
 import * as util from '../common/util';
 import Swiper from '../Swiper';
 import TextFormatter from '../io/formatters/TextFormatter';
@@ -10,13 +9,13 @@ const EMPTY = '\u25A1';
 const NEXT = '(next)';
 
 export async function info(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
-  const media = convo.media as Media;
+  const media = convo.media as IMedia;
 
   let data;
   if (media.type === 'movie') {
-    data = formatMovie(media as Movie, f);
+    data = formatMovie(media as IMovie, f);
   } else {
-    data = formatShow(media as Show, f);
+    data = formatShow(media as IShow, f);
   }
 
   return {
@@ -25,7 +24,7 @@ export async function info(this: Swiper, convo: Conversation, f: TextFormatter):
   };
 }
 
-function formatMovie(movie: Movie, f: TextFormatter) {
+function formatMovie(movie: IMovie, f: TextFormatter) {
   const { title, theatricalRelease, streamingRelease } = movie;
   const theatrical = theatricalRelease && new Date(theatricalRelease);
   const streaming = streamingRelease && new Date(streamingRelease);
@@ -40,17 +39,17 @@ function formatMovie(movie: Movie, f: TextFormatter) {
   .join('\n');
 }
 
-function formatShow(show: Show, f: TextFormatter) {
+function formatShow(show: IShow, f: TextFormatter) {
   const { episodes } = show;
 
-  const episodesBySeason: { [seasonNum: number]: Episode[] } = {};
+  const episodesBySeason: { [seasonNum: number]: IEpisode[] } = {};
   episodes.forEach((e, i) => {
     const current = episodesBySeason[e.seasonNum] || [];
     episodesBySeason[e.seasonNum] = [...current, e];
   });
 
-  const unaired = mediaUtil.getNextToAir(show.episodes);
-  let details: Episode[] = [];
+  const unaired = util.getNextToAir(show.episodes);
+  let details: IEpisode[] = [];
   if (unaired) {
     const index = show.episodes.findIndex(e => e.id === unaired.id);
     const startIndex = Math.max(index - 1, 0);
@@ -73,7 +72,7 @@ function formatShow(show: Show, f: TextFormatter) {
   return [f.u(show.title), ...contentRows].join('\n');
 }
 
-function formatSeasonRow(first: Episode, last: Episode, f: TextFormatter) {
+function formatSeasonRow(first: IEpisode, last: IEpisode, f: TextFormatter) {
   const items = [
     f.b(`S${last.seasonNum}`),
     getSeasonIcon(first, last),
@@ -85,8 +84,8 @@ function formatSeasonRow(first: Episode, last: Episode, f: TextFormatter) {
   return items.join(' ');
 }
 
-function formatEpisodeRows(episodes: Episode[], f: TextFormatter): string {
-  const nextToAir = mediaUtil.getNextToAir(episodes);
+function formatEpisodeRows(episodes: IEpisode[], f: TextFormatter): string {
+  const nextToAir = util.getNextToAir(episodes);
   return episodes
     .map(e => {
       const items = [f.sp(3), getEpisodeIcon(e), `E${e.episodeNum}`];
@@ -101,7 +100,7 @@ function formatEpisodeRows(episodes: Episode[], f: TextFormatter): string {
     .join('\n');
 }
 
-function getSeasonIcon(first: Episode, last: Episode) {
+function getSeasonIcon(first: IEpisode, last: IEpisode) {
   if (!first.airDate || !last.airDate) {
     return FULL;
   }
@@ -117,6 +116,6 @@ function getSeasonIcon(first: Episode, last: Episode) {
   }
 }
 
-function getEpisodeIcon(e: Episode) {
+function getEpisodeIcon(e: IEpisode) {
   return e.airDate && new Date(e.airDate) <= new Date() ? EMPTY : FULL;
 }

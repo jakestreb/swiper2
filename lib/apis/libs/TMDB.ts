@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as log from '../../common/logger';
 import {getDateFromStr} from '../../common/util';
+import Movie from '../../res/Movie';
 
 interface TMDBMovie {
   id: number;
@@ -33,7 +34,7 @@ export default class TMDB {
     return this.makeMediaRequest(url, year);
   }
 
-  public static async toMovie(info: TMDBMovie): Promise<Movie> {
+  public static async toMovie(info: TMDBMovie): Promise<IMovie> {
     const imdbId = await this.getImdbId(info);
     const url = this.getMovieReleaseDateUrl(info.id);
 
@@ -63,16 +64,15 @@ export default class TMDB {
     const theatricalReleaseDate = getDateFromStr(info.release_date);
     const streamingReleaseDate = getDateFromStr(streamingRelease);
 
-    return {
+    return new Movie({
       id: parseImdbId(imdbId),
-      type: 'movie',
       title: info.title,
       year: getYear(info.release_date),
       theatricalRelease: theatricalReleaseDate ? theatricalReleaseDate.getTime() : undefined,
       streamingRelease: streamingReleaseDate ? streamingReleaseDate.getTime() : undefined,
       status: 'identified',
       queueIndex: -1,
-    };
+    });
   }
 
   public static async getImdbId(info: TMDBMedia): Promise<string> {

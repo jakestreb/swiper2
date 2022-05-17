@@ -3,7 +3,6 @@ import Client from 'ftp';
 import * as path from 'path';
 
 import * as log from './common/logger';
-import * as mediaUtil from './common/media';
 import * as fileUtil from './common/files';
 
 export default class ExportHandler {
@@ -18,13 +17,17 @@ export default class ExportHandler {
 
   // Save a video in the correct directory, adding any necessary directories.
   public async export(vt: VTorrent): Promise<void> {
-    log.debug(`ExportHandler.export(${mediaUtil.stringify(vt.video)})`);
+    log.debug(`ExportHandler.export(${vt.video})`);
     const exportRoot = ExportHandler.EXPORT_ROOT;
     const useFtp = ExportHandler.USE_FTP;
 
-    const safeTitle = mediaUtil.getFileSafeTitle(vt.video);
-    const dirs = vt.video.type === 'movie' ? path.join('movies', safeTitle) :
-      path.join('tv', safeTitle, `Season ${vt.video.seasonNum}`);
+    const safeTitle = vt.video.getFileSafeTitle();
+    let dirs: string = '';
+    if (vt.video.isMovie()) {
+      dirs = path.join('movies', safeTitle)
+    } else if (vt.video.isEpisode()) {
+      dirs = path.join('tv', safeTitle, `Season ${vt.video.seasonNum}`);
+    }
 
     if (!useFtp) {
       // The FTP copy process creates any folders needed in the FTP directory, but the
@@ -36,7 +39,7 @@ export default class ExportHandler {
 
     // Move the files to the final directory.
     log.debug(`exportVideo: Copying videos to ${useFtp ? 'FTP server at ' : ''}${exportPath}`);
-    const torrentPath = path.join(this.downloadRoot, mediaUtil.getTorrentPath(vt));
+    const torrentPath = path.join(this.downloadRoot, vt.getDownloadPath());
     const files = await fs.readdir(torrentPath);
     const copyActions = files.map(filePath => {
       const from = path.join(torrentPath, filePath);

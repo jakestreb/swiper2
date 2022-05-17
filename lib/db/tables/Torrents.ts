@@ -9,7 +9,7 @@ declare interface TorrentInsertArg {
   status: TorrentStatus;
 }
 
-export default class Torrents extends Base {
+export default class Torrents extends Base<ITorrent> {
   public async init(): Promise<this> {
     await this.db.run(`CREATE TABLE IF NOT EXISTS torrents (
       id INTEGER PRIMARY KEY,
@@ -26,11 +26,15 @@ export default class Torrents extends Base {
     return this;
   }
 
-  public async getForVideo(videoId: number): Promise<DBTorrent[]> {
+  public buildInstance(row: any): ITorrent {
+    return row;
+  }
+
+  public async getForVideo(videoId: number): Promise<ITorrent[]> {
     return this.db.all(`SELECT * FROM torrents WHERE videoId=?`, [videoId]);
   }
 
-  public async setStatus(torrent: DBTorrent, status: TorrentStatus): Promise<DBTorrent> {
+  public async setStatus(torrent: ITorrent, status: TorrentStatus): Promise<ITorrent> {
     if (torrent.status === status) {
       return torrent;
     }
@@ -44,7 +48,7 @@ export default class Torrents extends Base {
         [arg.magnet, arg.videoId, arg.quality, arg.resolution, arg.sizeMb, arg.status]);
   }
 
-  public async setQueueOrder(torrents: DBTorrent[]): Promise<void> {
+  public async setQueueOrder(torrents: ITorrent[]): Promise<void> {
     await Promise.all(torrents.map((t, i) => {
       return this.db.run(`UPDATE torrents SET queueIndex=? WHERE id=?`, [i, t.id]);
     }));

@@ -1,6 +1,5 @@
 import ptn from 'parse-torrent-name';
 import {delay, padZeros} from '../common/util';
-import {stringify} from '../common/media';
 import * as log from '../common/logger';
 import ConcurrencyLock from './helpers/ConcurrencyLock';
 import TorrentRanker from './helpers/TorrentRanker';
@@ -29,26 +28,26 @@ export default class TorrentSearch {
 
   public static lock = new ConcurrencyLock(TorrentSearch.searchConcurrency);
 
-  public static search(video: Video): Promise<TorrentResult[]> {
-    log.debug(`TorrentSearch.search ${stringify(video)}`);
+  public static search(video: IVideo): Promise<TorrentResult[]> {
+    log.debug(`TorrentSearch.search ${video}`);
     return this.lock.acquire(() => this.doRetrySearch(video));
   }
 
-  public static async addBestTorrent(video: Video): Promise<boolean> {
+  public static async addBestTorrent(video: IVideo): Promise<boolean> {
     const torrents = await this.search(video);
     const best = await this.getBestTorrent(video, torrents);
     if (!best) {
-      log.debug(`TorrentSearch: getBestTorrent(${stringify(video)}) failed (no torrent found)`);
+      log.debug(`TorrentSearch: getBestTorrent(${video}) failed (no torrent found)`);
       return false;
     }
-    log.debug(`TorrentSearch: getBestTorrent(${stringify(video)}) succeeded`);
+    log.debug(`TorrentSearch: getBestTorrent(${video}) succeeded`);
     const torrent = { ...best, status: 'paused' as TorrentStatus, videoId: video.id };
     await db.torrents.insert(torrent);
     return !!torrent;
   }
 
-  public static async getBestTorrent(video: Video, torrents: TorrentResult[]): Promise<TorrentResult|null> {
-    log.debug(`TorrentSearch: getBestTorrent(${stringify(video)})`);
+  public static async getBestTorrent(video: IVideo, torrents: TorrentResult[]): Promise<TorrentResult|null> {
+    log.debug(`TorrentSearch: getBestTorrent(${video})`);
     const videoTorrents = await db.torrents.getForVideo(video.id);
     const removed = videoTorrents.filter(t => t.status === 'removed');
     const badMagnets = new Set(removed.map(t => t.magnet));
@@ -68,9 +67,9 @@ export default class TorrentSearch {
     return bestTorrent;
   }
 
-  private static doRetrySearch(video: Video): Promise<TorrentResult[]> {
+  private static doRetrySearch(video: IVideo): Promise<TorrentResult[]> {
     const doRetrySearch: (retries: number) => Promise<TorrentResult[]> = async retries => {
-      log.debug(`TorrentSearch: performing search ${stringify(video)}`);
+      log.debug(`TorrentSearch: performing search ${video}`);
       let results;
       try {
         results = await this.doSearch(video);
@@ -82,7 +81,7 @@ export default class TorrentSearch {
         log.error(`TorrentSearch search failed: ${err}`);
         if (retries > 0) {
           await delay(100);
-          log.debug(`TorrentSearch: retrying search ${stringify(video)}`);
+          log.debug(`TorrentSearch: retrying search ${video}`);
           return doRetrySearch(retries - 1);
         }
         throw err;
@@ -91,7 +90,7 @@ export default class TorrentSearch {
     return doRetrySearch(TorrentSearch.searchRetryCount);
   }
 
-  private static async doSearch(video: Video): Promise<TorrentResult[]> {
+  private static async doSearch(video: IVideo): Promise<TorrentResult[]> {
     const searchTerm = getSearchTerm(video);
     const results: TSAResult[] = await TorrentSearchApi.search(searchTerm);
     const filtered: TSAResult[] = results.filter((res: TSAResult) => res.title && res.size);
@@ -117,7 +116,7 @@ export default class TorrentSearch {
     return { ...result, magnet };
   }
 
-  private static createTorrent(result: TSAResultWithMagnet, video: Video): TorrentResult {
+  private static createTorrent(result: TSAResultWithMagnet, video: IVideo): TorrentResult {
     const parsed = ptn(result.title);
     const partial = {
       title: result.title,
@@ -137,11 +136,11 @@ export default class TorrentSearch {
   }
 }
 
-function getSearchTerm(video: Video): string {
-  if (video.type === 'movie') {
+function getSearchTerm(video: IVideo): string {
+  if (video.isMovie()) {
     const cleanTitle = video.title.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
     return `${cleanTitle} ${video.year}`;
-  } else if (video.type === 'episode') {
+  } else if (video.isEpisode()) {
     const cleanTitle = video.showTitle.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
     return `${cleanTitle} s${padZeros(video.seasonNum)}e${padZeros(video.episodeNum)}`;
   } else {

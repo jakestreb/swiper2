@@ -1,5 +1,4 @@
 import * as log from './common/logger';
-import * as mediaUtil from './common/media';
 import {splitFirst} from './common/util';
 import db from './db';
 import Worker from './worker';
@@ -141,8 +140,8 @@ export default class Swiper {
   // Remove any download files
   // Remove any DB jobs
   // Remove any DB torrents
-  public async removeMedia(media: Media): Promise<void> {
-    const promises = mediaUtil.getVideos(media).map(async video => {
+  public async removeMedia(media: IMedia): Promise<void> {
+    const promises = media.getVideos().map(async video => {
       const withTorrents = await db.videos.addTorrents(video);
       await this.downloadManager.destroyAndDeleteVideo(withTorrents);
       await this.worker.removeJobs(video.id);
@@ -151,27 +150,6 @@ export default class Swiper {
     await Promise.all(promises);
     await db.media.delete(media);
     this.downloadManager.ping();
-  }
-
-  // Requires mediaQuery to be set.
-  public async addStoredMediaIfFound(convo: Conversation): Promise<void> {
-    const mediaQuery = convo.mediaQuery;
-    if (!mediaQuery) {
-      throw new Error(`addStoredMediaIfFound requires mediaQuery`);
-    }
-    // When searching stored media, we treat an unspecified episode list as all episodes.
-    if (!mediaQuery.episodes) {
-      mediaQuery.episodes = 'all';
-    }
-    // Search the database for all matching Movies/Shows.
-    if (!convo.storedMedia) {
-      const mediaType = mediaQuery.type === 'torrent' ? null : mediaQuery.type;
-      let mediaItems = await db.media.search(mediaQuery.title, { type: mediaType || undefined });
-      mediaItems = mediaUtil.filterMediaEpisodes(mediaItems, mediaQuery.episodes);
-      if (mediaItems.length > 0) {
-        convo.storedMedia = mediaItems;
-      }
-    }
   }
 
   private getCommandFn(convo: Conversation, command: string): CommandFn|null {

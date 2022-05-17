@@ -1,5 +1,4 @@
 import ResourcePriority from './ResourcePriority';
-import * as mediaUtil from '../../common/media';
 import * as util from '../../common/util';
 
 class ResolutionPriority extends ResourcePriority<string> {
@@ -24,7 +23,7 @@ class SizePriority extends ResourcePriority<[number, number]> {
 class TitlePriority extends ResourcePriority<boolean> {
   public ranks = [true, false];
   public predicate = (v: boolean, t: PartialTorrent) =>
-    v === (t.parsedTitle === mediaUtil.getFileSafeTitle(this.video));
+    v === (t.parsedTitle === this.video.getFileSafeTitle());
   public scale = 1.5;
 }
 
@@ -37,7 +36,7 @@ export default class TorrentRanker {
 
   private priorities: ResourcePriority<any>[] = [];
 
-  constructor(public video: Video) {
+  constructor(public video: IVideo) {
     this.priorities = [
       new ResolutionPriority(this.video),
       new SeederPriority(this.video),

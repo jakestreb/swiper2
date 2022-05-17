@@ -19,10 +19,10 @@ export async function queued(this: Swiper, convo: Conversation, f: TextFormatter
     }
     const torrentRows = video.torrents.map(t => {
       const { progress, peers } = this.downloadManager.getProgress(t);
-      return `${f.sp(2)}${f.torrentRow(t, peers, progress)}`;
+      return `${f.sp(2)}${t.format(f, peers, progress)}`;
     });
     const searchTxt = await getSearchTxt(video);
-    const rows = [`${getIcon(video)}${f.sp(1)}${f.res(video)}`];
+    const rows = [`${getIcon(video)}${f.sp(1)}${video.format(f)}`];
     if (torrentRows.length > 0) {
       rows.push(torrentRows.join('\n'));
     }
@@ -40,7 +40,7 @@ export async function queued(this: Swiper, convo: Conversation, f: TextFormatter
   };
 }
 
-async function getSearchTxt(video: Video): Promise<string|null> {
+async function getSearchTxt(video: IVideo): Promise<string|null> {
   const nextRunDate = await db.jobs.getNextRun(video.id, 'AddTorrent');
   if (!nextRunDate) {
     return null;
@@ -50,8 +50,8 @@ async function getSearchTxt(video: Video): Promise<string|null> {
   return `(searching in ${util.formatWaitTime(nextRunDate)})`;
 }
 
-function formatCompleted(video: Video, f: TextFormatter) {
-  return f.s(f.res(video));
+function formatCompleted(video: IVideo, f: TextFormatter) {
+  return f.s(video.format(f));
 }
 
 function getIcon(video: TVideo) {
@@ -63,7 +63,7 @@ function getIcon(video: TVideo) {
   return isDownloading ? DOWN_ARROW : (isUploading ? UP_ARROW : HOURGLASS);
 }
 
-function getSortPriority(video: Video) {
+function getSortPriority(video: IVideo) {
   const queueIndex = video.queueIndex!;
   return [
     video.status === 'uploading',

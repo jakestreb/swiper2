@@ -1,7 +1,6 @@
 import * as path from 'path';
 import db from './db';
 import * as log from './common/logger';
-import {stringify} from './common/media';
 import * as priorityUtil from './common/priority';
 import ExportHandler from './ExportHandler';
 import MemoryManager from './MemoryManager';
@@ -39,7 +38,7 @@ export default class DownloadManager {
     });
   }
 
-  public getProgress(torrent: DBTorrent): DownloadProgress {
+  public getProgress(torrent: ITorrent): DownloadProgress {
     return this.downloadClient.getProgress(torrent.magnet);
   }
 
@@ -73,7 +72,7 @@ export default class DownloadManager {
   private async manageDownloads(): Promise<void> {
     log.debug(`DownloadManager: manageDownloads()`);
 
-    const downloads: Video[] = await db.videos.getWithStatus('downloading');
+    const downloads: IVideo[] = await db.videos.getWithStatus('downloading');
     const withTorrents = await Promise.all(downloads.map(d => db.videos.addTorrents(d)));
 
     // Sort videos and video torrents by priority
@@ -98,7 +97,7 @@ export default class DownloadManager {
       await prevPromise;
       const progressMb = await this.downloadClient.getDownloadedMb(vt);
       const allocateMb = vt.sizeMb - progressMb;
-      console.warn(`queue ${stringify(vt.video)}?`, {
+      console.warn(`queue ${vt.video}?`, {
         storageRemaining,
         allocateMb,
         progressMb,
@@ -122,13 +121,13 @@ export default class DownloadManager {
     toStart.forEach(vt => {
       this.startDownload(vt)
         .catch(err => {
-          log.error(`Downloading ${stringify(vt.video)} failed: ${err}`);
+          log.error(`Downloading ${vt.video} failed: ${err}`);
         });
     });
     toPause.forEach(vt => {
       this.stopDownload(vt)
         .catch(err => {
-          log.error(`Stopping download ${stringify(vt.video)} failed: ${err}`);
+          log.error(`Stopping download ${vt.video} failed: ${err}`);
         });
     });
 
@@ -144,13 +143,13 @@ export default class DownloadManager {
   }
 
   private async startDownload(torrent: VTorrent): Promise<void> {
-    log.debug(`DownloadManager: startDownload(${stringify(torrent.video)})`);
+    log.debug(`DownloadManager: startDownload(${torrent.video})`);
 
     // Run the download
     await db.torrents.setStatus(torrent, 'downloading');
     await this.downloadClient.download(torrent);
 
-    console.warn('DONE DOWNLOADING!', stringify(torrent.video));
+    console.warn('DONE DOWNLOADING!', torrent.video);
 
     // On completion, mark the video status as uploading
     await db.torrents.setStatus(torrent, 'completed');
@@ -176,7 +175,7 @@ export default class DownloadManager {
   }
 
   private async upload(videoId: number): Promise<void> {
-    const video: Video = (await db.videos.get(videoId))!;
+    const video: IVideo = (await db.videos.get(videoId))!;
     const torrents = await db.torrents.getForVideo(video.id);
     const completed = torrents.find(t => t.status === 'completed');
     if (!completed) {
@@ -196,7 +195,7 @@ export default class DownloadManager {
       startAt: Date.now() + 24 * 60 * 60 * 1000,
     });
 
-    this.swiper.notifyClient(video.addedBy!, `${stringify(video)} upload complete`);
+    this.swiper.notifyClient(video.addedBy!, `${video} upload complete`);
 
     // Ping since the database changed.
     this.ping();
@@ -204,14 +203,14 @@ export default class DownloadManager {
 
   private getVideoPriority(video: TVideo): number[] {
     const isSlow = video.torrents.every(t => t.status === 'slow' || t.status === 'paused');
-    const isMovie = video.type === 'movie';
-    const season = video.type === 'episode' ? video.seasonNum : 0;
-    const episode = video.type === 'episode' ? video.episodeNum : 0;
+    const isMovie = video.isMovie();
+    const season = video.isEpisode() ? video.seasonNum : 0;
+    const episode = video.isEpisode() ? video.episodeNum : 0;
     // From important to least
     return [-isSlow, +isMovie, -season, -episode];
   }
 
-  private getTorrentPriority(torrent: DBTorrent): number[] {
+  private getTorrentPriority(torrent: ITorrent): number[] {
     const downloadProgress = this.getProgress(torrent);
     const isSlow = torrent.status === 'slow';
     const { progress, peers } = downloadProgress;

@@ -1,6 +1,7 @@
+import Movie from '../../res/Movie';
 import Base from './Base';
 
-export default class Movies extends Base {
+export default class Movies extends Base<IMovie> {
   public async init(): Promise<this> {
     await this.db.run(`CREATE TABLE IF NOT EXISTS movies (
       id INTEGER PRIMARY KEY,
@@ -17,20 +18,23 @@ export default class Movies extends Base {
     return this;
   }
 
-  public async get(id: number): Promise<Movie|null> {
-    const movies = await this.all('SELECT * FROM movies WHERE id=? LIMIT 1', [id]);
-    return movies.length > 0 ? movies[0] : null;
+  public buildInstance(row: any): IMovie {
+    return new Movie({ ...row, type: 'movie' });
   }
 
-  public search(input: string): Promise<Movie[]> {
+  public async getOne(id: number): Promise<IMovie|void> {
+    return this.get('SELECT * FROM movies WHERE id=? LIMIT 1', [id]);
+  }
+
+  public search(input: string): Promise<IMovie[]> {
     return this.all(`SELECT * FROM movies WHERE title LIKE ?`, [`%${input}%`]);
   }
 
-  public getWithStatus(...statuses: Status[]): Promise<Movie[]> {
+  public getWithStatus(...statuses: Status[]): Promise<IMovie[]> {
     return this.all(`SELECT * FROM movies WHERE status IN (${statuses.map(e => '?')})`, statuses);
   }
 
-  public async setStatus(movie: Movie, status: Status): Promise<Movie> {
+  public async setStatus(movie: IMovie, status: Status): Promise<IMovie> {
     if (movie.status === status) {
       return movie;
     }
@@ -38,12 +42,12 @@ export default class Movies extends Base {
     return { ...movie, status };
   }
 
-  public async addTorrents(movie: Movie): Promise<TMovie> {
+  public async addTorrents(movie: IMovie): Promise<TMovie> {
     const torrents = await this.db.torrents.getForVideo(movie.id);
     return { ...movie, torrents };
   }
 
-  public async insert(arg: Movie, options: DBInsertOptions): Promise<void> {
+  public async insert(arg: IMovie, options: DBInsertOptions): Promise<void> {
     await this.db.run('INSERT INTO movies '
       + '(id, title, year, theatricalRelease, streamingRelease, status, addedBy) '
       + 'VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -51,20 +55,7 @@ export default class Movies extends Base {
         options.status, options.addedBy]);
   }
 
-  private async all(sqlCommand: string, sqlArgs: any[] = []): Promise<Movie[]> {
-    const rows: DBMovie[] = await this.db.all(sqlCommand, sqlArgs);
-    const movies = await Promise.all(rows.map(r => rowToMovie(r)));
-    return movies;
-  }
-
   public async delete(...ids: number[]): Promise<void> {
     await this.db.run(`DELETE FROM movies WHERE id IN (${ids.map(e => '?')})`, ids);
   }
-}
-
-function rowToMovie(row: DBMovie): Movie {
-  return {
-    ...row,
-    type: 'movie',
-  };
 }

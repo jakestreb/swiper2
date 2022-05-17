@@ -1,6 +1,5 @@
 import db from '../db';
 import * as util from '../common/util';
-import * as mediaUtil from '../common/media';
 import Swiper from '../Swiper';
 import TextFormatter from '../io/formatters/TextFormatter';
 
@@ -12,10 +11,10 @@ export async function scheduled(this: Swiper, convo: Conversation, f: TextFormat
 
   const shows: string[] = unreleased
     .filter(media => media.type === 'movie')
-    .map(movie => formatMovieRow(movie as Movie, f));
+    .map(movie => formatMovieRow(movie as IMovie, f));
   const movies: string[] = unreleased
     .filter(media => media.type === 'tv')
-    .map(show => formatShowRow(show as Show, f));
+    .map(show => formatShowRow(show as IShow, f));
 
   let rows: string[] = [];
   if (shows.length > 0 && movies.length > 0) {
@@ -30,10 +29,10 @@ export async function scheduled(this: Swiper, convo: Conversation, f: TextFormat
   };
 }
 
-function formatMovieRow(movie: Movie, f: TextFormatter) {
+function formatMovieRow(movie: IMovie, f: TextFormatter) {
   // TODO: Calculate expected release
   const release = movie.theatricalRelease;
-  const items = [getIcon(release), f.res(movie)];
+  const items = [getIcon(release), movie.format(f)];
   if (release) {
     const airedStr = util.getAiredStr(new Date(release));
     items.push(f.i(airedStr));
@@ -41,12 +40,12 @@ function formatMovieRow(movie: Movie, f: TextFormatter) {
   return items.join(' ');
 }
 
-function formatShowRow(show: Show, f: TextFormatter) {
+function formatShowRow(show: IShow, f: TextFormatter) {
   const { episodes } = show;
-  const next = mediaUtil.getNextToAir(episodes);
-  const last = mediaUtil.getLastAired(episodes);
+  const next = util.getNextToAir(episodes);
+  const last = util.getLastAired(episodes);
   const release = next ? next.airDate : (last ? last.airDate : undefined);
-  const items = [getIcon(release), f.res(show)];
+  const items = [getIcon(release), show.format(f)];
   if (release) {
     const airedStr = util.getAiredStr(new Date(release));
     items.push(f.i(airedStr));

@@ -68,7 +68,7 @@ export default class Worker {
   }
 
   private async doRunJob(job: DBJob): Promise<void> {
-    if (!await db.jobs.get(job.id)) {
+    if (!await db.jobs.getOne(job.id)) {
       // Check if the job was since removed
       return;
     }

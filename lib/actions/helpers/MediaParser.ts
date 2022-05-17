@@ -1,4 +1,3 @@
-import {filterEpisodes, getVideo} from '../../common/media';
 import MediaSearch from '../../apis/MediaSearch';
 import {execCapture, removePrefix} from '../../common/util';
 import * as logger from '../../common/logger';
@@ -39,7 +38,7 @@ export default class MediaParser {
     }
 
     // If the media isn't a single video and the episodes weren't specified, ask about them.
-    if (!getVideo(convo.media!)) {
+    if (!convo.media!.getVideo()) {
       mediaQuery.episodes = mediaQuery.episodes || EpisodeParser.parse(convo.input || '');
       if (!mediaQuery.episodes && this.options.requireVideo) {
         return {
@@ -57,8 +56,8 @@ export default class MediaParser {
         };
       }
       // Need to parse season episode string.
-      const show = convo.media as Show;
-      show.episodes = filterEpisodes(show.episodes, mediaQuery.episodes);
+      const show = convo.media as IShow;
+      show.filterEpisodes(mediaQuery.episodes);
     }
   }
 

@@ -1,6 +1,5 @@
 import db from '../db';
 import * as log from '../common/logger';
-import * as mediaUtil from '../common/media';
 import * as util from '../common/util';
 import Swiper from '../Swiper';
 import TorrentSearch from '../apis/TorrentSearch';
@@ -16,13 +15,13 @@ const SELECTED = '(selected)';
 export async function search(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   log.debug(`Swiper: search`);
 
-  const media = convo.media as Media;
-  const rawVideo = media.type === 'tv' ? media.episodes[0] : media;
+  const media = convo.media as IMedia;
+  const rawVideo = media.isShow() ? media.episodes[0] : media as IMovie;
   const video = await db.videos.addTorrents(rawVideo);
 
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
-    log.info(`Searching for ${mediaUtil.stringify(video)} downloads`);
+    log.info(`Searching for ${video} downloads`);
     convo.torrents = await TorrentSearch.search(video);
     convo.pageNum = 0;
   }
@@ -80,7 +79,7 @@ export async function search(this: Swiper, convo: Conversation, f: TextFormatter
   this.downloadManager.ping();
 
   return {
-    data: `Queued ${f.res(video)} for download`,
+    data: `Queued ${video.format(f)} for download`,
     final: true
   };
 }
@@ -89,7 +88,7 @@ export async function search(this: Swiper, convo: Conversation, f: TextFormatter
 function formatSelection(
   torrents: TorrentResult[],
   pageNum: number,
-  active: DBTorrent[],
+  active: ITorrent[],
   f: TextFormatter,
 ): string {
   const startIndex = PER_PAGE * pageNum;

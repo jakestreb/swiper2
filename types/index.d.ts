@@ -66,45 +66,46 @@ declare interface JobDescription {
   startAt: number;
 }
 
-declare interface DBEpisode {
-  id: number; // IMDB id
-  seasonNum: number;
-  episodeNum: number;
-  airDate?: number;
-  showId: number;
-  status: Status;
-  addedBy?: number;
-  queueIndex?: number;
-}
+// declare interface DBEpisode {
+//   id: number; // IMDB id
+//   seasonNum: number;
+//   episodeNum: number;
+//   airDate?: number;
+//   showId: number;
+//   status: Status;
+//   addedBy?: number;
+//   queueIndex?: number;
+// }
 
-declare interface DBMovie {
-  id: number; // IMDB id
-  title: string;
-  year: string;
-  theatricalRelease?: number;
-  streamingRelease?: number;
-  status: Status;
-  addedBy?: number;
-  queueIndex?: number;
-}
+// declare interface DBMovie {
+//   id: number; // IMDB id
+//   title: string;
+//   year: string;
+//   theatricalRelease?: number;
+//   streamingRelease?: number;
+//   status: Status;
+//   addedBy?: number;
+//   queueIndex?: number;
+// }
 
-declare interface DBShow {
-  id: number; // Hashed id using show IMDB id, season num and episode num
-  title: string;
-  addedBy?: number;
-}
+// declare interface DBShow {
+//   id: number; // Hashed id using show IMDB id, season num and episode num
+//   title: string;
+//   addedBy?: number;
+// }
 
-declare interface DBTorrent {
-  id: number;
-  magnet: string;
-  videoId: number;
-  quality: string;
-  resolution: string;
-  sizeMb: number;
-  status: TorrentStatus;
-  queueIndex?: number;
-}
+// declare interface DBTorrent {
+//   id: number;
+//   magnet: string;
+//   videoId: number;
+//   quality: string;
+//   resolution: string;
+//   sizeMb: number;
+//   status: TorrentStatus;
+//   queueIndex?: number;
+// }
 
+// TODO: Rename to IJob
 declare interface DBJob {
   id: number;
   type: JobType;
@@ -117,8 +118,8 @@ declare interface DBJob {
   isDone: boolean;
 }
 
-declare type DBMedia = DBMovie|DBShow;
-declare type DBVideo = DBMovie|DBEpisode;
+// declare type DBMedia = DBMovie|DBShow;
+// declare type DBVideo = DBMovie|DBEpisode;
 
 declare interface DBInsertOptions {
   status: Status;
@@ -129,34 +130,113 @@ declare interface DBSearchOptions {
   type?: MediaType;
 }
 
-declare type Movie = DBMovie & {
+declare interface IVideo {
+  id: number;
+  type: string;
+  status: Status;
+  addedBy?: number;
+  queueIndex?: number;
+
+  isMovie(): this is IMovie;
+  isEpisode(): this is IEpisode;
+  getDownloadPath(): string;
+  getFileSafeTitle(): string;
+  format(f: TextFormatter): string;
+  toString(): string;
+}
+
+declare interface IMedia {
+  id: number;
+  type: string;
+  title: string;
+  addedBy?: number;
+
+  isMovie(): this is IMovie;
+  isShow(): this is IShow;
+  getVideo(): IVideo|null;
+  getVideos(): IVideo[];
+  format(f: TextFormatter): string;
+  toString(): string;
+}
+
+declare type IMovie = IVideo & IMedia & {
   type: 'movie';
+  year: string;
+  theatricalRelease?: number;
+  streamingRelease?: number;
 }
 
-declare type Show = DBShow & {
+declare type IShow = IMedia & {
   type: 'tv';
-  episodes: Episode[];
+  episodes: IEpisode[];
+
+  sortEpisodes(): void;
+  filterEpisodes(filter: EpisodesDescriptor): void;
 }
 
-declare type Episode = DBEpisode & {
+declare type IEpisode = IVideo & {
   type: 'episode';
+  seasonNum: number;
+  episodeNum: number;
+  airDate?: number;
+  showId: number;
   showTitle: string;
 }
 
-declare type Media = Movie|Show;
-declare type Video = Movie|Episode;
+declare interface ITorrent {
+  id: number;
+  magnet: string;
+  videoId: number;
+  quality: string;
+  resolution: string;
+  sizeMb: number;
+  status: TorrentStatus;
+  queueIndex?: number;
 
-declare type TMovie = Movie & {
-  torrents: DBTorrent[];
+  getDownloadPath(): string;
+  format(f: TextFormatter, peers: number, progress: number): string;
+  toString(): string;
 }
 
-declare type TEpisode = Episode & {
-  torrents: DBTorrent[];
+declare type TVideo = IVideo & {
+  torrents: ITorrent[];
 }
 
-declare type TVideo = TMovie|TEpisode;
+declare type TMovie = TVideo & IMovie;
+declare type TEpisode = TVideo & IEpisode;
 
-declare type VTorrent = DBTorrent & { video: Video };
+declare type VTorrent = ITorrent & {
+  video: IVideo;
+}
+
+// declare type OMovie = DBMovie & {
+//   type: 'movie';
+// }
+
+// declare type OShow = DBShow & {
+//   type: 'tv';
+//   episodes: Episode[];
+// }
+
+// declare type OEpisode = DBEpisode & {
+//   type: 'episode';
+//   showTitle: string;
+// }
+
+// declare type OMedia = OMovie|OShow;
+// declare type OVideo = OMovie|OEpisode;
+
+// declare type TMovie = OMovie & {
+//   torrents: DBTorrent[];
+// }
+
+// declare type TEpisode = OEpisode & {
+//   torrents: DBTorrent[];
+// }
+
+// declare type TVideo = TMovie|TEpisode;
+
+// declare type VTorrent = DBTorrent & { video: OVideo };
 
 declare interface DownloadProgress {
   progress: number;  // (0-100)

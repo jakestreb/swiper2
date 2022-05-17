@@ -3,7 +3,7 @@ export default abstract class ResourcePriority<T> {
   public abstract predicate: (v: T, t: PartialTorrent) => boolean;
   public abstract scale: number;
 
-  constructor(public video: Video) {}
+  constructor(public video: IVideo) {}
 
   public getScore(t: PartialTorrent) {
     const index = this.ranks.findIndex(val => this.predicate(val, t));

@@ -5,7 +5,7 @@ type JobInsertArg = JobDescription & {
   initDelayS: number;
 }
 
-export default class Jobs extends Base {
+export default class Jobs extends Base<DBJob> {
   private static MAX_INTERVAL_SECONDS = 24 * 60 * 60;
 
   public async init(): Promise<this> {
@@ -25,7 +25,11 @@ export default class Jobs extends Base {
     return this;
   }
 
-  public async get(id: number): Promise<DBJob|null> {
+  public buildInstance(row: any): DBJob {
+    return row;
+  }
+
+  public async getOne(id: number): Promise<DBJob|null> {
     return this.db.get('SELECT * FROM jobs WHERE id=? LIMIT 1', [id]);
   }
 

@@ -1,4 +1,3 @@
-import * as mediaUtil from '../common/media';
 import * as util from '../common/util';
 import db from '../db';
 import TextFormatter from '../io/formatters/TextFormatter';
@@ -29,7 +28,7 @@ export async function removeMedia(swiper: Swiper, convo: Conversation, f: TextFo
     const match = util.matchYesNo(convo.input);
     if (match) {
       // If yes or no, shift the task to 'complete' it, then remove it from the database.
-      const media: Media = storedMedia.shift()!;
+      const media: IMedia = storedMedia.shift()!;
       if (match === 'yes') {
         await doRemoveMedia(swiper, media);
       }
@@ -88,8 +87,8 @@ export async function removeTorrent(swiper: Swiper, convo: Conversation, f: Text
 // Remove any download files
 // Remove any DB jobs
 // Remove any DB torrents
-async function doRemoveMedia(swiper: Swiper, media: Media): Promise<void> {
-  const promises = mediaUtil.getVideos(media).map(async video => {
+async function doRemoveMedia(swiper: Swiper, media: IMedia): Promise<void> {
+  const promises = media.getVideos().map(async video => {
     await swiper.worker.removeJobs(video.id);
     const withTorrents = await db.videos.addTorrents(video);
     if (withTorrents.torrents.length > 0) {
@@ -106,7 +105,7 @@ async function doRemoveMedia(swiper: Swiper, media: Media): Promise<void> {
 // Destroy active download of the torrent
 // Remove download files
 // If that was the last torrent, start searching for a new one
-async function doRemoveTorrent(swiper: Swiper, video: TVideo, torrent: DBTorrent): Promise<void> {
+async function doRemoveTorrent(swiper: Swiper, video: TVideo, torrent: ITorrent): Promise<void> {
     const t = { ...torrent, video };
     await swiper.downloadManager.destroyAndDeleteTorrent(t);
     await db.torrents.setStatus(t, 'removed');
@@ -125,21 +124,17 @@ async function addStoredMediaIfFound(convo: Conversation): Promise<void> {
   if (!mediaQuery) {
     throw new Error(`addStoredMediaIfFound requires mediaQuery`);
   }
-  // When searching stored media, we treat an unspecified episode list as all episodes.
-  if (!mediaQuery.episodes) {
-    mediaQuery.episodes = 'all';
-  }
   // Search the database for all matching Movies/Shows.
   if (!convo.storedMedia) {
     const searchType = mediaQuery.type === 'torrent' ? null : mediaQuery.type;
     let mediaItems = await db.media.search(mediaQuery.title || '*', { type: searchType || undefined });
-    mediaItems = mediaUtil.filterMediaEpisodes(mediaItems, mediaQuery.episodes);
+    mediaItems = filterMediaEpisodes(mediaItems, mediaQuery.episodes || 'all');
     if (mediaItems.length > 0) {
       convo.storedMedia = mediaItems;
       if (mediaQuery.type === 'torrent') {
         // Remove torrent must ask video-by-video
-        const videoArrays = convo.storedMedia.map(m => mediaUtil.getVideos(m));
-        const videos = ([] as Video[]).concat(...videoArrays)
+        const videoArrays = convo.storedMedia.map(m => m.getVideos());
+        const videos = ([] as IVideo[]).concat(...videoArrays)
           .filter(v => v.status === 'downloading');
         const withTorrents = await Promise.all(videos.map(v => db.videos.addTorrents(v)));
         convo.storedVideos = withTorrents.filter(v => v.torrents.length > 0);
@@ -148,13 +143,25 @@ async function addStoredMediaIfFound(convo: Conversation): Promise<void> {
   }
 }
 
-function formatConfirmMedia(media: Media, f: TextFormatter): string {
-  return `Remove ${f.res(media)}?`;
+function filterMediaEpisodes(media: IMedia[], desc: EpisodesDescriptor) {
+  return media.filter(m => {
+    if (m.isMovie()) {
+      return true;
+    } else if (m.isShow()) {
+      m.filterEpisodes(desc)
+      return m.episodes.length > 0;
+    }
+    throw new Error('Invalid media type');
+  });
+}
+
+function formatConfirmMedia(media: IMedia, f: TextFormatter): string {
+  return `Remove ${media.format(f)}?`;
 }
 
 function formatConfirmTorrent(t: VTorrent, peers: number, progress: number, f: TextFormatter): string {
   return [
-    `Remove torrent from ${f.res(t.video)}`,
-    `${f.torrentRow(t, peers, progress)}?`,
+    `Remove torrent from ${t.video.format(f)}`,
+    `${t.format(f, peers, progress)}?`,
   ].join('\n');
 }

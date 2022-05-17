@@ -1,13 +1,12 @@
 import db from '../db';
-import * as mediaUtil from '../common/media';
 import Swiper from '../Swiper';
 import TextFormatter from '../io/formatters/TextFormatter';
 
 export async function download(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   let isFullyUnreleased = false;
 
-  const media = convo.media as Media;
-  const video: Video|null = mediaUtil.getVideo(media);
+  const media = convo.media as IMedia;
+  const video: IVideo|null = media.getVideo();
   if (video) {
     const existing = await db.torrents.getForVideo(video.id);
     if (existing.length > 0) {
@@ -18,7 +17,7 @@ export async function download(this: Swiper, convo: Conversation, f: TextFormatt
         startAt: Date.now(),
       });
       return {
-        data: `Added new search for ${f.res(video)}`,
+        data: `Added new search for ${video.format(f)}`,
         final: true
       };
     }
@@ -34,7 +33,7 @@ export async function download(this: Swiper, convo: Conversation, f: TextFormatt
     // };
     await checkOrAwaitRelease(this, video);
   } else {
-    const show = media as Show;
+    const show = media as IShow;
     isFullyUnreleased = !show.episodes.some(e => !isUnreleased(e));
     await db.shows.insert(show, { addedBy: convo.id, status: 'searching' });
     // TODO: If insertion fails
@@ -50,21 +49,21 @@ export async function download(this: Swiper, convo: Conversation, f: TextFormatt
     }));
   }
   return {
-    data: `${isFullyUnreleased ? 'Scheduled' : 'Queued'} ${f.res(media)} for download`,
+    data: `${isFullyUnreleased ? 'Scheduled' : 'Queued'} ${media.format(f)} for download`,
     final: true
   };
 }
 
-function getDefinitiveRelease(video: Video): number|undefined {
-  return (video as Movie).streamingRelease || (video as Episode).airDate;
+function getDefinitiveRelease(video: IVideo): number|undefined {
+  return (video as IMovie).streamingRelease || (video as IEpisode).airDate;
 }
 
-function isUnreleased(video: Video) {
+function isUnreleased(video: IVideo) {
   const definitiveRelease = getDefinitiveRelease(video);
   return Boolean(definitiveRelease && new Date(definitiveRelease) > new Date());
 }
 
-function checkOrAwaitRelease(swiper: Swiper, video: Video) {
+function checkOrAwaitRelease(swiper: Swiper, video: IVideo) {
   const definitiveRelease = getDefinitiveRelease(video);
   if (definitiveRelease) {
     return swiper.worker.addJob({
@@ -76,6 +75,6 @@ function checkOrAwaitRelease(swiper: Swiper, video: Video) {
   return swiper.worker.addJob({
     type: 'CheckForRelease',
     videoId: video.id,
-    startAt: (video as Movie).theatricalRelease || Date.now(),
+    startAt: (video as IMovie).theatricalRelease || Date.now(),
   });
 }

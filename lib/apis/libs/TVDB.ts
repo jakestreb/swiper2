@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as log from '../../common/logger';
-import {sortEpisodes} from '../../common/media';
+import Show from '../../res/Show';
+import Episode from '../../res/Episode';
 
 // Return type of the TVDB database, with only fields we need defined.
 interface TVDBShow {
@@ -48,16 +49,14 @@ export default class TVDB {
     return series;
   }
 
-  public static async toShow(info: TVDBShow, imdbId: string): Promise<Show> {
-    const show: Show = {
+  public static async toShow(info: TVDBShow, imdbId: string): Promise<IShow> {
+    const show: IShow = new Show({
       id: convertImdbId(imdbId),
-      type: 'tv',
       title: info.seriesName,
       episodes: [],
-    };
-    const episodes: Episode[] = info.episodes.map(ep => ({
+    });
+    show.episodes = info.episodes.map(ep => new Episode({
       id: hashEpisodeId(show.id, ep.airedSeason, ep.airedEpisodeNumber),
-      type: 'episode',
       seasonNum: ep.airedSeason,
       episodeNum: ep.airedEpisodeNumber,
       airDate: ep.firstAired ? new Date(`${ep.firstAired} ${info.airsTime}`).getTime() : undefined,
@@ -66,7 +65,7 @@ export default class TVDB {
       status: 'identified',
       queueIndex: -1,
     }));
-    show.episodes.push(...sortEpisodes(episodes));
+    show.sortEpisodes();
     return show;
   }
 

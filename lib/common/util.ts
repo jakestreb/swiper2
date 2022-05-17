@@ -19,6 +19,16 @@ export function delay(ms: number): Promise<void> {
   });
 }
 
+export function getNextToAir(episodes: IEpisode[]): IEpisode|null {
+  const morning = getMorning();
+  return episodes.find(ep => ep.airDate && (new Date(ep.airDate) >= morning)) || null;
+}
+
+export function getLastAired(episodes: IEpisode[]): IEpisode|null {
+  const morning = getMorning();
+  return episodes.slice().reverse().find(ep => ep.airDate && (new Date(ep.airDate) < morning)) || null;
+}
+
 // Returns a Date representing 12AM of the local timezone day in UTC.
 export function getMorning(): Date {
   const offset = (new Date()).getTimezoneOffset();
