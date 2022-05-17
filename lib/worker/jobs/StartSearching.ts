@@ -16,7 +16,7 @@ export class StartSearching extends Base {
 		await this.worker.addJob({
 		  type: 'AddTorrent',
 		  videoId,
-		  startAt: Date.now(),
+		  startAt: new Date(),
 		});
 		return true;
 	}

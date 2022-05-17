@@ -8,7 +8,7 @@ interface BuildArg {
   episodeNum: number;
   showId: number;
   showTitle: string;
-  airDate?: number;
+  airDate?: Date;
   addedBy?: number;
   queueIndex?: number;
 }
@@ -19,7 +19,7 @@ export default class Episode extends Video implements IEpisode {
   public episodeNum: number;
   public showId: number;
   public showTitle: string;
-  public airDate?: number;
+  public airDate?: Date;
 
   constructor(values: BuildArg) {
     super(values);

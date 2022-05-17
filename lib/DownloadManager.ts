@@ -1,7 +1,7 @@
 import * as path from 'path';
 import db from './db';
-import * as log from './common/logger';
-import * as priorityUtil from './common/priority';
+import * as log from './log';
+import * as util from './util';
 import ExportHandler from './ExportHandler';
 import MemoryManager from './MemoryManager';
 import {DownloadClient} from './DownloadClient';
@@ -76,11 +76,11 @@ export default class DownloadManager {
     const withTorrents = await Promise.all(downloads.map(d => db.videos.addTorrents(d)));
 
     // Sort videos and video torrents by priority
-    const sorted = priorityUtil.sortByPriority(withTorrents, this.getVideoPriority.bind(this));
+    const sorted = util.sortByPriority(withTorrents, this.getVideoPriority.bind(this));
 
     const sortedTorrents: VTorrent[] = [];
     sorted.forEach(v => {
-      const ts = priorityUtil.sortByPriority(v.torrents, this.getTorrentPriority.bind(this));
+      const ts = util.sortByPriority(v.torrents, this.getTorrentPriority.bind(this));
       const vts = ts.map(t => ({ ...t, video: v }));
       sortedTorrents.push(...vts);
     });
@@ -192,7 +192,7 @@ export default class DownloadManager {
     await this.swiper.worker.addJob({
       type: 'DeleteVideo',
       videoId: video.id,
-      startAt: Date.now() + 24 * 60 * 60 * 1000,
+      startAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
     this.swiper.notifyClient(video.addedBy!, `${video} upload complete`);

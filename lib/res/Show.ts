@@ -1,6 +1,6 @@
 import TextFormatter from '../io/formatters/TextFormatter';
 import Media from './Media';
-import * as util from '../common/util';
+import * as util from '../util';
 
 interface BuildArg {
   id: number;

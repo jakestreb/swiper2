@@ -1,6 +1,5 @@
 import db from '../db';
-import * as priorityUtil from '../common/priority';
-import * as util from '../common/util';
+import * as util from '../util';
 import Swiper from '../Swiper';
 import TextFormatter from '../io/formatters/TextFormatter';
 
@@ -11,7 +10,7 @@ const HOURGLASS = '\u29D6';
 export async function queued(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   const downloading = await db.videos.getWithStatus('searching', 'downloading', 'uploading', 'completed');
   const downloadingWithTorrents = await Promise.all(downloading.map(d => db.videos.addTorrents(d)));
-  const sorted = priorityUtil.sortByPriority(downloadingWithTorrents, getSortPriority);
+  const sorted = util.sortByPriority(downloadingWithTorrents, getSortPriority);
 
   const downloadRows = await Promise.all(sorted.map(async video => {
     if (video.status === 'completed') {

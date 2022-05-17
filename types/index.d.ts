@@ -63,7 +63,13 @@ declare type TorrentResult = PartialTorrent & {
 declare interface JobDescription {
   type: JobType;
   videoId: number;
-  startAt: number;
+  startAt: Date;
+}
+
+declare interface Releases {
+  theatrical?: Date;
+  digital?: Date;
+  dvd?: Date;
 }
 
 // declare interface DBEpisode {
@@ -105,16 +111,15 @@ declare interface JobDescription {
 //   queueIndex?: number;
 // }
 
-// TODO: Rename to IJob
-declare interface DBJob {
+declare interface IJob {
   id: number;
   type: JobType;
   videoId: number;
   schedule: JobSchedule;
   intervalS: number;
   runCount: number;
-  startAt: number;
-  nextRunAt: number;
+  startAt: Date;
+  nextRunAt: Date;
   isDone: boolean;
 }
 
@@ -162,8 +167,7 @@ declare interface IMedia {
 declare type IMovie = IVideo & IMedia & {
   type: 'movie';
   year: string;
-  theatricalRelease?: number;
-  streamingRelease?: number;
+  releases: Releases;
 }
 
 declare type IShow = IMedia & {
@@ -178,7 +182,7 @@ declare type IEpisode = IVideo & {
   type: 'episode';
   seasonNum: number;
   episodeNum: number;
-  airDate?: number;
+  airDate?: Date;
   showId: number;
   showTitle: string;
 }

@@ -5,7 +5,7 @@ type JobInsertArg = JobDescription & {
   initDelayS: number;
 }
 
-export default class Jobs extends Base<DBJob> {
+export default class Jobs extends Base<IJob> {
   private static MAX_INTERVAL_SECONDS = 24 * 60 * 60;
 
   public async init(): Promise<this> {
@@ -25,23 +25,23 @@ export default class Jobs extends Base<DBJob> {
     return this;
   }
 
-  public buildInstance(row: any): DBJob {
+  public buildInstance(row: any): IJob {
     return row;
   }
 
-  public async getOne(id: number): Promise<DBJob|null> {
+  public async getOne(id: number): Promise<IJob|null> {
     return this.db.get('SELECT * FROM jobs WHERE id=? LIMIT 1', [id]);
   }
 
   public async getNextRun(videoId: number, type: JobType): Promise<Date|null> {
-    const jobs: DBJob[] = await this.db.all('SELECT * FROM jobs WHERE videoId=?', [videoId]);
+    const jobs: IJob[] = await this.db.all('SELECT * FROM jobs WHERE videoId=?', [videoId]);
     const nextRuns = jobs
       .filter(job => job.type === type)
-      .map(job => job.nextRunAt);
+      .map(job => job.nextRunAt.getTime());
     return nextRuns.length > 0 ? new Date(Math.min(...nextRuns)) : null;
   }
 
-  public getNext(): Promise<DBJob|null> {
+  public getNext(): Promise<IJob|null> {
     return this.db.get('SELECT * FROM jobs WHERE isDone=0 ORDER BY nextRunAt LIMIT 1');
   }
 
@@ -54,7 +54,7 @@ export default class Jobs extends Base<DBJob> {
       [arg.type, arg.videoId, arg.schedule, arg.initDelayS, 0, arg.startAt, arg.startAt]);
   }
 
-  public async reschedule(job: DBJob): Promise<void> {
+  public async reschedule(job: IJob): Promise<void> {
     const { id, schedule, intervalS } = job;
     if (schedule === 'once') {
       return;

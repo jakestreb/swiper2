@@ -1,6 +1,6 @@
-import * as util from '../common/util';
 import Swiper from '../Swiper';
 import TextFormatter from '../io/formatters/TextFormatter';
+import * as util from '../util';
 
 const FULL = '\u25A0';
 const HALF = '\u25A4';
@@ -25,15 +25,15 @@ export async function info(this: Swiper, convo: Conversation, f: TextFormatter):
 }
 
 function formatMovie(movie: IMovie, f: TextFormatter) {
-  const { title, theatricalRelease, streamingRelease } = movie;
-  const theatrical = theatricalRelease && new Date(theatricalRelease);
-  const streaming = streamingRelease && new Date(streamingRelease);
+  const { title, releases } = movie;
+  const theatrical = releases.theatrical && new Date(releases.theatrical);
+  const digital = releases.digital && new Date(releases.digital);
 
   // TODO: Add expected date
   return [
     f.u(title),
     theatrical ? [f.b('Theatrical'), f.i(util.getAiredStr(theatrical))].join(' ') : '',
-    streaming ? [f.b('Streaming'), f.i(util.getAiredStr(streaming))].join(' ') : '',
+    digital ? [f.b('Streaming'), f.i(util.getAiredStr(digital))].join(' ') : '',
   ]
   .filter(x => x)
   .join('\n');

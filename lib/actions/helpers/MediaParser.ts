@@ -1,6 +1,6 @@
 import MediaSearch from '../../apis/MediaSearch';
-import {execCapture, removePrefix} from '../../common/util';
-import * as logger from '../../common/logger';
+import * as util from '../../util';
+import * as logger from '../../log';
 import TextFormatter from '../../io/formatters/TextFormatter';
 import EpisodeParser from './EpisodeParser';
 
@@ -74,13 +74,13 @@ export default class MediaParser {
         type = keyword;
         input = splitStr.slice(1).join(' ');
       }
-      const [title] = execCapture(input, titleFinder);
+      const [title] = util.execCapture(input, titleFinder);
       if (!title) {
         return { err: 'Unable to parse content' };
       }
-      let rem = removePrefix(input, title);
-      const [year] = execCapture(rem, yearFinder);
-      rem = removePrefix(rem, year || '');
+      let rem = util.removePrefix(input, title);
+      const [year] = util.execCapture(rem, yearFinder);
+      rem = util.removePrefix(rem, year || '');
 
       const seasonEpisodeStr = rem.trim();
       // If the seasonEpisode string was included and the type is still unknown, set it to 'tv'.

@@ -14,7 +14,7 @@ export async function download(this: Swiper, convo: Conversation, f: TextFormatt
       await this.worker.addJob({
         type: 'AddTorrent',
         videoId: video.id,
-        startAt: Date.now(),
+        startAt: new Date(),
       });
       return {
         data: `Added new search for ${video.format(f)}`,
@@ -54,8 +54,8 @@ export async function download(this: Swiper, convo: Conversation, f: TextFormatt
   };
 }
 
-function getDefinitiveRelease(video: IVideo): number|undefined {
-  return (video as IMovie).streamingRelease || (video as IEpisode).airDate;
+function getDefinitiveRelease(video: IVideo): Date|undefined {
+  return (video as IMovie).releases.digital || (video as IEpisode).airDate;
 }
 
 function isUnreleased(video: IVideo) {
@@ -75,6 +75,6 @@ function checkOrAwaitRelease(swiper: Swiper, video: IVideo) {
   return swiper.worker.addJob({
     type: 'CheckForRelease',
     videoId: video.id,
-    startAt: (video as IMovie).theatricalRelease || Date.now(),
+    startAt: (video as IMovie).releases.theatrical || new Date(),
   });
 }

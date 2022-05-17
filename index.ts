@@ -4,7 +4,7 @@ dotenv.config();
 import {EventEmitter} from 'events';
 EventEmitter.defaultMaxListeners = Infinity; // Hides a repeated warning from 'webtorrent'
 
-import * as log from './lib/common/logger';
+import * as log from './lib/log';
 import Swiper from './lib/Swiper';
 
 // import * as heapProfile from 'heap-profile';

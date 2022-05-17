@@ -1,5 +1,5 @@
 import ResourcePriority from './ResourcePriority';
-import * as util from '../../common/util';
+import * as util from '../../util';
 
 class ResolutionPriority extends ResourcePriority<string> {
   public ranks = ['1080p', '720p'];

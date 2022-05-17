@@ -2,8 +2,8 @@ import * as fs from 'fs-extra';
 import Client from 'ftp';
 import * as path from 'path';
 
-import * as log from './common/logger';
-import * as fileUtil from './common/files';
+import * as log from './log';
+import * as util from './util';
 
 export default class ExportHandler {
 
@@ -33,7 +33,7 @@ export default class ExportHandler {
       // The FTP copy process creates any folders needed in the FTP directory, but the
       // normal copy process does not.
       log.debug(`exportVideo: Creating missing folders in export directory`);
-      await fileUtil.createSubdirs(exportRoot, dirs);
+      await util.createSubdirs(exportRoot, dirs);
     }
     const exportPath = path.join(exportRoot, dirs);
 

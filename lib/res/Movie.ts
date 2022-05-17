@@ -6,8 +6,7 @@ interface BuildArg {
   status: Status;
   title: string;
   year: string;
-  theatricalRelease?: number;
-  streamingRelease?: number;
+  releases: Releases;
   queueIndex?: number;
 }
 
@@ -15,16 +14,14 @@ export default class Movie extends Video implements IVideo, IMedia {
   public type: 'movie' = 'movie';
   public title: string;
   public year: string;
-  public theatricalRelease?: number;
-  public streamingRelease?: number;
+  public releases: Releases;
 
   constructor(values: BuildArg) {
     super(values);
 
     this.title = values.title;
     this.year = values.year;
-    this.theatricalRelease = values.theatricalRelease;
-    this.streamingRelease = values.streamingRelease;
+    this.releases = values.releases;
   }
 
   public isMovie(): this is IMovie {

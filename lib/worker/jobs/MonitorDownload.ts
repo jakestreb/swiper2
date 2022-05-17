@@ -1,4 +1,4 @@
-import * as util from '../../common/util';
+import * as util from '../../util';
 import db from '../../db';
 import Base from './Base';
 

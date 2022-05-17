@@ -1,5 +1,5 @@
-import * as log from './common/logger';
-import {splitFirst} from './common/util';
+import * as log from './log';
+import * as util from './util';
 import db from './db';
 import Worker from './worker';
 import CommManager from './io/CommManager';
@@ -44,7 +44,7 @@ export default class Swiper {
     // Initialize the conversation if it does not exist and get the command function.
     const convo = this.updateConversation(id);
     const existingCommandFn = this.conversations[id].commandFn;
-    const [command, input] = splitFirst(msg);
+    const [command, input] = util.splitFirst(msg);
     const commandFn = this.getCommandFn(convo, command);
 
     // Run a new command or an existing command.

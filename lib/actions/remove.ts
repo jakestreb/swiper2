@@ -1,7 +1,6 @@
-import * as util from '../common/util';
+import * as matchUtil from './helpers/matchUtil';
 import db from '../db';
 import TextFormatter from '../io/formatters/TextFormatter';
-
 import Swiper from '../Swiper';
 
 export async function remove(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
@@ -25,7 +24,7 @@ export async function removeMedia(swiper: Swiper, convo: Conversation, f: TextFo
 
   // Ask the user about a media item if they are not all dealt with.
   if (storedMedia.length > 0 && convo.input) {
-    const match = util.matchYesNo(convo.input);
+    const match = matchUtil.matchYesNo(convo.input);
     if (match) {
       // If yes or no, shift the task to 'complete' it, then remove it from the database.
       const media: IMedia = storedMedia.shift()!;
@@ -52,7 +51,7 @@ export async function removeTorrent(swiper: Swiper, convo: Conversation, f: Text
   const storedVideos = convo.storedVideos!;
   // Ask the user about a media item if they are not all dealt with.
   if (storedVideos.length > 0 && convo.input) {
-    const match = util.matchYesNo(convo.input);
+    const match = matchUtil.matchYesNo(convo.input);
     if (match) {
       // If yes or no, shift the task to 'complete' it, then remove it from the database.
       const video: TVideo = storedVideos[0];
@@ -113,7 +112,7 @@ async function doRemoveTorrent(swiper: Swiper, video: TVideo, torrent: ITorrent)
       await swiper.worker.addJob({
         type: 'StartSearching',
         videoId: video.id,
-        startAt: Date.now(),
+        startAt: new Date(),
       });
     }
 }

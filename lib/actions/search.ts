@@ -1,6 +1,7 @@
 import db from '../db';
-import * as log from '../common/logger';
-import * as util from '../common/util';
+import * as matchUtil from './helpers/matchUtil';
+import * as log from '../log';
+import * as util from '../util';
 import Swiper from '../Swiper';
 import TorrentSearch from '../apis/TorrentSearch';
 import TextFormatter from '../io/formatters/TextFormatter';
@@ -51,7 +52,7 @@ export async function search(this: Swiper, convo: Conversation, f: TextFormatter
   if (startIndex + PER_PAGE < convo.torrents.length) {
     navs.push({value: 'next', regex: /\bn(ext)?\b/gi});
   }
-  const match = util.matchNumber(convo.input, navs);
+  const match = matchUtil.matchNumber(convo.input, navs);
   if (match === 'next') {
     // Go forward a page.
     convo.pageNum += 1;

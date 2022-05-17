@@ -2,7 +2,8 @@ import TextFormatter from './TextFormatter';
 
 export default class TelegramFormatter extends TextFormatter {
   public sp(length: number = 1) {
-    return `\`${' '.repeat(length)}\``;
+  	const f = this;
+    return f.m(' '.repeat(length));
   }
 
 	// Bold

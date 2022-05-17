@@ -1,12 +1,12 @@
 import db from '../db';
-import * as log from '../common/logger';
+import * as log from '../log';
 import BaseJob from './jobs/Base';
 import * as jobs from './jobs';
 import Swiper from '../Swiper';
 
 export default class Worker {
   private jobs: {[type: string]: typeof BaseJob} = jobs;
-  private nextRunTs: number|null = null;
+  private nextRun: Date|null = null;
   private currentTimeout: NodeJS.Timeout|null = null;
 
   private pingInProgress: boolean = false;
@@ -44,21 +44,21 @@ export default class Worker {
     if (!this.pingInProgress) {
       this.pingInProgress = true;
       this.pingLock = db.jobs.getNext();
-      const nextJob: DBJob = await this.pingLock;
-      if (nextJob && (!this.nextRunTs || nextJob.nextRunAt < this.nextRunTs)) {
+      const nextJob: IJob = await this.pingLock;
+      if (nextJob && (!this.nextRun || nextJob.nextRunAt < this.nextRun)) {
         clearTimeout(this.currentTimeout!);
-        this.nextRunTs = nextJob.nextRunAt;
+        this.nextRun = nextJob.nextRunAt;
         this.currentTimeout = setTimeout(async () => this.runJob(nextJob),
-          this.nextRunTs - Date.now());
+          this.nextRun.getTime() - Date.now());
       }
       this.pingInProgress = false;
     }
   }
 
-  private async runJob(job: DBJob) {
+  private async runJob(job: IJob) {
     log.debug(`Running ${job.type} job ${job.videoId}`);
     await db.jobs.markDone(job.id);
-    this.nextRunTs = null;
+    this.nextRun = null;
     this.currentTimeout = null;
     this.doRunJob(job)
       .catch(err => {
@@ -67,7 +67,7 @@ export default class Worker {
     this.start();
   }
 
-  private async doRunJob(job: DBJob): Promise<void> {
+  private async doRunJob(job: IJob): Promise<void> {
     if (!await db.jobs.getOne(job.id)) {
       // Check if the job was since removed
       return;

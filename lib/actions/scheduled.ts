@@ -1,5 +1,5 @@
 import db from '../db';
-import * as util from '../common/util';
+import * as util from '../util';
 import Swiper from '../Swiper';
 import TextFormatter from '../io/formatters/TextFormatter';
 
@@ -31,7 +31,7 @@ export async function scheduled(this: Swiper, convo: Conversation, f: TextFormat
 
 function formatMovieRow(movie: IMovie, f: TextFormatter) {
   // TODO: Calculate expected release
-  const release = movie.theatricalRelease;
+  const release = movie.releases.theatrical;
   const items = [getIcon(release), movie.format(f)];
   if (release) {
     const airedStr = util.getAiredStr(new Date(release));
@@ -53,7 +53,7 @@ function formatShowRow(show: IShow, f: TextFormatter) {
   return items.join(' ');
 }
 
-function getIcon(release?: number) {
-  const isChecking = !release || (release <= Date.now());
+function getIcon(release?: Date) {
+  const isChecking = !release || (release <= new Date());
   return isChecking ? CIRCLE_ARROW : HOURGLASS;
 }

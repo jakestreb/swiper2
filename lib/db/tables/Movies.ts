@@ -8,7 +8,8 @@ export default class Movies extends Base<IMovie> {
       title TEXT,
       year TEXT,
       theatricalRelease DATETIME,
-      streamingRelease DATETIME,
+      digitalRelease DATETIME,
+      dvdRelease DATETIME,
       status TEXT,
       queueIndex INTEGER DEFAULT -1,
       addedBy INTEGER,
@@ -49,9 +50,9 @@ export default class Movies extends Base<IMovie> {
 
   public async insert(arg: IMovie, options: DBInsertOptions): Promise<void> {
     await this.db.run('INSERT INTO movies '
-      + '(id, title, year, theatricalRelease, streamingRelease, status, addedBy) '
+      + '(id, title, year, theatricalRelease, digitalRelease, status, addedBy) '
       + 'VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [arg.id, arg.title, arg.year, arg.theatricalRelease, arg.streamingRelease,
+        [arg.id, arg.title, arg.year, arg.releases.theatrical, arg.releases.digital,
         options.status, options.addedBy]);
   }
 

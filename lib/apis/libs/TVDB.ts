@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as log from '../../common/logger';
+import * as log from '../../log';
 import Show from '../../res/Show';
 import Episode from '../../res/Episode';
 
@@ -59,7 +59,7 @@ export default class TVDB {
       id: hashEpisodeId(show.id, ep.airedSeason, ep.airedEpisodeNumber),
       seasonNum: ep.airedSeason,
       episodeNum: ep.airedEpisodeNumber,
-      airDate: ep.firstAired ? new Date(`${ep.firstAired} ${info.airsTime}`).getTime() : undefined,
+      airDate: ep.firstAired ? new Date(`${ep.firstAired} ${info.airsTime}`) : undefined,
       showId: show.id,
       showTitle: show.title,
       status: 'identified',

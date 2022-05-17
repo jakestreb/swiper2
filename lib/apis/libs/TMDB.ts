@@ -1,6 +1,6 @@
 import axios from 'axios';
-import * as log from '../../common/logger';
-import {getDateFromStr} from '../../common/util';
+import * as log from '../../log';
+import * as util from '../../util';
 import Movie from '../../res/Movie';
 
 interface TMDBMovie {
@@ -38,7 +38,7 @@ export default class TMDB {
     const imdbId = await this.getImdbId(info);
     const url = this.getMovieReleaseDateUrl(info.id);
 
-    let streamingRelease;
+    let digitalRelease;
     try {
       const data = await this.makeRequest<any>(url);
       const usaResult = data.results.find((_res: any) => _res.iso_3166_1 === 'US');
@@ -57,19 +57,22 @@ export default class TMDB {
       if (relevant.length === 0) {
         throw new Error('No results');
       }
-      streamingRelease = relevant[0].release_date;
+      digitalRelease = relevant[0].release_date;
     } catch (err) {
       log.debug(`TMDB.toMovie fetching release date failed: ${err}`);
     }
-    const theatricalReleaseDate = getDateFromStr(info.release_date);
-    const streamingReleaseDate = getDateFromStr(streamingRelease);
+
+    // TODO: Add DVD date
+    const releases = {
+      theatrical: util.parseDate(info.release_date),
+      digital: util.parseDate(digitalRelease),
+    };
 
     return new Movie({
       id: parseImdbId(imdbId),
       title: info.title,
       year: getYear(info.release_date),
-      theatricalRelease: theatricalReleaseDate ? theatricalReleaseDate.getTime() : undefined,
-      streamingRelease: streamingReleaseDate ? streamingReleaseDate.getTime() : undefined,
+      releases,
       status: 'identified',
       queueIndex: -1,
     });
@@ -135,7 +138,7 @@ function parseImdbId(imdbId: string): number {
 }
 
 function getYear(tmdbDate: string): string {
-  const date = getDateFromStr(tmdbDate);
+  const date = util.parseDate(tmdbDate);
   return date ? `${date.getFullYear()}` : '';
 }
 

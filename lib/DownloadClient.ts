@@ -3,8 +3,8 @@ import getFolderSize from 'get-folder-size';
 import rmfr from 'rmfr';
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
-import * as log from './common/logger';
-import * as fileUtil from './common/files';
+import * as log from './log';
+import * as util from './util';
 import { promisify } from 'util';
 
 const getFolderSizeAsync = promisify(getFolderSize);
@@ -28,7 +28,7 @@ export class DownloadClient extends events.EventEmitter {
   public async download(vt: VTorrent): Promise<void> {
     log.debug(`DownloadClient: download(${vt.video})`);
     const subDirs = vt.getDownloadPath();
-    const downloadPath = await fileUtil.createSubdirs(this.downloadRoot, subDirs);
+    const downloadPath = await util.createSubdirs(this.downloadRoot, subDirs);
     return new Promise((resolve, reject) => {
       this.client.add(vt.magnet, { path: downloadPath }, wtTorrent => {
         wtTorrent.on('done', async () => {

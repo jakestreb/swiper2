@@ -18,3 +18,13 @@ export async function createSubdirs(existingPath: string, subPath: string): Prom
   }
   return createdPath;
 }
+
+// Format size with most appropriate suffix
+export function formatSize(sizeMb: number): string {
+  if (sizeMb < 1) {
+    return `${sizeMb * 1024}KB`;
+  } else if (sizeMb < 1024) {
+    return `${sizeMb}MB`;
+  }
+  return `${sizeMb / 1024}GB`;
+}

@@ -1,6 +1,6 @@
 import ptn from 'parse-torrent-name';
-import {delay, padZeros} from '../common/util';
-import * as log from '../common/logger';
+import * as util from '../util';
+import * as log from '../log';
 import ConcurrencyLock from './helpers/ConcurrencyLock';
 import TorrentRanker from './helpers/TorrentRanker';
 import db from '../db';
@@ -80,7 +80,7 @@ export default class TorrentSearch {
       } catch (err) {
         log.error(`TorrentSearch search failed: ${err}`);
         if (retries > 0) {
-          await delay(100);
+          await util.delay(100);
           log.debug(`TorrentSearch: retrying search ${video}`);
           return doRetrySearch(retries - 1);
         }
@@ -163,4 +163,8 @@ function getSizeInMb(sizeStr: string): number|null {
 
 function notNull<T>(value: T|null|undefined): value is T {
     return value !== null && value !== undefined;
+}
+
+function padZeros(int: number): string {
+  return ('00' + int).slice(-2);
 }

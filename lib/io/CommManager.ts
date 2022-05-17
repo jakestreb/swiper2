@@ -1,6 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import * as readline from 'readline';
-import * as log from '../common/logger';
+import * as log from '../log';
 import TextFormatter from './formatters/TextFormatter';
 import TelegramFormatter from './formatters/TelegramFormatter';
 
