@@ -18,7 +18,6 @@ interface TMDBShow {
 
 type TMDBMedia = TMDBMovie | TMDBShow;
 
-// TODO: Evaluate API usage
 export default class TMDB {
   private static API_KEY = process.env.TMDB_ID;
   private static AUTH_TOKEN = process.env.TMDB_READ_ACCESS;
@@ -145,71 +144,3 @@ function getYear(tmdbDate: string): string {
 function isMovie(tmdbMedia: TMDBMedia): tmdbMedia is TMDBMovie {
   return !(tmdbMedia as any).first_air_date;
 }
-
-// interface TMDBPopularity {
-//   vote_count: number;
-//   vote_average: number;
-//   title: string;
-//   popularity: number;
-//   adult: boolean;
-//   release_date: string;
-// }
-
-// interface TMDBResult {
-//   movies: Movie[];
-//   page: number;
-//   total_pages: number;
-// }
-
-// export async function getPopularReleasedBetween(
-//   startDate: Date,
-//   endDate: Date,
-//   page: number = 1
-// ): Promise<TMDBResult> {
-//   // Vote count is a weird arbitrary metric that helps indicate how popular a movie is.
-//   const minVoteCount = 100;
-//   const startDateStr = getYMDString(startDate);
-//   const endDateStr = getYMDString(endDate);
-//   const url = `https://api.themoviedb.org/4/discover/movie?primary_release_date.gte=${startDateStr}`
-//     + `&primary_release_date.lte=${endDateStr}&vote_count.gte=${minVoteCount}`
-//     + `&sort_by=release_date.desc&include_adult=false&page=${page}`;
-//   let response: any;
-//   try {
-//     response = await axios.get(url, {
-//       headers: { Authorization: `Bearer ${process.env.TMDB_READ_ACCESS}` },
-//     });
-//   } catch (err) {
-//     log.error(`TMDB is not responding to requests: ${err}`);
-//   }
-//   // If the query fails or returns no movies, return no movies.
-//   const tmdbResult = response.data;
-//   if (!tmdbResult || !tmdbResult.results) {
-//     return {
-//       movies: [],
-//       total_pages: 0,
-//       page: 1
-//     };
-//   }
-//   // Filter out any adult movies just in case.
-//   const tmdbArray: TMDBPopularity[] = tmdbResult.results;
-//   // Identify each TMDB movie.
-//   const requestArray = tmdbArray.map(tmdb => identifyMedia({
-//     title: tmdb.title,
-//     type: 'movie',
-//     episodes: null,
-//     year: getTMDBYear(tmdb.release_date)
-//   }));
-//   const responses: DataResponse<Media>[] = await Promise.all(requestArray);
-//   const movies = responses.filter(r => r.data).map(r => r.data) as Movie[];
-//   return {
-//     movies,
-//     total_pages: tmdbResult.total_pages,
-//     page: tmdbResult.page
-//   };
-// }
-
-// function getYMDString(date: Date): string {
-//   const month = ('0' + (date.getMonth() + 1)).slice(-2);
-//   const day = ('0' + date.getDate()).slice(-2);
-//   return `${date.getFullYear()}-${month}-${day}`;
-// }
