@@ -185,7 +185,7 @@ export default class DownloadManager {
 
     // Export and cleanup torrents
     await this.exportHandler.export({ ...completed, video });
-    await this.downloadClient.destroyAndDeleteFiles({ ...video, torrents });
+    await this.downloadClient.destroyAndDeleteVideo({ ...video, torrents });
     await db.torrents.delete(...torrents.map(t => t.id));
 
     // Mark video as completed and delete in 24 hours

@@ -1,7 +1,7 @@
 import db from '../db';
 import * as log from '../common/logger';
-import {stringify} from '../common/media';
-import {matchNumber} from '../common/util';
+import * as mediaUtil from '../common/media';
+import * as util from '../common/util';
 import Swiper from '../Swiper';
 import TorrentSearch from '../apis/TorrentSearch';
 import TextFormatter from '../io/formatters/TextFormatter';
@@ -22,7 +22,7 @@ export async function search(this: Swiper, convo: Conversation, f: TextFormatter
 
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
-    log.info(`Searching for ${stringify(video)} downloads`);
+    log.info(`Searching for ${mediaUtil.stringify(video)} downloads`);
     convo.torrents = await TorrentSearch.search(video);
     convo.pageNum = 0;
   }
@@ -52,7 +52,7 @@ export async function search(this: Swiper, convo: Conversation, f: TextFormatter
   if (startIndex + PER_PAGE < convo.torrents.length) {
     navs.push({value: 'next', regex: /\bn(ext)?\b/gi});
   }
-  const match = matchNumber(convo.input, navs);
+  const match = util.matchNumber(convo.input, navs);
   if (match === 'next') {
     // Go forward a page.
     convo.pageNum += 1;

@@ -165,7 +165,8 @@ export default class Swiper {
     }
     // Search the database for all matching Movies/Shows.
     if (!convo.storedMedia) {
-      let mediaItems = await db.media.search(mediaQuery.title, { type: mediaQuery.type || undefined });
+      const mediaType = mediaQuery.type === 'torrent' ? null : mediaQuery.type;
+      let mediaItems = await db.media.search(mediaQuery.title, { type: mediaType || undefined });
       mediaItems = mediaUtil.filterMediaEpisodes(mediaItems, mediaQuery.episodes);
       if (mediaItems.length > 0) {
         convo.storedMedia = mediaItems;

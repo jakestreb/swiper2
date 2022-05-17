@@ -28,7 +28,8 @@ export default class TMDB {
   public static async search(info: MediaQuery): Promise<TMDBMedia> {
     log.debug(`TMDB.search ${info.title}`);
     const { title, year, type } = info;
-    const url = this.getSearchUrl(title, year, type);
+    const mediaType = type === 'torrent' ? null : type;
+    const url = this.getSearchUrl(title, year, mediaType);
     return this.makeMediaRequest(url, year);
   }
 

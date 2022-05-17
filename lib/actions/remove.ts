@@ -1,7 +1,6 @@
 import * as mediaUtil from '../common/media';
 import * as util from '../common/util';
 import db from '../db';
-import worker from '../worker';
 import TextFormatter from '../io/formatters/TextFormatter';
 
 import Swiper from '../Swiper';
@@ -22,7 +21,7 @@ export async function remove(this: Swiper, convo: Conversation, f: TextFormatter
   return removeMedia(this, convo, f);
 }
 
-export async function removeMedia(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
+export async function removeMedia(swiper: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   const storedMedia = convo.storedMedia!;
 
   // Ask the user about a media item if they are not all dealt with.
@@ -32,7 +31,7 @@ export async function removeMedia(this: Swiper, convo: Conversation, f: TextForm
       // If yes or no, shift the task to 'complete' it, then remove it from the database.
       const media: Media = storedMedia.shift()!;
       if (match === 'yes') {
-        await doRemoveMedia(this, media);
+        await doRemoveMedia(swiper, media);
       }
     }
   }
@@ -50,7 +49,7 @@ export async function removeMedia(this: Swiper, convo: Conversation, f: TextForm
   };
 }
 
-export async function removeTorrent(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
+export async function removeTorrent(swiper: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   const storedVideos = convo.storedVideos!;
   // Ask the user about a media item if they are not all dealt with.
   if (storedVideos.length > 0 && convo.input) {
@@ -63,7 +62,7 @@ export async function removeTorrent(this: Swiper, convo: Conversation, f: TextFo
         storedVideos.shift();
       }
       if (match === 'yes') {
-        await doRemoveTorrent(this, video, torrent);
+        await doRemoveTorrent(swiper, video, torrent);
       }
     }
   }
@@ -72,7 +71,7 @@ export async function removeTorrent(this: Swiper, convo: Conversation, f: TextFo
   if (storedVideos.length > 0) {
     const video = storedVideos[0];
     const torrent = storedVideos[0].torrents[0];
-    const { progress, peers } = this.downloadManager.getProgress(torrent);
+    const { progress, peers } = swiper.downloadManager.getProgress(torrent);
     return {
       data: formatConfirmTorrent({ ...torrent, video }, peers, progress, f),
     };
