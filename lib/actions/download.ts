@@ -65,17 +65,17 @@ function isUnreleased(video: IVideo) {
 }
 
 function checkOrAwaitRelease(swiper: Swiper, video: IVideo) {
-  const definitiveRelease = getDefinitiveRelease(video);
-  if (definitiveRelease) {
+  const airDate = (video as IEpisode).airDate;
+  if (airDate) {
     return swiper.worker.addJob({
       type: 'StartSearching',
       videoId: video.id,
-      startAt: definitiveRelease,
+      startAt: airDate,
     });
   }
   return swiper.worker.addJob({
     type: 'CheckForRelease',
     videoId: video.id,
-    startAt: (video as IMovie).releases.theatrical || new Date(),
+    startAt: video.isMovie() ? video.getExpectedRelease() : new Date(),
   });
 }

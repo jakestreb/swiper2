@@ -112,7 +112,7 @@ function formatTorrent(torrent: TorrentResult, f: TextFormatter): string {
   const peers = `${torrent.seeders} peers`;
   const size = util.formatSize(torrent.sizeMb);
   const parsedDate = util.parseDate(torrent.uploadTime);
-  const date = parsedDate ? util.getAiredStr(parsedDate) : torrent.uploadTime;
+  const date = parsedDate ? util.formatDateSimple(parsedDate) : torrent.uploadTime;
   const rating = STAR.repeat(torrent.starRating);
 
   const data = f.dataRow(peers, size, date, rating);

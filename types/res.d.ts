@@ -31,6 +31,8 @@ declare type IMovie = IVideo & IMedia & {
   type: 'movie';
   year: string;
   releases: Releases;
+
+  getExpectedRelease(): Date;
 }
 
 declare type IShow = IMedia & {

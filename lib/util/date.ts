@@ -2,6 +2,7 @@ import DateParser from './helpers/DateParser';
 
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const oneDay = 24 * 60 * 60 * 1000;
 
 export function parseDate(s: string): Date|null {
   return DateParser.parse(s);
@@ -47,8 +48,21 @@ export function formatWaitTime(date: Date): string {
   return `${h / 24}d`;
 }
 
+export function formatDateSimple(date: Date): string {
+  const month = months[date.getMonth()];
+  const calDay = date.getDate();
+  const diff = date.getTime() - getMorning().getTime();
+  const year = date.getFullYear();
+  if (diff > 0 && diff < oneDay) {
+    return 'Today';
+  }
+  if (year === new Date().getFullYear()) {
+    return `${month} ${calDay}`;
+  }
+  return `${month} ${calDay} ${year}`;
+}
+
 export function getAiredStr(date: Date): string {
-  const oneDay = 86400000;
   const oneWeek = 7 * oneDay;
   const sixMonths = 182 * oneDay;
   const weekday = weekdays[date.getDay()];
