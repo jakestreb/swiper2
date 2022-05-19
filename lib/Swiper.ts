@@ -36,15 +36,6 @@ export default class Swiper {
     this.worker.start();
     this.commManager = new CommManager(this.handleMsg.bind(this));
     this.commManager.start();
-
-
-    // 2022-05-10 04:26:29
-    // 2022-05-10 03:22:07
-    // 5am May. 10th
-    // 2022-05-10 04:09:25 +0000
-    util.parseDate('2022-05-10 04:26:29');
-    util.parseDate('2022-05-10 04:09:25 +0000');
-    util.parseDate('5am May 10');
   }
 
   public async handleMsg(id: number, msg?: string): Promise<void> {

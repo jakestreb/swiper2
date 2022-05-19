@@ -3,7 +3,7 @@
 // 2022-05-10 04:26:29
 // 5pm May. 10th
 // 2022-05-10 04:09:25 +0000
-
+// Tue, 10 May 2022 04:58:32 GMT
 type Part = 'M'|'D'|'Y'|'h'|'m'|'s'|'cf';
 
 export default class DateParser {
@@ -60,17 +60,17 @@ export default class DateParser {
       ['D', 'M', 'Y']
     ],
     [
-      // September 2nd 2020
-      // May 4 '22
-      new RegExp(`\\b(${this.anyMonth})\\D+(\\d+)\\D*(\\d{2,4})?\\b`, 'i'),
-      ['M', 'D', 'Y']
-    ],
-    [
       // 2 September 2020
       // 4 May '22
-      new RegExp(`\\b(\\d+)\\D+(${this.anyMonth})\\D*(\\d{2,4})?\\b`, 'i'),
+      new RegExp(`\\b(\\d+)\\D+(${this.anyMonth})(?:\\D+(\\d{2,4}))?\\b`, 'i'),
       ['D', 'M', 'Y']
-    ]
+    ],
+    [
+      // September 2nd 2020
+      // May 4 '22
+      new RegExp(`\\b(${this.anyMonth})\\D+(\\d{2})(?:\\D+(\\d{2,4}))?\\b`, 'i'),
+      ['M', 'D', 'Y']
+    ],
   ];
 
   private get currentYear() {
@@ -100,7 +100,6 @@ export default class DateParser {
   }
 
   public setParts(strs: string[], parts: Part[]): void {
-    console.warn('setParts', strs, parts);
     if (strs.length > parts.length) {
       throw new Error('Invalid number of capture groups in regex');
     }
@@ -116,7 +115,6 @@ export default class DateParser {
   }
 
   public setPart(s: string, p: Part): void {
-    console.warn('setPart', s, p);
     const num = parseInt(s, 10);
     switch (p) {
       case 'Y':

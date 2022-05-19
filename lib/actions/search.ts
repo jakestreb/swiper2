@@ -6,7 +6,7 @@ import Swiper from '../Swiper';
 import TorrentSearch from '../apis/TorrentSearch';
 
 // Number of torrents to show per page
-const PER_PAGE = 4;
+const PER_PAGE = 3;
 
 const STAR = '\u2605';
 
@@ -98,7 +98,7 @@ function formatSelection(
   const someTorrents = torrents.slice(startIndex, startIndex + PER_PAGE);
   const torrentRows = someTorrents.map((t, i) => {
     const isSelected = !!active.find(at => t.magnet === at.magnet);
-    const numberRow = [f.b(`${i + 1}`)];
+    const numberRow = [f.b(`${startIndex + i + 1}`)];
     if (isSelected) {
       numberRow.push(SELECTED);
     }
@@ -111,13 +111,14 @@ function formatSelection(
 function formatTorrent(torrent: TorrentResult, f: TextFormatter): string {
   const peers = `${torrent.seeders} peers`;
   const size = util.formatSize(torrent.sizeMb);
-  const rating = STAR.repeat(torrent.starRating);
-  const data = f.dataRow(peers, size, rating);
-  const title = torrent.title.replace(/\./g, ' ');
-  // TODO: Parse and format
   const parsedDate = util.parseDate(torrent.uploadTime);
   const date = parsedDate ? util.getAiredStr(parsedDate) : torrent.uploadTime;
-  return [data, [title, date].join(' ')].join('\n');
+  const rating = STAR.repeat(torrent.starRating);
+
+  const data = f.dataRow(peers, size, date, rating);
+  const title = torrent.title.replace(/\./g, ' ');
+
+  return [data, title].join('\n');
 }
 
 function formatCommands(range: number[], total: number, f: TextFormatter): string {
