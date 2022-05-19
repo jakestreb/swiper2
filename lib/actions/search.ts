@@ -4,7 +4,6 @@ import * as log from '../log';
 import * as util from '../util';
 import Swiper from '../Swiper';
 import TorrentSearch from '../apis/TorrentSearch';
-import TextFormatter from '../io/formatters/TextFormatter';
 
 // Number of torrents to show per page
 const PER_PAGE = 4;
@@ -13,8 +12,9 @@ const STAR = '\u2605';
 
 const SELECTED = '(selected)';
 
-export async function search(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
+export async function search(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   log.debug(`Swiper: search`);
+  const f = this.getTextFormatter(convo);
 
   const media = convo.media as IMedia;
   const rawVideo = media.isShow() ? media.episodes[0] : media as IMovie;
@@ -92,28 +92,31 @@ function formatSelection(
   active: ITorrent[],
   f: TextFormatter,
 ): string {
+  log.debug('search: Formatting page');
   const startIndex = PER_PAGE * pageNum;
   const endIndex = startIndex + PER_PAGE - 1;
   const someTorrents = torrents.slice(startIndex, startIndex + PER_PAGE);
   const torrentRows = someTorrents.map((t, i) => {
     const isSelected = !!active.find(at => t.magnet === at.magnet);
-    return [f.b(`${i}`), formatTorrent(t, isSelected, f)].join(f.sp(1));
+    const numberRow = [f.b(`${i + 1}`)];
+    if (isSelected) {
+      numberRow.push(SELECTED);
+    }
+    return [numberRow.join(f.sp(1)), formatTorrent(t, f)].join('\n');
   });
-  const commands = formatCommands([startIndex, endIndex], torrents.length, f);
-  return [torrentRows.join('\n'), commands].join('\n\n');
+  const commands = formatCommands([startIndex + 1, endIndex + 1], torrents.length, f);
+  return [torrentRows.join('\n\n'), commands].join('\n\n');
 }
 
-function formatTorrent(torrent: TorrentResult, isSelected: boolean, f: TextFormatter): string {
+function formatTorrent(torrent: TorrentResult, f: TextFormatter): string {
   const peers = `${torrent.seeders} peers`;
   const size = util.formatSize(torrent.sizeMb);
   const rating = STAR.repeat(torrent.starRating);
-  let data = f.dataRow(peers, size, rating);
-  if (isSelected) {
-    data = [data, SELECTED].join(' ');
-  }
+  const data = f.dataRow(peers, size, rating);
   const title = torrent.title.replace(/\./g, ' ');
   // TODO: Parse and format
-  const date = torrent.uploadTime;
+  const parsedDate = util.parseDate(torrent.uploadTime);
+  const date = parsedDate ? util.getAiredStr(parsedDate) : torrent.uploadTime;
   return [data, [title, date].join(' ')].join('\n');
 }
 

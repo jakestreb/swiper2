@@ -1,12 +1,13 @@
 import db from '../db';
 import * as util from '../util';
 import Swiper from '../Swiper';
-import TextFormatter from '../io/formatters/TextFormatter';
 
 const CIRCLE_ARROW = '\u21BB'
 const HOURGLASS = '\u29D6';
 
-export async function scheduled(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
+export async function scheduled(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+  const f = this.getTextFormatter(convo);
+
   const unreleased = await db.media.getWithStatus('unreleased');
 
   const shows: string[] = unreleased

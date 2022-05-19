@@ -14,7 +14,7 @@ class SeederPriority extends ResourcePriority<number> {
 }
 
 class SizePriority extends ResourcePriority<[number, number]> {
-  public ranks: [number, number][] = [[1200, 4000], [1000, 5000], [800, 8000], [200, 10000]];
+  public ranks: [number, number][] = [[1200, 7000], [1000, 8000], [800, 10000], [200, 15000]];
   public predicate = (v: [number, number], t: PartialTorrent) =>
       t.sizeMb >= v[0] && t.sizeMb <= v[1];
   public scale = 1.5;

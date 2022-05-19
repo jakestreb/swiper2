@@ -69,7 +69,7 @@ export default class TorrentSearch {
 
   private static doRetrySearch(video: IVideo): Promise<TorrentResult[]> {
     const doRetrySearch: (retries: number) => Promise<TorrentResult[]> = async retries => {
-      log.debug(`TorrentSearch: performing search ${video}`);
+      log.debug(`TorrentSearch: performing search for ${video}`);
       let results;
       try {
         results = await this.doSearch(video);
@@ -92,6 +92,7 @@ export default class TorrentSearch {
 
   private static async doSearch(video: IVideo): Promise<TorrentResult[]> {
     const searchTerm = getSearchTerm(video);
+    console.warn('searchTerm', searchTerm);
     const results: TSAResult[] = await TorrentSearchApi.search(searchTerm);
     const filtered: TSAResult[] = results.filter((res: TSAResult) => res.title && res.size);
     const filteredWithMagnet: (TSAResultWithMagnet|null)[] = await Promise.all(

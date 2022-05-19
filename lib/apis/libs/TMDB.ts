@@ -63,8 +63,8 @@ export default class TMDB {
 
     // TODO: Add DVD date
     const releases = {
-      theatrical: util.parseDate(info.release_date),
-      digital: util.parseDate(digitalRelease),
+      theatrical: util.parseDate(info.release_date) || undefined,
+      digital: util.parseDate(digitalRelease) || undefined,
     };
 
     return new Movie({

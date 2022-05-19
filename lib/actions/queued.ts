@@ -1,13 +1,14 @@
 import db from '../db';
 import * as util from '../util';
 import Swiper from '../Swiper';
-import TextFormatter from '../io/formatters/TextFormatter';
 
 const UP_ARROW = '\u2191';
 const DOWN_ARROW = '\u2913';
 const HOURGLASS = '\u29D6';
 
-export async function queued(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
+export async function queued(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+  const f = this.getTextFormatter(convo);
+
   const downloading = await db.videos.getWithStatus('searching', 'downloading', 'uploading', 'completed');
   const downloadingWithTorrents = await Promise.all(downloading.map(d => db.videos.addTorrents(d)));
   const sorted = util.sortByPriority(downloadingWithTorrents, getSortPriority);

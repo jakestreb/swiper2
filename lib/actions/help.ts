@@ -1,5 +1,4 @@
 import Swiper from '../Swiper';
-import TextFormatter from '../io/formatters/TextFormatter';
 
 const COMMANDS = [{
   name: 'queued',
@@ -43,7 +42,9 @@ const COMMANDS = [{
   ]
 }];
 
-export function help(this: Swiper, convo: Conversation, f: TextFormatter): SwiperReply {
+export function help(this: Swiper, convo: Conversation): SwiperReply {
+  const f = this.getTextFormatter(convo);
+
   if (!convo.input) {
     const basics = [
       f.commands(

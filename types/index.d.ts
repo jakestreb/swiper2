@@ -1,3 +1,4 @@
+declare module 'any-date-parser';
 declare module 'get-folder-size';
 declare module 'parse-torrent-name';
 
@@ -25,6 +26,18 @@ declare interface MediaQuery {
   type: 'movie'|'tv'|'torrent'|null;
   episodes: EpisodesDescriptor|null;
   year: string|null;
+}
+
+declare interface TextFormatter {
+  dataRow(...items: Array<string|null>): string;
+  commands(...rows: string[]): string;
+
+  sp(length: number): string; // Fixed space
+  b(text: string): string; // Bold
+  i(text: string): string; // Italics
+  u(text: string): string; // Underline
+  s(text: string): string; // Strikethrough
+  m(text: string): string; // Monospace
 }
 
 declare interface SeasonEpisodes {

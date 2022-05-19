@@ -21,8 +21,9 @@ export default class Videos {
   }
 
   public async addTorrents(video: IVideo): Promise<TVideo> {
-    const torrents = await this.db.torrents.getForVideo(video.id);
-    return { ...video, torrents };
+    const tvid = video as TVideo;
+    tvid.torrents = await this.db.torrents.getForVideo(video.id);
+    return tvid;
   }
 
   public async saveStatuses(videos: IVideo[]): Promise<void> {

@@ -16,7 +16,7 @@ export default class MediaParser {
   // more information from the user. Returns nothing on success.
   public async addMedia(convo: Conversation, f: TextFormatter): Promise<SwiperReply|void> {
     // If mediaQuery has not been found yet, find it.
-    const reply = this.addMediaQuery(convo, f);
+    const reply = await this.addMediaQuery(convo, f);
     if (reply) {
       return reply;
     }

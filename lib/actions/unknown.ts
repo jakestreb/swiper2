@@ -1,7 +1,7 @@
 import Swiper from '../Swiper';
-import TextFormatter from '../io/formatters/TextFormatter';
 
-export function unknown(this: Swiper, convo: Conversation, f: TextFormatter): SwiperReply {
+export function unknown(this: Swiper, convo: Conversation): SwiperReply {
+  const f = this.getTextFormatter(convo);
   const data = [
     'A few options',
     f.commands(

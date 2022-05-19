@@ -1,8 +1,9 @@
 import db from '../db';
 import Swiper from '../Swiper';
-import TextFormatter from '../io/formatters/TextFormatter';
 
-export async function download(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
+export async function download(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+  const f = this.getTextFormatter(convo);
+
   let isFullyUnreleased = false;
 
   const media = convo.media as IMedia;

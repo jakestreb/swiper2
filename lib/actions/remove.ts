@@ -1,9 +1,10 @@
 import * as matchUtil from './helpers/matchUtil';
 import db from '../db';
-import TextFormatter from '../io/formatters/TextFormatter';
 import Swiper from '../Swiper';
 
-export async function remove(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
+export async function remove(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+  const f = this.getTextFormatter(convo);
+
   await addStoredMediaIfFound(convo);
 
   const storedMedia = convo.storedMedia;

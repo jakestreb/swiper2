@@ -1,5 +1,11 @@
+import DateParser from './helpers/DateParser';
+
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export function parseDate(s: string): Date|null {
+  return DateParser.parse(s);
+}
 
 export function getNextToAir(episodes: IEpisode[]): IEpisode|null {
   const morning = getMorning();
@@ -21,15 +27,6 @@ export function getMorning(): Date {
   morn.setUTCMinutes(0);
   morn.setUTCSeconds(0, 0);
   return morn;
-}
-
-// Parses date strings of the form "02 Nov 2018" (and other common forms).
-export function parseDate(dateStr: string): Date|undefined {
-  if (!dateStr || !dateStr.match(/\d/g)) {
-    return undefined;
-  } else {
-    return new Date(dateStr);
-  }
 }
 
 export function getMonthRange(from: Date, to: Date): string {

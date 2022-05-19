@@ -1,5 +1,4 @@
 import Swiper from '../Swiper';
-import TextFormatter from '../io/formatters/TextFormatter';
 import * as util from '../util';
 
 const FULL = '\u25A0';
@@ -8,7 +7,8 @@ const EMPTY = '\u25A1';
 
 const NEXT = '(next)';
 
-export async function info(this: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
+export async function info(this: Swiper, convo: Conversation): Promise<SwiperReply> {
+  const f = this.getTextFormatter(convo);
   const media = convo.media as IMedia;
 
   let data;
