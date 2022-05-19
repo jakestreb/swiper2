@@ -71,7 +71,8 @@ declare type TorrentResult = PartialTorrent & {
   uploadTime: string;
   magnet: string;
   quality: string;
-  starRating: 1|2|3|4;
+  score: number;
+  starRating: 1|2|3|4|5;
 }
 
 declare interface JobDescription {

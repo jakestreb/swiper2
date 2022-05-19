@@ -102,7 +102,7 @@ export default class TorrentSearch {
       .map((res: TSAResultWithMagnet) => this.createTorrent(res, video))
       .filter((torrent: TorrentResult) => torrent.sizeMb > -1);
     // Sort by peers desc
-    torrents.sort((a, b) => b.seeders - a.seeders || b.leechers - a.leechers);
+    torrents.sort((a, b) => b.score - a.score || b.seeders - a.seeders);
     return torrents;
   }
 
@@ -132,6 +132,7 @@ export default class TorrentSearch {
     };
     return {
       ...partial,
+      score: new TorrentRanker(video).getScore(partial),
       starRating: new TorrentRanker(video).getStars(partial),
     };
   }

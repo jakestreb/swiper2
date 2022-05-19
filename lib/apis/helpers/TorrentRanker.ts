@@ -2,7 +2,7 @@ import ResourcePriority from './ResourcePriority';
 import * as util from '../../util';
 
 class ResolutionPriority extends ResourcePriority<string> {
-  public ranks = ['1080p', '720p'];
+  public ranks = ['2160p', '1080p', '720p'];
   public predicate = (v: string, t: PartialTorrent) => t.resolution === v;
   public scale = 1;
 }
@@ -22,8 +22,15 @@ class SizePriority extends ResourcePriority<[number, number]> {
 
 class TitlePriority extends ResourcePriority<boolean> {
   public ranks = [true, false];
-  public predicate = (v: boolean, t: PartialTorrent) =>
-    v === (t.parsedTitle === this.video.getFileSafeTitle());
+  public predicate = (v: boolean, t: PartialTorrent) => {
+    const title = this.video.getFileSafeTitle();
+    const { parsedTitle } = t;
+    if (this.video.isMovie()) {
+      const titleWithYear = `${title} ${this.video.year}`
+      return v === (parsedTitle === title || parsedTitle === titleWithYear);
+    }
+    return v === (parsedTitle === title);
+  }
   public scale = 1.5;
 }
 
@@ -54,6 +61,7 @@ export default class TorrentRanker {
     }
 
     const scores = this.priorities.map(p => p.getScore(t));
+    console.warn('SCORES', t.title, scores);
     if (scores.some(x => x === -1)) {
       return 0;
     }
@@ -61,10 +69,13 @@ export default class TorrentRanker {
   }
 
   // Gives a star rating from 1-4
-  public getStars(t: PartialTorrent): 1|2|3|4 {
+  public getStars(t: PartialTorrent): 1|2|3|4|5 {
     const maxRating = util.sum(this.priorities.map(p => p.scale));
-    const maxStars = 4;
-    const frac = this.getScore(t) / maxRating;
-    return Math.min(Math.ceil(frac * maxStars), 1) as 1|2|3|4;
+    const score = this.getScore(t);
+    if (score === maxRating) {
+      return 5;
+    }
+    const frac = score / maxRating;
+    return Math.max(Math.ceil(frac * 4), 1) as 1|2|3|4;
   }
 }

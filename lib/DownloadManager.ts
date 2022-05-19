@@ -81,8 +81,10 @@ export default class DownloadManager {
     const sortedTorrents: VTorrent[] = [];
     sorted.forEach(v => {
       const ts = util.sortByPriority(v.torrents, this.getTorrentPriority.bind(this));
-      const vts = ts.map(t => ({ ...t, video: v }));
-      sortedTorrents.push(...vts);
+      ts.forEach(t => {
+        (t as VTorrent).video = v;
+      });
+      sortedTorrents.push(...(ts as VTorrent[]));
     });
 
     const toStart: VTorrent[] = [];
