@@ -11,6 +11,7 @@ const PER_PAGE = 3;
 const STAR = '\u2605';
 
 const SELECTED = '(selected)';
+const REMOVED = '(removed)';
 
 export async function search(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   log.debug(`Swiper: search`);
@@ -37,10 +38,10 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   // Display the torrents to the user.
   convo.pageNum = convo.pageNum || 0;
 
-  const showPage = () => {
+  const showPage = async () => {
     const { torrents, pageNum } = convo;
     return {
-      data: formatSelection(torrents!, pageNum!, video.torrents, f),
+      data: await formatSelection(torrents!, pageNum!, video.torrents, f),
     };
   };
 
@@ -86,20 +87,24 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 }
 
 // Show a subset of the torrents decided by the pageNum.
-function formatSelection(
+async function formatSelection(
   torrents: TorrentResult[],
   pageNum: number,
   active: ITorrent[],
   f: TextFormatter,
-): string {
+): Promise<string> {
   log.debug('search: Formatting page');
+  const removed = await db.torrents.getWithStatus('removed');
   const startIndex = PER_PAGE * pageNum;
   const endIndex = startIndex + PER_PAGE - 1;
   const someTorrents = torrents.slice(startIndex, startIndex + PER_PAGE);
   const torrentRows = someTorrents.map((t, i) => {
-    const isSelected = !!active.find(at => t.magnet === at.magnet);
+    const isRemoved = removed.some(r => t.hash === r.hash);
+    const isSelected = active.some(at => t.hash === at.hash);
     const numberRow = [f.b(`${startIndex + i + 1}`)];
-    if (isSelected) {
+    if (isRemoved) {
+      numberRow.push(REMOVED);
+    } else if (isSelected) {
       numberRow.push(SELECTED);
     }
     return [numberRow.join(f.sp(1)), formatTorrent(t, f)].join('\n');

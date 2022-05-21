@@ -44,7 +44,6 @@ export default class TMDB {
       if (!usaResult) {
         throw new Error('No results for the US');
       }
-      console.warn('release dates', usaResult);
       // Release types:
       // 1. Premiere
       // 2. Theatrical (limited)

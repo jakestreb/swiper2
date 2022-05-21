@@ -61,7 +61,7 @@ declare type IEpisode = IVideo & {
 
 declare interface ITorrent {
   id: number;
-  magnet: string;
+  hash: string;
   videoId: number;
   quality: string;
   resolution: string;

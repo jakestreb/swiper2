@@ -2,7 +2,7 @@ import Torrent from '../../res/Torrent';
 import Base from './Base';
 
 interface TorrentInsertArg {
-  magnet: string;
+  hash: string;
   videoId: number;
   quality: string;
   resolution: string;
@@ -12,7 +12,7 @@ interface TorrentInsertArg {
 
 interface TorrentDBRow {
   id: number;
-  magnet: string;
+  hash: string;
   videoId: number;
   quality: string;
   resolution: string;
@@ -26,7 +26,7 @@ export default class Torrents extends Base<TorrentDBRow, ITorrent> {
   public async init(): Promise<this> {
     await this.run(`CREATE TABLE IF NOT EXISTS torrents (
       id INTEGER PRIMARY KEY,
-      magnet TEXT UNIQUE ON CONFLICT REPLACE,
+      hash TEXT UNIQUE ON CONFLICT REPLACE,
       videoId INTEGER,
       quality TEXT,
       resolution TEXT,
@@ -44,7 +44,11 @@ export default class Torrents extends Base<TorrentDBRow, ITorrent> {
   }
 
   public async getForVideo(videoId: number): Promise<ITorrent[]> {
-    return this.all(`SELECT * FROM torrents WHERE videoId=?`, [videoId]);
+    return this.all(`SELECT * FROM torrents WHERE videoId=? AND status!='removed'`, [videoId]);
+  }
+
+  public getWithStatus(...statuses: TorrentStatus[]): Promise<ITorrent[]> {
+    return this.all(`SELECT * FROM torrents WHERE status IN (${statuses.map(e => '?')})`, statuses);
   }
 
   public async setStatus(torrent: ITorrent, status: TorrentStatus): Promise<ITorrent> {
@@ -56,9 +60,9 @@ export default class Torrents extends Base<TorrentDBRow, ITorrent> {
   }
 
   public async insert(arg: TorrentInsertArg): Promise<void> {
-    await this.run(`INSERT INTO torrents (magnet, videoId, quality, resolution, sizeMb, status)`
+    await this.run(`INSERT INTO torrents (hash, videoId, quality, resolution, sizeMb, status)`
     	+ ` VALUES (?, ?, ?, ?, ?, ?)`,
-        [arg.magnet, arg.videoId, arg.quality, arg.resolution, arg.sizeMb, arg.status]);
+        [arg.hash, arg.videoId, arg.quality, arg.resolution, arg.sizeMb, arg.status]);
   }
 
   public async setQueueOrder(torrents: ITorrent[]): Promise<void> {

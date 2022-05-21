@@ -3,7 +3,7 @@ import * as path from 'path';
 
 interface BuildArg {
   id: number;
-  magnet: string;
+  hash: string;
   videoId: number;
   quality: string;
   resolution: string;
@@ -18,7 +18,7 @@ const REMOVED = '(removed)';
 
 export default class Torrent implements ITorrent {
   public id: number;
-  public magnet: string;
+  public hash: string;
   public videoId: number;
   public quality: string;
   public resolution: string;
@@ -30,7 +30,7 @@ export default class Torrent implements ITorrent {
 
   constructor(values: BuildArg) {
     this.id = values.id;
-    this.magnet = values.magnet;
+    this.hash = values.hash;
     this.videoId = values.videoId;
     this.quality = values.quality;
     this.resolution = values.resolution;

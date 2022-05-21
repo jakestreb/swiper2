@@ -61,7 +61,6 @@ export default class TorrentRanker {
     }
 
     const scores = this.priorities.map(p => p.getScore(t));
-    console.warn('SCORES', t.title, scores);
     if (scores.some(x => x === -1)) {
       return 0;
     }

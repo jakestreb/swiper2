@@ -39,7 +39,7 @@ export default class DownloadManager {
   }
 
   public getProgress(torrent: ITorrent): DownloadProgress {
-    return this.downloadClient.getProgress(torrent.magnet);
+    return this.downloadClient.getProgress(torrent);
   }
 
   public destroyAndDeleteVideo(video: TVideo): Promise<void> {
@@ -151,8 +151,6 @@ export default class DownloadManager {
     await db.torrents.setStatus(torrent, 'downloading');
     await this.downloadClient.download(torrent);
 
-    console.warn('DONE DOWNLOADING!', torrent.video);
-
     // On completion, mark the video status as uploading
     await db.torrents.setStatus(torrent, 'completed');
     await db.videos.setStatus(torrent.video, 'uploading');
@@ -165,7 +163,7 @@ export default class DownloadManager {
 
   private async stopDownload(torrent: VTorrent): Promise<void> {
     await db.torrents.setStatus(torrent, 'paused');
-    await this.downloadClient.stopDownload(torrent.magnet);
+    await this.downloadClient.stopDownload(torrent);
   }
 
   private async startUploads() {
@@ -217,9 +215,8 @@ export default class DownloadManager {
   private getTorrentPriority(torrent: ITorrent): number[] {
     const downloadProgress = this.getProgress(torrent);
     const isSlow = torrent.status === 'slow';
-    const isRemoved = torrent.status === 'removed';
     const { progress, peers } = downloadProgress;
     // From important to least
-    return [-isRemoved, -isSlow, +progress, +peers];
+    return [-isSlow, +progress, +peers];
   }
 }

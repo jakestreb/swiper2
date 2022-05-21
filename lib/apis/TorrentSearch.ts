@@ -15,16 +15,20 @@ interface TSAResult {
   seeds: number;
   peers: number;
   time: string;
+  link?: string;
   magnet?: string;
+  hash?: string;
 }
 
-type TSAResultWithMagnet = TSAResult & {
-  magnet: string
+type TSAResultWithHash = TSAResult & {
+  hash: string;
 }
 
 export default class TorrentSearch {
   public static searchRetryCount = 2;
   public static searchConcurrency = 1;
+
+  public static hashRegex = /(?<![\w\d])([\w\d]{40})(?![\w\d])/i;
 
   public static lock = new ConcurrencyLock(TorrentSearch.searchConcurrency);
 
@@ -48,22 +52,24 @@ export default class TorrentSearch {
 
   public static async getBestTorrent(video: IVideo, torrents: TorrentResult[]): Promise<TorrentResult|null> {
     log.debug(`TorrentSearch: getBestTorrent(${video})`);
-    const videoTorrents = await db.torrents.getForVideo(video.id);
-    const removed = videoTorrents.filter(t => t.status === 'removed');
-    const badMagnets = new Set(removed.map(t => t.magnet));
+    const selected = await db.torrents.getForVideo(video.id);
+    const removed = await db.torrents.getWithStatus('removed');
+    const doNotPick = new Set([...selected, ...removed].map(t => t.hash));
+    console.warn('do not pick', doNotPick);
 
-    let bestTorrent = null;
-    let bestTier = 0;
+    let bestTorrent: TorrentResult|null = null;
+    let bestScore = 0;
     torrents
-      .filter(t => !badMagnets.has(t.magnet))
+      .filter(t => !doNotPick.has(t.hash))
       .forEach(t => {
-        const tier = new TorrentRanker(video).getScore(t);
-        if (tier > bestTier) {
+        const score = new TorrentRanker(video).getScore(t);
+        if (score > bestScore) {
           bestTorrent = t;
-          bestTier = tier;
+          bestScore = score;
         }
       });
 
+    console.warn('picked', (bestTorrent as any) ? bestTorrent!.hash : null);
     return bestTorrent;
   }
 
@@ -93,31 +99,38 @@ export default class TorrentSearch {
   private static async doSearch(video: IVideo): Promise<TorrentResult[]> {
     const searchTerm = getSearchTerm(video);
     const results: TSAResult[] = await TorrentSearchApi.search(searchTerm);
-    console.warn('RESULTS', results.slice(0, 3));
     const filtered: TSAResult[] = results.filter((res: TSAResult) => res.title && res.size);
-    const filteredWithMagnet: (TSAResultWithMagnet|null)[] = await Promise.all(
-      filtered.map((res: TSAResult) => this.addMissingMagnet(res))
+    const filteredWithHash: (TSAResultWithHash|null)[] = await Promise.all(
+      filtered.map((res: TSAResult) => this.addHash(res))
     );
-    const torrents = filteredWithMagnet.filter(notNull)
-      .map((res: TSAResultWithMagnet) => this.createTorrent(res, video))
+    const torrents = filteredWithHash.filter(notNull)
+      .map((res: TSAResultWithHash) => this.createTorrent(res, video))
       .filter((torrent: TorrentResult) => torrent.sizeMb > -1);
     // Sort by peers desc
     torrents.sort((a, b) => b.score - a.score || b.seeders - a.seeders);
     return torrents;
   }
 
-  private static async addMissingMagnet(result: TSAResult): Promise<TSAResultWithMagnet|null> {
-    if (result.magnet) {
-      return result as TSAResultWithMagnet;
+  private static async addHash(result: TSAResult): Promise<TSAResultWithHash|null> {
+    let fetchedMagnet: string;
+    if (!result.magnet && !result.link) {
+      fetchedMagnet = await TorrentSearchApi.getMagnet(result);
+      if (!fetchedMagnet) {
+        log.debug(`Failed to fetch magnet for torrent result: ${result.title}`);
+        return null;
+      }
     }
-    const magnet = await TorrentSearchApi.getMagnet(result);
-    if (!magnet) {
+    const uri = result.magnet || result.link || fetchedMagnet!;
+    const matches = uri.match(TorrentSearch.hashRegex);
+    if (!matches) {
+      log.debug(`No hash match for torrent: ${result.title}`);
       return null;
     }
-    return { ...result, magnet };
+    result.hash = matches[1].toUpperCase();
+    return (result as TSAResultWithHash);
   }
 
-  private static createTorrent(result: TSAResultWithMagnet, video: IVideo): TorrentResult {
+  private static createTorrent(result: TSAResultWithHash, video: IVideo): TorrentResult {
     const parsed = ptn(result.title);
     const partial = {
       title: result.title,
@@ -126,7 +139,7 @@ export default class TorrentSearch {
       seeders: result.seeds || 0,
       leechers: result.peers || 0,
       uploadTime: result.time,
-      magnet: result.magnet,
+      hash: result.hash,
       quality: parsed.quality || '',
       resolution: parsed.resolution || '',
     };

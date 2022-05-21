@@ -18,7 +18,7 @@ export class DownloadClient extends events.EventEmitter {
 
   // TODO: Remove
   public logTorrents() {
-    console.warn('TORRENTS', this.client.torrents.map(t => t.magnetURI));
+    console.warn('TORRENTS', this.client.torrents.map(t => t.infoHash));
   }
 
   public getDownloadedMb(t: ITorrent): Promise<number> {
@@ -30,7 +30,7 @@ export class DownloadClient extends events.EventEmitter {
     const subDirs = vt.getDownloadPath();
     const downloadPath = await util.createSubdirs(this.downloadRoot, subDirs);
     return new Promise((resolve, reject) => {
-      this.client.add(vt.magnet, { path: downloadPath }, wtTorrent => {
+      this.client.add(vt.hash, { path: downloadPath }, wtTorrent => {
         wtTorrent.on('done', async () => {
           log.subProcess(`Torrent done ${vt.video}`);
           resolve();
@@ -48,11 +48,11 @@ export class DownloadClient extends events.EventEmitter {
     });
   }
 
-  public getProgress(magnet: string): DownloadProgress {
-    log.debug(`DownloadClient: getProgress(${magnet})`);
-    const wtTorrent = this.client.get(magnet);
+  public getProgress(torrent: ITorrent): DownloadProgress {
+    log.debug(`DownloadClient: getProgress(${torrent.id})`);
+    const wtTorrent = this.client.get(torrent.hash);
     if (wtTorrent) {
-      console.warn('TORRENT', wtTorrent.magnetURI, wtTorrent.infoHash);
+      console.warn('TORRENT', wtTorrent.infoHash);
     }
     return {
       progress: wtTorrent ? wtTorrent.progress * 100 : 0,
@@ -62,9 +62,9 @@ export class DownloadClient extends events.EventEmitter {
     };
   }
 
-  public async stopDownload(magnet: string): Promise<void> {
+  public async stopDownload(torrent: ITorrent): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.client.remove(magnet, {}, err => {
+      this.client.remove(torrent.hash, {}, err => {
         if (err) {
           reject(err);
         } else {

@@ -69,7 +69,7 @@ declare interface PartialTorrent {
 declare type TorrentResult = PartialTorrent & {
   leechers: number;
   uploadTime: string;
-  magnet: string;
+  hash: string;
   quality: string;
   score: number;
   starRating: 1|2|3|4|5;
