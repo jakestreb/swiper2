@@ -61,7 +61,6 @@ export default class TMDB {
       log.debug(`TMDB.toMovie fetching release date failed: ${err}`);
     }
 
-    // TODO: Add DVD date
     const releases = {
       theatrical: util.parseDate(info.release_date) || undefined,
       digital: util.parseDate(digitalRelease) || undefined,

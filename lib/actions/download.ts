@@ -76,6 +76,6 @@ function checkOrAwaitRelease(swiper: Swiper, video: IVideo) {
   return swiper.worker.addJob({
     type: 'CheckForRelease',
     videoId: video.id,
-    startAt: video.isMovie() ? video.getExpectedRelease() : new Date(),
+    startAt: (video.isMovie() && video.getSearchDate()) || new Date(),
   });
 }

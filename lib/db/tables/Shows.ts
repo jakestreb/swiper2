@@ -32,7 +32,8 @@ export default class Shows extends Base<ShowDBRow, IShow> {
   }
 
   public async getEmpty(showId: number): Promise<IShow|void> {
-    return this.get(`SELECT * FROM shows WHERE id=?`, [showId]);
+    const row = await this.db.get(`SELECT * FROM shows WHERE id=? LIMIT 1`, [showId]);
+    return new Show({ ...row, episodes: [] });
   }
 
   // Returns shows with episodes filtered by the given statuses

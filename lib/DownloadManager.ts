@@ -133,7 +133,7 @@ export default class DownloadManager {
         });
     });
 
-    // Update queueNums
+    // Update queue order
     Promise.all([
       db.videos.setQueueOrder(sorted),
       db.torrents.setQueueOrder(sortedTorrents)

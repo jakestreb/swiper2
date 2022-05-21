@@ -6,6 +6,8 @@ const UP_ARROW = '\u2191';
 const DOWN_ARROW = '\u2913';
 const HOURGLASS = '\u29D6';
 
+const UPLOADING = '(uploading)';
+
 export async function queued(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const f = this.getTextFormatter(convo);
 
@@ -28,6 +30,9 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
     }
     if (searchTxt) {
       rows.push(searchTxt);
+    }
+    if (video.status === 'uploading') {
+      rows.push(UPLOADING);
     }
     return rows.join('\n');
   }));

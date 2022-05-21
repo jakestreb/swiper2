@@ -5,11 +5,14 @@ export function unknown(this: Swiper, convo: Conversation): SwiperReply {
   const data = [
     'A few options',
     f.commands(
-      'download home alone',
+      'download the lion king',
       'download batman 1989',
       'download the sopranos e4e5-8',
-      'queued',
+      '',
       'remove the sopranos',
+      '',
+      'queued',
+      'scheduled',
     ),
     f.commands('help'),
   ].join('\n\n');

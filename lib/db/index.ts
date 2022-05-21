@@ -36,7 +36,7 @@ export class DBManager {
     this.videos = await new Videos(this);
   }
 
-  public async all(sql: string, params: any[] = []): Promise<({ [column: string]: any })[]> {
+  public async all(sql: string, params: any[] = []): Promise<any[]> {
     return new Promise((resolve, reject) => {
       log.debug(`${sql} (${params})`);
       this._db.all(sql, params, function(err, rows) {
@@ -49,7 +49,7 @@ export class DBManager {
     });
   }
 
-  public async get(sql: string, params: any[] = []): Promise<{ [column: string]: any }|void> {
+  public async get(sql: string, params: any[] = []): Promise<any> {
     const all = await this.all(sql, params);
     if (all.length > 0) {
       return all[0];

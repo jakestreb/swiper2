@@ -1,5 +1,14 @@
+
+interface DB<Row> {
+  [table: string]: any;
+
+  all(sql: string, params: any[]): Promise<Row[]>;
+  get(sql: string, params: any[]): Promise<Row>;
+  run(sql: string, params: any[]): Promise<void>;
+}
+
 export default abstract class Base<Row, Result> {
-  constructor(public db: any) {}
+  constructor(public db: DB<Row>) {}
 
   public abstract init(): Promise<this>;
 
@@ -7,7 +16,7 @@ export default abstract class Base<Row, Result> {
 
   public async all(sql: string, params: any[] = []): Promise<Result[]> {
     const rows = await this.db.all(sql, params);
-    return rows.map((r: any) => this.buildInstance(r));
+    return Promise.all(rows.map((r: Row) => this.buildInstance(r)));
   }
 
   public async get(sql: string, params: any[] = []): Promise<Result|void> {

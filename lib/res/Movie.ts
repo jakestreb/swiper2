@@ -11,8 +11,10 @@ interface BuildArg {
 }
 
 export default class Movie extends Video implements IVideo, IMedia {
-  private static DAYS_BEFORE_DIGITAL = 10;
-  private static DAYS_AFTER_THEATRICAL = 21;
+  private static SEARCH_DAYS_BEFORE_DIGITAL = 10;
+  private static SEARCH_DAYS_AFTER_THEATRICAL = 21;
+
+  private static EXPECT_DAYS_AFTER_THEATRICAL = 90;
 
   public type: 'movie' = 'movie';
   public title: string;
@@ -47,12 +49,23 @@ export default class Movie extends Video implements IVideo, IMedia {
     return this.title.replace(this.badFilenameChars, '');
   }
 
-  public getExpectedRelease(): Date {
+  public getSearchDate(): Date {
     const { theatrical, digital } = this.releases;
     if (!theatrical && !digital) {
       return new Date();
     }
-    const offset = digital ? -Movie.DAYS_BEFORE_DIGITAL : Movie.DAYS_AFTER_THEATRICAL;
+    const offset = digital ? -Movie.SEARCH_DAYS_BEFORE_DIGITAL : Movie.SEARCH_DAYS_AFTER_THEATRICAL;
+    const date = new Date(digital || theatrical!);
+    date.setDate(date.getDate() + offset);
+    return date;
+  }
+
+  public getExpectedRelease(): Date|null {
+    const { theatrical, digital } = this.releases;
+    if (!theatrical && !digital) {
+      return null;
+    }
+    const offset = digital ? 0 : Movie.EXPECT_DAYS_AFTER_THEATRICAL;
     const date = new Date(digital || theatrical!);
     date.setDate(date.getDate() + offset);
     return date;

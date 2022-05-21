@@ -15,7 +15,7 @@ const COMMANDS = [{
   ]
 }, {
   name: 'download',
-  description: 'downloads a movie/show\nre-running adds the next best torrent',
+  description: 'downloads a movie/show\nre-running adds another torrent',
   examples: [
     "download the lion king",
     "download batman 1989",

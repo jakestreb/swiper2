@@ -115,7 +115,7 @@ function formatTorrent(torrent: TorrentResult, f: TextFormatter): string {
   const date = parsedDate ? util.formatDateSimple(parsedDate) : torrent.uploadTime;
   const rating = STAR.repeat(torrent.starRating);
 
-  const data = f.dataRow(peers, size, date, rating);
+  const data = f.dataRow(rating, peers, size, date);
   const title = torrent.title.replace(/\./g, ' ');
 
   return [data, title].join('\n');

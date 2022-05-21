@@ -7,6 +7,9 @@ const EMPTY = '\u25A1';
 
 const NEXT = '(next)';
 
+// How long to show the expected date after a video is expected
+const SHOW_EXPECTED_FOR_DAYS = 120;
+
 export async function info(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const f = this.getTextFormatter(convo);
   const media = convo.media as IMedia;
@@ -28,12 +31,20 @@ function formatMovie(movie: IMovie, f: TextFormatter) {
   const { title, releases } = movie;
   const theatrical = releases.theatrical && new Date(releases.theatrical);
   const digital = releases.digital && new Date(releases.digital);
+  const expected = movie.getExpectedRelease();
 
-  // TODO: Add expected date
+  let isRecent = false;
+  if (expected) {
+    const recency = new Date(expected.getTime());
+    recency.setDate(expected.getDate() + SHOW_EXPECTED_FOR_DAYS);
+    isRecent = new Date() <= recency;
+  }
+
   return [
     f.u(title),
-    theatrical ? [f.b('Theatrical'), f.i(util.getAiredStr(theatrical))].join(' ') : '',
-    digital ? [f.b('Streaming'), f.i(util.getAiredStr(digital))].join(' ') : '',
+    formatMovieDate('Theatrical', theatrical || null, f),
+    formatMovieDate('Streaming', digital || null, f),
+    formatMovieDate('Expected', isRecent ? movie.getExpectedRelease() : null, f),
   ]
   .filter(x => x)
   .join('\n');
@@ -74,8 +85,8 @@ function formatShow(show: IShow, f: TextFormatter) {
 
 function formatSeasonRow(first: IEpisode, last: IEpisode, f: TextFormatter) {
   const items = [
-    f.b(`S${last.seasonNum}`),
     getSeasonIcon(first, last),
+    f.b(`S${last.seasonNum}`),
     `(E${first.episodeNum}-${last.episodeNum})`
   ];
   if (first.airDate && last.airDate) {
@@ -88,16 +99,27 @@ function formatEpisodeRows(episodes: IEpisode[], f: TextFormatter): string {
   const nextToAir = util.getNextToAir(episodes);
   return episodes
     .map(e => {
-      const items = [f.sp(3), getEpisodeIcon(e), `E${e.episodeNum}`];
+      const items = [getDateIcon(e.airDate), `E${e.episodeNum}`];
       if (e.airDate) {
         items.push(util.getAiredStr(new Date(e.airDate)))
       }
       if (nextToAir && nextToAir.id === e.id) {
         items.push(f.i(NEXT));
       }
-      return items.join('');
+      return f.sp(2) + items.join(' ');
     })
     .join('\n');
+}
+
+function formatMovieDate(dateName: string, date: Date|null, f: TextFormatter): string {
+  if (!date) {
+    return '';
+  }
+  return [
+    getDateIcon(date),
+    f.b(dateName),
+    f.i(util.getAiredStr(date))
+  ].join(' ');
 }
 
 function getSeasonIcon(first: IEpisode, last: IEpisode) {
@@ -116,6 +138,6 @@ function getSeasonIcon(first: IEpisode, last: IEpisode) {
   }
 }
 
-function getEpisodeIcon(e: IEpisode) {
-  return e.airDate && new Date(e.airDate) <= new Date() ? EMPTY : FULL;
+function getDateIcon(date?: Date) {
+  return date && new Date() > date ? FULL : EMPTY;
 }

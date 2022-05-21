@@ -4,8 +4,8 @@ const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const oneDay = 24 * 60 * 60 * 1000;
 
-export function parseDate(s: string): Date|null {
-  return DateParser.parse(s);
+export function parseDate(s: string|null): Date|null {
+  return s ? DateParser.parse(s) : null;
 }
 
 export function getNextToAir(episodes: IEpisode[]): IEpisode|null {
@@ -71,10 +71,10 @@ export function getAiredStr(date: Date): string {
   const year = date.getFullYear();
   const diff = date.getTime() - getMorning().getTime();
   if (diff < -sixMonths) {
-    return `Last ${month} ${calDay}, ${year}`;
+    return `${month} ${calDay}, ${year}`;
   } else if (diff < -oneWeek) {
     // Over a week ago
-    return `Last ${weekday}, ${month} ${calDay}`;
+    return `${weekday}, ${month} ${calDay}`;
   } else if (diff < -oneDay) {
     // In the week
     return `Last ${weekday}`;
