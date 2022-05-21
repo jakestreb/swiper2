@@ -1,21 +1,21 @@
 import Swiper from '../Swiper';
 
 const COMMANDS = [{
-  name: 'queued',
-  description: 'shows all queued downloads',
+  name: 'queue',
+  description: 'shows current downloads',
 }, {
   name: 'scheduled',
-  description: 'shows all scheduled downloads',
+  description: 'shows scheduled downloads',
 }, {
   name: 'info',
-  description: 'shows release information about a movie/show',
+  description: 'shows release dates for a movie/show',
   examples: [
     "info the santa clause",
     "info wandavision",
   ]
 }, {
   name: 'download',
-  description: 'downloads a movie/show\nre-running adds another torrent',
+  description: 'downloads a movie/show\nre-running adds an additional torrent',
   examples: [
     "download the lion king",
     "download batman 1989",
@@ -28,7 +28,10 @@ const COMMANDS = [{
   examples: [
     "remove pulp fiction",
     "remove severance s2",
-    "remove torrent severance"
+    "remove the office s1 e2-4 & e6",
+    "remove torrent pulp fiction",
+    "remove torrent severance s2 e1",
+    "remove torrent the office"
   ]
 }, {
   name: "cancel",
@@ -53,7 +56,7 @@ export function help(this: Swiper, convo: Conversation): SwiperReply {
         `${f.b('remove torrent')} [show or movie]`
       ),
       f.commands(
-        f.b('queued'),
+        f.b('queue'),
         f.b('scheduled'),
         `${f.b('info')} [show or movie]`
       ),
@@ -61,7 +64,7 @@ export function help(this: Swiper, convo: Conversation): SwiperReply {
         `${f.b('help')} [command]`,
         `${f.b('cancel')} to end any conversation`,
       ),
-    ].join('\n');
+    ].join('\n\n');
 
     return {
       data: basics,
