@@ -1,3 +1,8 @@
+declare interface Releases {
+  theatrical?: Date;
+  digital?: Date;
+}
+
 declare interface IVideo {
   id: number;
   type: string;
@@ -8,6 +13,7 @@ declare interface IVideo {
   isMovie(): this is IMovie;
   isEpisode(): this is IEpisode;
   getDownloadPath(): string;
+  addTorrents(torrents: ITorrent[]): TVideo;
   getFileSafeTitle(): string;
   format(f: TextFormatter): string;
   toString(): string;
@@ -63,6 +69,7 @@ declare interface ITorrent {
   queueIndex?: number;
 
   getDownloadPath(): string;
+  addVideo(v: IVideo): VTorrent;
   format(f: TextFormatter, peers: number, progress: number): string;
   toString(): string;
 }

@@ -1,15 +1,36 @@
 import Movie from '../../res/Movie';
 import Base from './Base';
 
-export default class Movies extends Base<IMovie> {
+interface MovieInsertArg {
+  id: number;
+  title: string;
+  year: string;
+  releases: {
+    theatrical: Date;
+    digital: Date;
+  };
+}
+
+interface MovieDBRow {
+  id: number;
+  title: string;
+  year: string;
+  theatricalRelease?: number;
+  digitalRelease?: number;
+  status: Status;
+  queueIndex: number;
+  addedBy: number;
+  createdAt: Date;
+}
+
+export default class Movies extends Base<MovieDBRow, IMovie> {
   public async init(): Promise<this> {
-    await this.db.run(`CREATE TABLE IF NOT EXISTS movies (
+    await this.run(`CREATE TABLE IF NOT EXISTS movies (
       id INTEGER PRIMARY KEY,
       title TEXT,
       year TEXT,
       theatricalRelease DATETIME,
       digitalRelease DATETIME,
-      dvdRelease DATETIME,
       status TEXT,
       queueIndex INTEGER DEFAULT -1,
       addedBy INTEGER,
@@ -19,8 +40,12 @@ export default class Movies extends Base<IMovie> {
     return this;
   }
 
-  public buildInstance(row: any): IMovie {
-    return new Movie({ ...row, type: 'movie' });
+  public buildInstance(row: MovieDBRow): IMovie {
+    const releases = {
+      digital: row.digitalRelease ? new Date(row.digitalRelease) : undefined,
+      theatrical: row.theatricalRelease ? new Date(row.theatricalRelease) : undefined,
+    };
+    return new Movie({ ...row, releases });
   }
 
   public async getOne(id: number): Promise<IMovie|void> {
@@ -39,7 +64,7 @@ export default class Movies extends Base<IMovie> {
     if (movie.status === status) {
       return movie;
     }
-    await this.db.run('UPDATE movies SET status=? WHERE id=?', [status, movie.id]);
+    await this.run('UPDATE movies SET status=? WHERE id=?', [status, movie.id]);
     return { ...movie, status };
   }
 
@@ -48,15 +73,15 @@ export default class Movies extends Base<IMovie> {
     return { ...movie, torrents };
   }
 
-  public async insert(arg: IMovie, options: DBInsertOptions): Promise<void> {
-    await this.db.run('INSERT INTO movies '
+  public async insert(arg: MovieInsertArg, options: DBInsertOptions): Promise<void> {
+    const { theatrical, digital } = arg.releases;
+    await this.run('INSERT INTO movies '
       + '(id, title, year, theatricalRelease, digitalRelease, status, addedBy) '
       + 'VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [arg.id, arg.title, arg.year, arg.releases.theatrical, arg.releases.digital,
-        options.status, options.addedBy]);
+        [arg.id, arg.title, arg.year, theatrical, digital, options.status, options.addedBy]);
   }
 
   public async delete(...ids: number[]): Promise<void> {
-    await this.db.run(`DELETE FROM movies WHERE id IN (${ids.map(e => '?')})`, ids);
+    await this.run(`DELETE FROM movies WHERE id IN (${ids.map(e => '?')})`, ids);
   }
 }

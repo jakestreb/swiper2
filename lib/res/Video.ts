@@ -33,6 +33,11 @@ export default abstract class Video implements IVideo {
     return this.type === 'episode';
   }
 
+  public addTorrents(torrents: ITorrent[]): TVideo {
+    this.torrents = torrents;
+    return (this as TVideo);
+  }
+
   public getDownloadPath(): string {
     return `${this.id}`;
   }

@@ -101,7 +101,9 @@ export class DownloadClient extends events.EventEmitter {
     const torrentPath = path.join(this.downloadRoot, torrent.getDownloadPath());
     const toDestroy = this.client.torrents.find(ct => ct.path === torrentPath);
     if (!toDestroy) {
-      throw new Error(`Failed to identify torrent for destruction: ${torrent}`);
+      // Assume Swiper was reset after download and torrent is already destroyed
+      log.error(`Torrent ${torrent.id} not found in client to destroy`);
+      return;
     }
     return new Promise((resolve, reject) => {
       toDestroy.destroy({}, (err) => {

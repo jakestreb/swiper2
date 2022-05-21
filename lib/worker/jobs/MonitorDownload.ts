@@ -10,7 +10,7 @@ export class MonitorDownload extends Base {
 	public static initDelayS: number = 60;
 
 	public async run(videoId: number): Promise<boolean> {
-		const video = await db.videos.get(videoId);
+		const video = await db.videos.getOne(videoId);
 		if (!video) {
 			throw new Error(`MonitorDownload job run on invalid videoId: ${videoId}`);
 		}

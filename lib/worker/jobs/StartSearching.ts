@@ -8,7 +8,7 @@ export class StartSearching extends Base {
 	public static initDelayS: number = 0;
 
 	public async run(videoId: number): Promise<boolean> {
-		const video = await db.videos.get(videoId);
+		const video = await db.videos.getOne(videoId);
 		if (!video) {
 			throw new Error(`StartSearching job run on invalid videoId: ${videoId}`);
 		}

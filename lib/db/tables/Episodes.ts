@@ -1,9 +1,21 @@
 import Episode from '../../res/Episode';
 import Base from './Base';
 
-export default class Episodes extends Base<IEpisode> {
+interface EpisodeDBRow {
+  id: number;
+  seasonNum: number;
+  episodeNum: number;
+  airDate?: number;
+  showId: number;
+  status: Status;
+  queueIndex: number;
+  addedBy: number;
+  createdAt: Date;
+}
+
+export default class Episodes extends Base<EpisodeDBRow, IEpisode> {
   public async init(): Promise<this> {
-    await this.db.run(`CREATE TABLE IF NOT EXISTS episodes (
+    await this.run(`CREATE TABLE IF NOT EXISTS episodes (
       id INTEGER PRIMARY KEY,
       seasonNum INTEGER,
       episodeNum INTEGER,
@@ -18,9 +30,10 @@ export default class Episodes extends Base<IEpisode> {
     return this;
   }
 
-  public async buildInstance(row: any): Promise<IEpisode> {
+  public async buildInstance(row: EpisodeDBRow): Promise<IEpisode> {
     const show = await this.db.shows.getEmpty(row.showId);
-    return new Episode({ ...row, type: 'episode', showTitle: show.title });
+    const airDate = row.airDate ? new Date(row.airDate) : undefined;
+    return new Episode({ ...row, airDate, showTitle: show.title });
   }
 
   public async getOne(id: number): Promise<IEpisode|void> {
@@ -39,7 +52,7 @@ export default class Episodes extends Base<IEpisode> {
     if (episode.status === status) {
       return episode;
     }
-    await this.db.run('UPDATE episodes SET status=? WHERE id=?', [status, episode.id]);
+    await this.run('UPDATE episodes SET status=? WHERE id=?', [status, episode.id]);
     return { ...episode, status };
   }
 
@@ -49,15 +62,15 @@ export default class Episodes extends Base<IEpisode> {
   }
 
   public async insert(arg: IEpisode, options: DBInsertOptions): Promise<void> {
-    await this.db.run(`INSERT INTO episodes (id, seasonNum, episodeNum, airDate, ` +
+    await this.run(`INSERT INTO episodes (id, seasonNum, episodeNum, airDate, ` +
         `showId, status, addedBy) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [arg.id, arg.seasonNum, arg.episodeNum, arg.airDate, arg.showId,
           options.status, options.addedBy]);
   }
 
   public async delete(...ids: number[]): Promise<void> {
-    await this.db.run(`DELETE FROM episodes WHERE id IN (${ids.map(e => '?')})`, ids);
+    await this.run(`DELETE FROM episodes WHERE id IN (${ids.map(e => '?')})`, ids);
     // Delete show if no episodes remain
-    await this.db.run(`DELETE FROM shows WHERE id NOT IN (SELECT showId FROM episodes)`);
+    await this.run(`DELETE FROM shows WHERE id NOT IN (SELECT showId FROM episodes)`);
   }
 }

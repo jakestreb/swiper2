@@ -81,12 +81,6 @@ declare interface JobDescription {
   startAt: Date;
 }
 
-declare interface Releases {
-  theatrical?: Date;
-  digital?: Date;
-  dvd?: Date;
-}
-
 declare interface DownloadProgress {
   progress: number;  // (0-100)
   speed: number;     // (MB/s)

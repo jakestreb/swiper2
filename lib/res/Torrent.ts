@@ -26,12 +26,26 @@ export default class Torrent implements ITorrent {
   public status: TorrentStatus;
   public queueIndex?: number;
 
-  constructor(values: BuildArg) {
+  public video?: IVideo;
 
+  constructor(values: BuildArg) {
+    this.id = values.id;
+    this.magnet = values.magnet;
+    this.videoId = values.videoId;
+    this.quality = values.quality;
+    this.resolution = values.resolution;
+    this.sizeMb = values.sizeMb;
+    this.status = values.status;
+    this.queueIndex = values.queueIndex;
   }
 
   public getDownloadPath(): string {
     return path.join(`${this.videoId}`, `${this.id}`);
+  }
+
+  public addVideo(video: IVideo): VTorrent {
+    this.video = video;
+    return (this as VTorrent);
   }
 
   public format(f: TextFormatter, peers: number, progress: number): string {

@@ -92,7 +92,6 @@ export default class TorrentSearch {
 
   private static async doSearch(video: IVideo): Promise<TorrentResult[]> {
     const searchTerm = getSearchTerm(video);
-    console.warn('searchTerm', searchTerm);
     const results: TSAResult[] = await TorrentSearchApi.search(searchTerm);
     const filtered: TSAResult[] = results.filter((res: TSAResult) => res.title && res.size);
     const filteredWithMagnet: (TSAResultWithMagnet|null)[] = await Promise.all(

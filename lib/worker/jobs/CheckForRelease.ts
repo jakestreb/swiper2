@@ -9,7 +9,7 @@ export class CheckForRelease extends Base {
   public static initDelayS: number = 60 * 60 * 12;
 
   public async run(videoId: number, runCount: number): Promise<boolean> {
-    const video = await db.videos.get(videoId);
+    const video = await db.videos.getOne(videoId);
     if (!video) {
       throw new Error(`CheckForRelease job run on invalid videoId: ${videoId}`);
     }

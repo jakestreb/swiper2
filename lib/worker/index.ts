@@ -10,7 +10,7 @@ export default class Worker {
   private currentTimeout: NodeJS.Timeout|null = null;
 
   private pingInProgress: boolean = false;
-  private pingLock: Promise<any>;
+  private pingLock: Promise<IJob|void>;
 
   constructor(public swiper: Swiper) {}
 
@@ -44,7 +44,7 @@ export default class Worker {
     if (!this.pingInProgress) {
       this.pingInProgress = true;
       this.pingLock = db.jobs.getNext();
-      const nextJob: IJob = await this.pingLock;
+      const nextJob: IJob|void = await this.pingLock;
       if (nextJob && (!this.nextRun || nextJob.nextRunAt < this.nextRun)) {
         clearTimeout(this.currentTimeout!);
         this.nextRun = nextJob.nextRunAt;

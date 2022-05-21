@@ -1,9 +1,9 @@
 export default class Videos {
   constructor(public db: any) {}
 
-  public async get(id: number): Promise<IVideo|null> {
-    const movie = await this.db.movies.get(id);
-    const episode = await this.db.episodes.get(id);
+  public async getOne(id: number): Promise<IVideo|null> {
+    const movie = await this.db.movies.getOne(id);
+    const episode = await this.db.episodes.getOne(id);
     return movie || episode;
   }
 

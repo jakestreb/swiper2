@@ -177,16 +177,18 @@ export default class DownloadManager {
   }
 
   private async upload(videoId: number): Promise<void> {
-    const video: IVideo = (await db.videos.get(videoId))!;
+    const video: IVideo = (await db.videos.getOne(videoId))!;
     const torrents = await db.torrents.getForVideo(video.id);
     const completed = torrents.find(t => t.status === 'completed');
     if (!completed) {
       throw new Error('Export error: no torrents completed');
     }
+    const vTorrent = completed.addVideo(video);
+    const tVideo = video.addTorrents(torrents);
 
     // Export and cleanup torrents
-    await this.exportHandler.export({ ...completed, video });
-    await this.downloadClient.destroyAndDeleteVideo({ ...video, torrents });
+    await this.exportHandler.export(vTorrent);
+    await this.downloadClient.destroyAndDeleteVideo(tVideo);
     await db.torrents.delete(...torrents.map(t => t.id));
 
     // Mark video as completed and delete in 24 hours
