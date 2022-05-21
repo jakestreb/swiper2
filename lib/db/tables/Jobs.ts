@@ -49,15 +49,16 @@ export default class Jobs extends Base<JobDBRow, IJob> {
   }
 
   public async getNextRun(videoId: number, type: JobType): Promise<Date|null> {
-    const jobs: IJob[] = await this.all('SELECT * FROM jobs WHERE videoId=?', [videoId]);
+    const jobs: IJob[] = await this.all('SELECT * FROM jobs WHERE videoId=? AND isDone=0', [videoId]);
     const nextRuns = jobs
       .filter(job => job.type === type)
       .map(job => job.nextRunAt.getTime());
     return nextRuns.length > 0 ? new Date(Math.min(...nextRuns)) : null;
   }
 
-  public getNext(): Promise<IJob|void> {
-    return this.get('SELECT * FROM jobs WHERE isDone=0 ORDER BY nextRunAt LIMIT 1');
+  public getNext(avoid: number[] = []): Promise<IJob|void> {
+    return this.get(`SELECT * FROM jobs WHERE isDone=0 AND `
+      + `id NOT IN (${avoid.map(e => '?')}) ORDER BY nextRunAt LIMIT 1`, avoid);
   }
 
   // Note that this should only be called by the worker
@@ -77,7 +78,7 @@ export default class Jobs extends Base<JobDBRow, IJob> {
     interval = Math.max(interval, Jobs.MAX_INTERVAL_SECONDS);
 
     const nextRunAt = new Date(Date.now() + interval * 1000);
-    await this.run('UPDATE jobs SET nextRunAt=?, intervalS=?, isDone=0 WHERE id=?',
+    await this.run('UPDATE jobs SET nextRunAt=?, intervalS=? WHERE id=?',
       [nextRunAt, interval, id]);
   }
 

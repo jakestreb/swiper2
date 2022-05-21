@@ -217,8 +217,9 @@ export default class DownloadManager {
   private getTorrentPriority(torrent: ITorrent): number[] {
     const downloadProgress = this.getProgress(torrent);
     const isSlow = torrent.status === 'slow';
+    const isRemoved = torrent.status === 'removed';
     const { progress, peers } = downloadProgress;
     // From important to least
-    return [-isSlow, +progress, +peers];
+    return [-isRemoved, -isSlow, +progress, +peers];
   }
 }

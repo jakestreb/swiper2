@@ -10,7 +10,8 @@ export async function remove(this: Swiper, convo: Conversation): Promise<SwiperR
   const storedMedia = convo.storedMedia;
   if (!storedMedia) {
     return {
-      data: `Nothing matching ${convo.input} was found`,
+      data: `Nothing matching ${convo.mediaQuery!.title} was found`,
+      final: true,
     };
   }
 
@@ -72,7 +73,7 @@ export async function removeTorrent(swiper: Swiper, convo: Conversation, f: Text
     const torrent = storedVideos[0].torrents[0];
     const { progress, peers } = swiper.downloadManager.getProgress(torrent);
     return {
-      data: formatConfirmTorrent({ ...torrent, video }, peers, progress, f),
+      data: formatConfirmTorrent(torrent.addVideo(video), peers, progress, f),
     };
   }
 
@@ -106,9 +107,8 @@ async function doRemoveMedia(swiper: Swiper, media: IMedia): Promise<void> {
 // Remove download files
 // If that was the last torrent, start searching for a new one
 async function doRemoveTorrent(swiper: Swiper, video: TVideo, torrent: ITorrent): Promise<void> {
-    const t = { ...torrent, video };
-    await swiper.downloadManager.destroyAndDeleteTorrent(t);
-    await db.torrents.setStatus(t, 'removed');
+    await swiper.downloadManager.destroyAndDeleteTorrent(torrent.addVideo(video));
+    await db.torrents.setStatus(torrent, 'removed');
     if (video.torrents.length <= 1) {
       await swiper.worker.addJob({
         type: 'StartSearching',

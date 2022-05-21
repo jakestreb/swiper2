@@ -36,7 +36,7 @@ export class DownloadClient extends events.EventEmitter {
           resolve();
         });
         wtTorrent.on('error', async (err) => {
-          log.subProcessError(`Torrent error`);
+          log.subProcessError(`Torrent error: ${err}`);
           this.deleteTorrentFiles(vt)
             .catch(err => {
               log.subProcessError(`Torrent file delete error: ${err}`);
@@ -51,6 +51,9 @@ export class DownloadClient extends events.EventEmitter {
   public getProgress(magnet: string): DownloadProgress {
     log.debug(`DownloadClient: getProgress(${magnet})`);
     const wtTorrent = this.client.get(magnet);
+    if (wtTorrent) {
+      console.warn('TORRENT', wtTorrent.magnetURI, wtTorrent.infoHash);
+    }
     return {
       progress: wtTorrent ? wtTorrent.progress * 100 : 0,
       speed: wtTorrent ? wtTorrent.downloadSpeed / (1024 * 1024) : 0, // MB/s

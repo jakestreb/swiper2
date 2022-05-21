@@ -46,7 +46,9 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
 }
 
 async function getSearchTxt(video: IVideo): Promise<string|null> {
-  const nextRunDate = await db.jobs.getNextRun(video.id, 'AddTorrent');
+  const nextAddTorrent = await db.jobs.getNextRun(video.id, 'AddTorrent');
+  const nextCheckRelease = await db.jobs.getNextRun(video.id, 'CheckForRelease');
+  const nextRunDate = nextAddTorrent || nextCheckRelease;
   if (!nextRunDate) {
     return null;
   } else if (nextRunDate.getTime() < Date.now()) {
