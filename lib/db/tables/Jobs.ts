@@ -76,7 +76,7 @@ export default class Jobs extends Base<JobDBRow, IJob> {
       return;
     }
     let interval = job.schedule === 'backoff' ? intervalS * 2 : intervalS;
-    interval = Math.max(interval, Jobs.MAX_INTERVAL_SECONDS);
+    interval = Math.min(interval, Jobs.MAX_INTERVAL_SECONDS);
 
     const nextRunAt = new Date(Date.now() + interval * 1000);
     await this.run('UPDATE jobs SET nextRunAt=?, intervalS=?, status=\'pending\' WHERE id=?',
@@ -89,6 +89,10 @@ export default class Jobs extends Base<JobDBRow, IJob> {
 
   public async markDone(jobId: number): Promise<void> {
     await this.run('UPDATE jobs SET status=\'done\' WHERE id=?', [jobId]);
+  }
+
+  public async markRunningAsPending(): Promise<void> {
+    await this.run('UPDATE jobs SET status=\'pending\' WHERE status=\'running\'');
   }
 
   public async deleteForVideo(videoId: number): Promise<void> {

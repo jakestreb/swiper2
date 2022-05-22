@@ -28,7 +28,7 @@ export default class TorrentSearch {
   public static searchRetryCount = 2;
   public static searchConcurrency = 1;
 
-  public static hashRegex = /(?<![\w\d])([\w\d]{40})(?![\w\d])/i;
+  public static hashRegex = /(?<![\w\d])([\w\d]{32}|[\w\d]{40})(?![\w\d])/i;
 
   public static lock = new ConcurrencyLock(TorrentSearch.searchConcurrency);
 
@@ -123,7 +123,7 @@ export default class TorrentSearch {
     const uri = result.magnet || result.link || fetchedMagnet!;
     const matches = uri.match(TorrentSearch.hashRegex);
     if (!matches) {
-      log.debug(`No hash match for torrent: ${result.title}`);
+      log.error(`No hash match for torrent: ${uri}`);
       return null;
     }
     result.hash = matches[1].toUpperCase();

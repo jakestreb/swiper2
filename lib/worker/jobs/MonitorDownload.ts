@@ -38,6 +38,7 @@ export class MonitorDownload extends Base {
 
   private isSlow(t: ITorrent) {
     const { speed } = this.swiper.downloadManager.getProgress(t);
+    console.warn('SPEED', t.id, speed);
     return speed <= SLOW_SPEED_MBS;
   }
 }

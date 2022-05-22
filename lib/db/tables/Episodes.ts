@@ -7,6 +7,7 @@ interface EpisodeDBRow {
   episodeNum: number;
   airDate?: number;
   showId: number;
+  showTitle: string;
   status: Status;
   queueIndex: number;
   addedBy: number;
@@ -21,6 +22,7 @@ export default class Episodes extends Base<EpisodeDBRow, IEpisode> {
       episodeNum INTEGER,
       airDate DATETIME,
       showId INTEGER,
+      showTitle TEXT,
       status TEXT DEFAULT unreleased,
       queueIndex INTEGER DEFAULT -1,
       addedBy INTEGER,
@@ -31,9 +33,8 @@ export default class Episodes extends Base<EpisodeDBRow, IEpisode> {
   }
 
   public async buildInstance(row: EpisodeDBRow): Promise<IEpisode> {
-    const show = await this.db.shows.getEmpty(row.showId);
     const airDate = row.airDate ? new Date(row.airDate) : undefined;
-    return new Episode({ ...row, airDate, showTitle: show.title });
+    return new Episode({ ...row, airDate });
   }
 
   public async getOne(id: number): Promise<IEpisode|void> {
@@ -63,9 +64,9 @@ export default class Episodes extends Base<EpisodeDBRow, IEpisode> {
 
   public async insert(arg: IEpisode, options: DBInsertOptions): Promise<void> {
     await this.run(`INSERT INTO episodes (id, seasonNum, episodeNum, airDate, ` +
-        `showId, status, addedBy) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `showId, showTitle, status, addedBy) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [arg.id, arg.seasonNum, arg.episodeNum, arg.airDate, arg.showId,
-          options.status, options.addedBy]);
+          arg.showTitle, options.status, options.addedBy]);
   }
 
   public async delete(...ids: number[]): Promise<void> {

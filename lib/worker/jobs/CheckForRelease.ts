@@ -18,9 +18,10 @@ export class CheckForRelease extends Base {
       // If video already has a torrent added, cancel job
       return true;
     }
+
     const success = await TorrentSearch.addBestTorrent(video);
     if (success) {
-      await db.videos.setStatus(video, 'downloading');
+      await this.swiper.downloadManager.addToQueue(video);
       this.swiper.downloadManager.ping();
     } else if (runCount === 0) {
       await db.videos.setStatus(video, 'unreleased');

@@ -12,6 +12,8 @@ export default class Worker {
   private pingInProgress: boolean = false;
   private pingLock: Promise<IJob|void>;
 
+  private isInit = false;
+
   constructor(public swiper: Swiper) {}
 
   public start() {
@@ -39,6 +41,12 @@ export default class Worker {
 
   // Do not await
   private async ping() {
+    if (!this.isInit) {
+      // If the process exited when jobs were running, re-mark them as pending
+      this.isInit = true;
+      await db.jobs.markRunningAsPending();
+    }
+
     await this.pingLock;
     // If after waiting, the ping is in process again, the goal of the ping
     // is already being accomplished, so this ping can return.
@@ -81,16 +89,23 @@ export default class Worker {
       if (!success && JobClass.schedule !== 'once') {
         log.debug(`Rescheduling ${job.type} job ${job.videoId}`);
         // Reschedule repeat jobs on failure
-        await db.jobs.reschedule(job);
+        await this.tryReschedule(job);
         this.start();
       } else {
         await db.jobs.markDone(job.id);
       }
     } catch (err) {
       log.error(`Error running ${job.type} job ${job.videoId}: ${err}`);
-      // Reschedule all jobs on error
+      await this.tryReschedule(job);
+    }
+  }
+
+  private async tryReschedule(job: IJob): Promise<void> {
+    try {
       await db.jobs.reschedule(job);
       this.start();
+    } catch (err) {
+      log.error(`Failed to reschedule ${job.type} job ${job.videoId}: ${err}`);
     }
   }
 }

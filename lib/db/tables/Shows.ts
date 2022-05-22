@@ -45,8 +45,11 @@ export default class Shows extends Base<ShowDBRow, IShow> {
       episodesByShow[e.showId].push(e);
     });
     const showIds = Object.keys(episodesByShow);
-    const shows: IShow[] = await this.all(`SELECT * FROM shows WHERE id IN (${showIds.map(id => '?')})`, showIds);
-    shows.forEach(s => s.episodes = episodesByShow[s.id]);
+    let shows: IShow[] = [];
+    if (showIds.length > 0) {
+      shows = await this.all(`SELECT * FROM shows WHERE id IN (${showIds.map(id => '?')})`, showIds);
+      shows.forEach(s => s.episodes = episodesByShow[s.id]);
+    }
     return shows;
   }
 

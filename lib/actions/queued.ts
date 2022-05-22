@@ -23,7 +23,7 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
     });
     const searchTxt = await getSearchTxt(video);
     const rows = [`${getIcon(video)}${f.sp(1)}${video.format(f)}`];
-    if (torrentRows.length > 0) {
+    if (video.status === 'downloading' && torrentRows.length > 0) {
       rows.push(torrentRows.join('\n'));
     }
     if (searchTxt) {
