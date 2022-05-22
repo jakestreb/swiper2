@@ -2,7 +2,7 @@ import * as util from '../../util';
 import db from '../../db';
 import Base from './Base';
 
-const SLOW_SPEED_MBS = 0.06;
+const SLOW_SPEED_MBS = 0.2;
 
 // For 'downloading' (and 'slow') videos, check progress to update torrent status
 export class MonitorDownload extends Base {

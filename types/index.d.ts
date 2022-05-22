@@ -7,6 +7,8 @@ declare type Status = 'identified'|'unreleased'|'searching'|'downloading'|'uploa
 // Note torrents should only have status 'removed' if they were singularly removed
 declare type TorrentStatus = 'downloading'|'slow'|'paused'|'completed'|'removed';
 
+declare type JobStatus = 'pending'|'running'|'done';
+
 declare type MediaType = 'movie'|'tv'|'episode';
 
 declare type JobType = 'AddTorrent'|'CheckForRelease'|'DeleteVideo'|'MonitorDownload'|'StartSearching';

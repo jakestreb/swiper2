@@ -14,8 +14,7 @@ export class AddTorrent extends Base {
 		}
 		const success = await TorrentSearch.addBestTorrent(video);
 		if (success) {
-			await db.videos.setStatus(video, 'downloading');
-			this.swiper.downloadManager.ping();
+			this.swiper.downloadManager.addToQueue(video);
 		}
 		return success;
 	}

@@ -46,15 +46,14 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
 }
 
 async function getSearchTxt(video: IVideo): Promise<string|null> {
-  const nextAddTorrent = await db.jobs.getNextRun(video.id, 'AddTorrent');
-  const nextCheckRelease = await db.jobs.getNextRun(video.id, 'CheckForRelease');
-  const nextRunDate = nextAddTorrent || nextCheckRelease;
-  if (!nextRunDate) {
+  const jobTypes: JobType[] = ['AddTorrent', 'CheckForRelease', 'StartSearching'];
+  const nextRun = await db.jobs.getNextRun(video.id, jobTypes);
+  if (!nextRun) {
     return null;
-  } else if (nextRunDate.getTime() < Date.now()) {
+  } else if (nextRun.getTime() < Date.now()) {
     return '(searching)';
   }
-  return `(searching in ${util.formatWaitTime(nextRunDate)})`;
+  return `(searching in ${util.formatWaitTime(nextRun)})`;
 }
 
 function formatCompleted(video: IVideo, f: TextFormatter) {
@@ -71,7 +70,9 @@ function getIcon(video: TVideo) {
 }
 
 function getSortPriority(video: IVideo) {
-  const queueIndex = video.queueIndex!;
+  const queueIndex = video.status === 'downloading' ? video.queueIndex! : -1;
+  const season = video.isEpisode() ? video.seasonNum : 0;
+  const episode = video.isEpisode() ? video.episodeNum : 0;
   return [
     video.status === 'uploading',
     video.status === 'downloading',
@@ -79,5 +80,7 @@ function getSortPriority(video: IVideo) {
     video.status === 'completed',
     queueIndex >= 0,
     -queueIndex,
+    -season,
+    -episode
   ];
 }

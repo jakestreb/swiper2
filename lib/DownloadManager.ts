@@ -31,6 +31,18 @@ export default class DownloadManager {
     this.startUploads();
   }
 
+  public async addToQueue(video: IVideo): Promise<void> {
+    if (video.status !== 'downloading') {
+      await db.videos.setStatus(video, 'downloading');
+      await this.swiper.worker.addJob({
+        type: 'MonitorDownload',
+        videoId: video.id,
+        startAt: new Date(Date.now() + 60 * 1000),
+      });
+      this.ping();
+    }
+  }
+
   // A non-async public wrapper is used to prevent accidental waiting on the ping function.
   public ping(): void {
     this._ping().catch(err => {
@@ -90,7 +102,7 @@ export default class DownloadManager {
     const toStart: VTorrent[] = [];
     const toPause: VTorrent[] = [];
 
-    // Round robin iterate through videos starting any torrents where there's space
+    // Iterate through videos starting any torrents where there's space
     // Once all the space is allocated, pause any remaining torrents
     const originalFree = await this.memoryManager.getFreeMb();
     let storageRemaining = originalFree;
@@ -191,6 +203,7 @@ export default class DownloadManager {
 
     // Mark video as completed and delete in 24 hours
     await db.videos.setStatus(video, 'completed');
+    await this.swiper.worker.removeJobs(video.id);
     await this.swiper.worker.addJob({
       type: 'DeleteVideo',
       videoId: video.id,

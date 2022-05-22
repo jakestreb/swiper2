@@ -4,7 +4,7 @@ import Swiper from '../Swiper';
 export async function download(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const f = this.getTextFormatter(convo);
 
-  let isFullyUnreleased = false;
+  let isAnyReleased = false;
 
   const media = convo.media as IMedia;
   const video: IVideo|null = media.getVideo();
@@ -22,46 +22,47 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
         final: true
       };
     }
-    isFullyUnreleased = isUnreleased(video);
+    isAnyReleased = isReleased(video);
     await db.media.insert(media, {
       addedBy: convo.id,
-      status: isFullyUnreleased ? 'unreleased' : 'searching',
+      status: isAnyReleased ? 'searching' : 'unreleased',
     });
     // TODO: If insertion fails
     // return {
-    //   data: 'Requested episodes overlap with episodes currently being managed',
+    //   data: 'Requested episodes overlap with added episodes',
     //   final: true
     // };
     await checkOrAwaitRelease(this, video);
   } else {
     const show = media as IShow;
-    isFullyUnreleased = !show.episodes.some(e => !isUnreleased(e));
+    isAnyReleased = show.episodes.some(e => isReleased(e));
     await db.shows.insert(show, { addedBy: convo.id, status: 'searching' });
     // TODO: If insertion fails
     // return {
-    //   data: 'Requested episodes overlap with episodes currently being managed',
+    //   data: 'Requested episodes overlap with added episodes',
     //   final: true
     // };
     await Promise.all(show.episodes.map(async e => {
-      if (isUnreleased(e)) {
+      if (!isReleased(e)) {
         await db.episodes.setStatus(e, 'unreleased');
       }
       await checkOrAwaitRelease(this, e);
     }));
   }
   return {
-    data: `${isFullyUnreleased ? 'Scheduled' : 'Queued'} ${media.format(f)} for download`,
+    data: `${isAnyReleased ? 'Queued' : 'Scheduled'} ${media.format(f)} for download`,
     final: true
   };
 }
 
 function getDefinitiveRelease(video: IVideo): Date|undefined {
-  return (video as IMovie).releases.digital || (video as IEpisode).airDate;
+  const releases = (video as IMovie).releases;
+  return releases ? releases.digital : (video as IEpisode).airDate;
 }
 
-function isUnreleased(video: IVideo) {
+function isReleased(video: IVideo) {
   const definitiveRelease = getDefinitiveRelease(video);
-  return Boolean(definitiveRelease && new Date(definitiveRelease) > new Date());
+  return Boolean(definitiveRelease && new Date() >= definitiveRelease);
 }
 
 function checkOrAwaitRelease(swiper: Swiper, video: IVideo) {

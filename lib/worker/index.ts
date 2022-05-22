@@ -9,8 +9,6 @@ export default class Worker {
   private nextRun: Date|null = null;
   private currentTimeout: NodeJS.Timeout|null = null;
 
-  private inProgress: Set<number> = new Set(); // In progress job ids
-
   private pingInProgress: boolean = false;
   private pingLock: Promise<IJob|void>;
 
@@ -24,6 +22,7 @@ export default class Worker {
   }
 
   public async addJob(job: JobDescription) {
+    log.debug(`Adding ${job.type} job ${job.videoId}`);
     const JobClass = this.getJobClass(job.type);
     const { schedule, initDelayS } = JobClass;
     await db.jobs.insert({ ...job, schedule, initDelayS });
@@ -45,7 +44,7 @@ export default class Worker {
     // is already being accomplished, so this ping can return.
     if (!this.pingInProgress) {
       this.pingInProgress = true;
-      this.pingLock = db.jobs.getNext([...this.inProgress]);
+      this.pingLock = db.jobs.getNext();
       const nextJob: IJob|void = await this.pingLock;
       if (nextJob && (!this.nextRun || nextJob.nextRunAt < this.nextRun)) {
         clearTimeout(this.currentTimeout!);
@@ -59,7 +58,7 @@ export default class Worker {
 
   private async runJob(job: IJob) {
     log.debug(`Running ${job.type} job ${job.videoId}`);
-    this.inProgress.add(job.id);
+    await db.jobs.markRunning(job.id);
     this.nextRun = null;
     this.currentTimeout = null;
     this.doRunJob(job)
@@ -79,7 +78,6 @@ export default class Worker {
     let success = false;
     try {
       success = await jobInst.run(job.videoId, job.runCount);
-      this.inProgress.delete(job.id);
       if (!success && JobClass.schedule !== 'once') {
         log.debug(`Rescheduling ${job.type} job ${job.videoId}`);
         // Reschedule repeat jobs on failure

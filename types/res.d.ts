@@ -78,13 +78,13 @@ declare interface ITorrent {
 declare interface IJob {
   id: number;
   type: JobType;
+  status: JobStatus;
   videoId: number;
   schedule: JobSchedule;
   intervalS: number;
   runCount: number;
   startAt: Date;
   nextRunAt: Date;
-  isDone: boolean;
 }
 
 declare type TVideo = IVideo & {

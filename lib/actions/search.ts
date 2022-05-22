@@ -75,10 +75,11 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   }
   const torrent = convo.torrents[torrentNum - 1];
 
-  await db.media.insert(media, { addedBy: convo.id, status: 'downloading' });
+  await db.media.insert(media, { addedBy: convo.id, status: 'identified' });
   // TODO: If insertion fails, skip it
   await db.torrents.insert({ ...torrent, videoId: video.id, status: 'paused' });
-  this.downloadManager.ping();
+
+  await this.downloadManager.addToQueue(video);
 
   return {
     data: `Queued ${video.format(f)} for download`,

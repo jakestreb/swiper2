@@ -13,7 +13,6 @@ export class DeleteVideo extends Base {
 		}
 		// Only delete video if status is completed
 		if (video.status === 'completed') {
-			await this.worker.removeJobs(videoId);
 			await db.videos.delete(videoId);
 		}
 		return true;

@@ -39,13 +39,18 @@ export function formatWaitTime(date: Date): string {
   const s = (date.getTime() - new Date().getTime()) / 1000;
   const h = s / 60 / 60;
   if (s < 60) {
-    return `${Math.max(s, 1)}s`;
+    const n = Math.ceil(Math.max(s, 1));
+    return `${n}s`;
   } else if (s < 60 * 60) {
-    return `${s / 60}m`;
+    const n = Math.ceil(s / 60);
+    return `${n}m`;
   } else if (s < 60 * 60 * 48) {
-    return `${h}h ${s % (60 * 60)}m`;
+    const nh = Math.ceil(h);
+    const ns = Math.ceil(s % (60 * 60));
+    return `${nh}h ${ns}m`;
   }
-  return `${h / 24}d`;
+  const n = Math.ceil(h / 24);
+  return `${n}d`;
 }
 
 export function formatDateSimple(date: Date): string {
@@ -74,9 +79,9 @@ export function getAiredStr(date: Date): string {
     return `${month} ${calDay}, ${year}`;
   } else if (diff < -oneWeek) {
     // Over a week ago
-    return `${weekday}, ${month} ${calDay}`;
+    return `${month} ${calDay}`;
   } else if (diff < -oneDay) {
-    // In the week
+    // In the past week
     return `Last ${weekday}`;
   } else if (diff < 0) {
     return `Yesterday`;
@@ -87,7 +92,7 @@ export function getAiredStr(date: Date): string {
     return `${weekday} ${getTimeString(date)}`;
   } else if (diff < sixMonths) {
     // More than a week ahead
-    return `${weekday}, ${month} ${calDay}`;
+    return `${month} ${calDay}`;
   } else {
     // More than 6 months ahead
     return `${month} ${calDay}, ${year}`;

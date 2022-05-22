@@ -10,10 +10,10 @@ export async function scheduled(this: Swiper, convo: Conversation): Promise<Swip
 
   const unreleased = await db.media.getWithStatus('unreleased');
 
-  const shows: string[] = unreleased
+  const movies: string[] = unreleased
     .filter(media => media.type === 'movie')
     .map(movie => formatMovieRow(movie as IMovie, f));
-  const movies: string[] = unreleased
+  const shows: string[] = unreleased
     .filter(media => media.type === 'tv')
     .map(show => formatShowRow(show as IShow, f));
 
@@ -32,10 +32,10 @@ export async function scheduled(this: Swiper, convo: Conversation): Promise<Swip
 
 function formatMovieRow(movie: IMovie, f: TextFormatter) {
   // TODO: Calculate expected release
-  const release = movie.releases.theatrical;
-  const items = [getIcon(release), movie.format(f)];
-  if (release) {
-    const airedStr = util.getAiredStr(new Date(release));
+  const expected = movie.getExpectedRelease();
+  const items = [getIcon(movie.getSearchDate()), movie.format(f)];
+  if (expected) {
+    const airedStr = util.getAiredStr(expected);
     items.push(f.i(airedStr));
   }
   return items.join(' ');
@@ -54,7 +54,7 @@ function formatShowRow(show: IShow, f: TextFormatter) {
   return items.join(' ');
 }
 
-function getIcon(release?: Date) {
-  const isChecking = !release || (release <= new Date());
+function getIcon(searchDate?: Date) {
+  const isChecking = !searchDate || (searchDate <= new Date());
   return isChecking ? CIRCLE_ARROW : HOURGLASS;
 }
