@@ -11,14 +11,12 @@ const UPLOADING = '(uploading)';
 export async function queued(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const f = this.getTextFormatter(convo);
 
-  const downloading = await db.videos.getWithStatus('searching', 'downloading', 'uploading', 'completed');
+  const downloading = await db.videos.getWithStatus('searching', 'downloading', 'uploading');
+  const completed = await db.media.getWithStatus('completed');
   const downloadingWithTorrents = await Promise.all(downloading.map(d => db.videos.addTorrents(d)));
   const sorted = util.sortByPriority(downloadingWithTorrents, getSortPriority);
 
   const downloadRows = await Promise.all(sorted.map(async video => {
-    if (video.status === 'completed') {
-      return `${f.sp(2)}${formatCompleted(video, f)}`;
-    }
     const torrentRows = video.torrents.map(t => {
       const { progress, peers } = this.downloadManager.getProgress(t);
       return `${f.sp(2)}${t.format(f, peers, progress)}`;
@@ -36,11 +34,15 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
     }
     return rows.join('\n');
   }));
+  const completedRows = completed.map(media => {
+      return `${f.sp(2)}${formatCompleted(media, f)}`;
+  });
+  const rows = [...downloadRows, ...completedRows];
 
   this.downloadManager.memoryManager.log(); // TODO: Remove
   this.downloadManager.downloadClient.logTorrents(); // TODO: Remove
   return {
-    data: downloadRows.length > 0 ? downloadRows.join('\n') : 'No downloads',
+    data: rows.length > 0 ? rows.join('\n') : 'No downloads',
     final: true
   };
 }
@@ -56,8 +58,8 @@ async function getSearchTxt(video: IVideo): Promise<string|null> {
   return `(searching in ${util.formatWaitTime(nextRun)})`;
 }
 
-function formatCompleted(video: IVideo, f: TextFormatter) {
-  return f.s(video.format(f));
+function formatCompleted(media: IMedia, f: TextFormatter) {
+  return f.s(media.format(f));
 }
 
 function getIcon(video: TVideo) {
@@ -77,7 +79,6 @@ function getSortPriority(video: IVideo) {
     video.status === 'uploading',
     video.status === 'downloading',
     video.status === 'searching',
-    video.status === 'completed',
     queueIndex >= 0,
     -queueIndex,
     -season,
