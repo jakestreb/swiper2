@@ -9,8 +9,9 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
   const media = convo.media as IMedia;
   const video: IVideo|null = media.getVideo();
   if (video) {
-    const existing = await db.torrents.getForVideo(video.id);
-    if (existing.length > 0) {
+    const existing = await db.videos.getOne(video.id);
+    const wt = existing ? await db.videos.addTorrents(existing) : null;
+    if (wt && wt.status === 'downloading' && wt.torrents.length > 0) {
       // For videos that already have torrents, add another
       await this.worker.addJob({
         type: 'AddTorrent',
@@ -23,25 +24,35 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
       };
     }
     isAnyReleased = isReleased(video);
-    await db.media.insert(media, {
-      addedBy: convo.id,
-      status: isAnyReleased ? 'searching' : 'unreleased',
-    });
-    // TODO: If insertion fails
-    // return {
-    //   data: 'Requested episodes overlap with added episodes',
-    //   final: true
-    // };
+    try {
+      await db.media.insert(media, {
+        addedBy: convo.id,
+        status: isAnyReleased ? 'searching' : 'unreleased',
+      });
+    } catch (err) {
+      if (err.code !== 'SQLITE_CONSTRAINT') {
+        throw err;
+      }
+      return {
+        data: 'Video must be removed before re-downloading',
+        final: true
+      };
+    }
     await checkOrAwaitRelease(this, video);
   } else {
     const show = media as IShow;
     isAnyReleased = show.episodes.some(e => isReleased(e));
-    await db.shows.insert(show, { addedBy: convo.id, status: 'searching' });
-    // TODO: If insertion fails
-    // return {
-    //   data: 'Requested episodes overlap with added episodes',
-    //   final: true
-    // };
+    try {
+      await db.shows.insert(show, { addedBy: convo.id, status: 'searching' });
+    } catch (err) {
+      if (err.code !== 'SQLITE_CONSTRAINT') {
+        throw err;
+      }
+      return {
+        data: 'Show must be removed before re-downloading',
+        final: true
+      };
+    }
     await Promise.all(show.episodes.map(async e => {
       if (!isReleased(e)) {
         await db.episodes.setStatus(e, 'unreleased');

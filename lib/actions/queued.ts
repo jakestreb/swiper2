@@ -27,10 +27,10 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
       rows.push(torrentRows.join('\n'));
     }
     if (searchTxt) {
-      rows.push(searchTxt);
+      rows.push(`${f.sp(2)}${searchTxt}`);
     }
     if (video.status === 'uploading') {
-      rows.push(UPLOADING);
+      rows.push(`${f.sp(2)}${UPLOADING}`);
     }
     return rows.join('\n');
   }));

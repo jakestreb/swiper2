@@ -10,7 +10,6 @@ const PER_PAGE = 3;
 
 const STAR = '\u2605';
 
-const SELECTED = '(selected)';
 const REMOVED = '(removed)';
 
 export async function search(this: Swiper, convo: Conversation): Promise<SwiperReply> {
@@ -18,8 +17,8 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   const f = this.getTextFormatter(convo);
 
   const media = convo.media as IMedia;
-  const rawVideo = media.isShow() ? media.episodes[0] : media as IMovie;
-  const video = await db.videos.addTorrents(rawVideo);
+  const video = media.isShow() ? media.episodes[0] : media as IMovie;
+  const activeTorrents = await db.torrents.getForVideo(video.id);
 
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
@@ -40,9 +39,8 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 
   const showPage = async () => {
     const { torrents, pageNum } = convo;
-    console.warn('!!!!!!', f);
     return {
-      data: await formatSelection(torrents!, pageNum!, video.torrents, f),
+      data: await formatSelection(torrents!, pageNum!, activeTorrents, f),
     };
   };
 
@@ -76,8 +74,24 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   }
   const torrent = convo.torrents[torrentNum - 1];
 
-  await db.media.insert(media, { addedBy: convo.id, status: 'identified' });
-  // TODO: If insertion fails, skip it
+  try {
+    await db.media.insert(media, { addedBy: convo.id, status: 'identified' });
+  } catch (err) {
+    if (err.code !== 'SQLITE_CONSTRAINT') {
+      throw err;
+    }
+    const existing = await db.videos.getOne(video.id);
+    if (!existing) {
+      throw err;
+    }
+    if (existing.status !== 'downloading') {
+      return {
+        data: 'Video must be removed before re-downloading',
+        final: true
+      };
+    }
+  }
+
   await db.torrents.insert({ ...torrent, videoId: video.id, status: 'paused' });
 
   await this.downloadManager.addToQueue(video);
@@ -99,19 +113,16 @@ async function formatSelection(
   const removed = await db.torrents.getWithStatus('removed');
   const startIndex = PER_PAGE * pageNum;
   const endIndex = startIndex + PER_PAGE - 1;
-  const someTorrents = torrents.slice(startIndex, startIndex + PER_PAGE);
+  const filteredTorrents = torrents.filter(t => active.some(at => t.hash === at.hash));
+  const someTorrents = filteredTorrents.slice(startIndex, startIndex + PER_PAGE);
   const torrentRows = someTorrents.map((t, i) => {
     const isRemoved = removed.some(r => t.hash === r.hash);
-    const isSelected = active.some(at => t.hash === at.hash);
     const numberRow = [f.b(`${startIndex + i + 1}`)];
     if (isRemoved) {
       numberRow.push(REMOVED);
-    } else if (isSelected) {
-      numberRow.push(SELECTED);
     }
     return [numberRow.join(f.sp(1)), formatTorrent(t, f)].join('\n');
   });
-  console.warn('!!!!!!2', f);
   const commands = formatCommands([startIndex + 1, endIndex + 1], torrents.length, f);
   return [torrentRows.join('\n\n'), commands].join('\n\n');
 }
