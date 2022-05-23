@@ -81,6 +81,12 @@ export default class Worker {
       // Check if the job was since removed
       return;
     }
+    if (!await db.videos.getOne(job.videoId)) {
+      // Check if the video was since removed
+      log.debug(`Aborting ${job.type} job ${job.videoId} run since video was removed`);
+      await this.removeJobs(job.videoId);
+      return;
+    }
     const JobClass = this.getJobClass(job.type);
     const jobInst = new JobClass(this, this.swiper);
     let success = false;

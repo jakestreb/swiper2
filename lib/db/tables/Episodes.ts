@@ -64,7 +64,7 @@ export default class Episodes extends Base<EpisodeDBRow, IEpisode> {
 
   public async insert(arg: IEpisode, options: DBInsertOptions): Promise<void> {
     await this.run(`INSERT INTO episodes (id, seasonNum, episodeNum, airDate, ` +
-        `showId, showTitle, status, addedBy) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `showId, showTitle, status, addedBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [arg.id, arg.seasonNum, arg.episodeNum, arg.airDate, arg.showId,
           arg.showTitle, options.status, options.addedBy]);
   }

@@ -40,6 +40,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 
   const showPage = async () => {
     const { torrents, pageNum } = convo;
+    console.warn('!!!!!!', f);
     return {
       data: await formatSelection(torrents!, pageNum!, video.torrents, f),
     };
@@ -110,6 +111,7 @@ async function formatSelection(
     }
     return [numberRow.join(f.sp(1)), formatTorrent(t, f)].join('\n');
   });
+  console.warn('!!!!!!2', f);
   const commands = formatCommands([startIndex + 1, endIndex + 1], torrents.length, f);
   return [torrentRows.join('\n\n'), commands].join('\n\n');
 }

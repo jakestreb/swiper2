@@ -58,6 +58,12 @@ export default class MediaParser {
       // Need to parse season episode string.
       const show = convo.media as IShow;
       show.filterEpisodes(mediaQuery.episodes);
+      if (convo.media.isShow() && convo.media.episodes.length === 0) {
+          return {
+            err: 'Request does not match any episodes',
+            final: true
+          };
+      }
     }
   }
 
@@ -122,7 +128,8 @@ function formatSpecifyMultiple(f: TextFormatter) {
       'upcoming',
       's1',
       's1 e2',
-      's1 e2-4'
+      's1 e2-4',
+      's1 e2-4 & 6'
     ),
   ].join('\n\n');
 }

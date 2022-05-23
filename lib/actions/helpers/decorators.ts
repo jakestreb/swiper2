@@ -1,5 +1,6 @@
 import TextFormatter from '../../io/formatters/TextFormatter';
 import MediaParser from './MediaParser';
+import Swiper from '../../Swiper';
 
 type ActionFn = (convo: Conversation, f: TextFormatter) => Promise<SwiperReply|void>;
 
@@ -38,7 +39,8 @@ function createDecorator(
 ): void {
   // Saving a reference to the original method so we can call it after updating the conversation.
   const origFn = descriptor.value;
-  descriptor.value = async function(convo: Conversation, f: TextFormatter, ...args: any) {
+  descriptor.value = async function(convo: Conversation, ...args: any) {
+    const f = (this as Swiper).getTextFormatter(convo);
     const reply = await modifier(convo, f);
     if (reply) {
       return reply;
