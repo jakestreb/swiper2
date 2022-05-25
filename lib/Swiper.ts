@@ -157,6 +157,7 @@ export default class Swiper {
   private getCommandFn(convo: Conversation, command: string): CommandFn|null {
     switch (command) {
       case "download":
+      case "monitor":
       case "get":
       case "d":
         return () => this.download(convo);

@@ -42,6 +42,8 @@ export default abstract class Video implements IVideo {
     return `${this.id}`;
   }
 
+  public abstract getSearchDate(): Date;
+
   public abstract format(f: TextFormatter): string;
 
   public abstract getFileSafeTitle(): string;

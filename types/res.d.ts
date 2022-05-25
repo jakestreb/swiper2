@@ -15,6 +15,7 @@ declare interface IVideo {
   getDownloadPath(): string;
   addTorrents(torrents: ITorrent[]): TVideo;
   getFileSafeTitle(): string;
+  getSearchDate(): Date;
   format(f: TextFormatter): string;
   toString(): string;
 }
@@ -39,7 +40,6 @@ declare type IMovie = IVideo & IMedia & {
   releases: Releases;
 
   getExpectedRelease(): Date|null;
-  getSearchDate(): Date;
 }
 
 declare type IShow = IMedia & {

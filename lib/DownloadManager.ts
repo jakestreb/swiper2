@@ -11,8 +11,8 @@ export default class DownloadManager {
 
   private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
 
-  public memoryManager: MemoryManager; // TODO: Make private
-  public downloadClient: DownloadClient; // TODO: Make private
+  public memoryManager: MemoryManager;
+  public downloadClient: DownloadClient;
 
   private exportHandler: ExportHandler;
 

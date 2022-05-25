@@ -14,6 +14,8 @@ interface BuildArg {
 }
 
 export default class Episode extends Video implements IEpisode {
+  public static SEARCH_MINS_AFTER_AIR = 60;
+
   public type: 'episode' = 'episode';
   public seasonNum: number;
   public episodeNum: number;
@@ -29,6 +31,15 @@ export default class Episode extends Video implements IEpisode {
     this.showId = values.showId;
     this.showTitle = values.showTitle;
     this.airDate = values.airDate;
+  }
+
+  public getSearchDate(): Date {
+    if (!this.airDate) {
+      return new Date();
+    }
+    const date = new Date(this.airDate);
+    date.setMinutes(date.getMinutes() + Episode.SEARCH_MINS_AFTER_AIR);
+    return date;
   }
 
   public getFileSafeTitle(): string {

@@ -77,17 +77,10 @@ function isReleased(video: IVideo) {
 }
 
 function checkOrAwaitRelease(swiper: Swiper, video: IVideo) {
-  const airDate = (video as IEpisode).airDate;
-  if (airDate) {
-    return swiper.worker.addJob({
-      type: 'StartSearching',
-      videoId: video.id,
-      startAt: airDate,
-    });
-  }
+  const hasAirDate = video.isEpisode() && video.airDate;
   return swiper.worker.addJob({
-    type: 'CheckForRelease',
+    type: hasAirDate ? 'StartSearching' : 'CheckForRelease',
     videoId: video.id,
-    startAt: (video.isMovie() && video.getSearchDate()) || new Date(),
+    startAt: video.getSearchDate(),
   });
 }
