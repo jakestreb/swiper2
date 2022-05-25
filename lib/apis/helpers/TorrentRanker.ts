@@ -21,17 +21,14 @@ class SizePriority extends ResourcePriority<[number, number]> {
 }
 
 class TitlePriority extends ResourcePriority<boolean> {
-  public ranks = [true, false];
+  public ranks = [true];
   public predicate = (v: boolean, t: PartialTorrent) => {
     const title = this.video.getFileSafeTitle();
+    const regex = title.split(/\s/).join('[\\W]+');
     const { parsedTitle } = t;
-    if (this.video.isMovie()) {
-      const titleWithYear = `${title} ${this.video.year}`
-      return v === (parsedTitle === title || parsedTitle === titleWithYear);
-    }
-    return v === (parsedTitle === title);
+    return !!parsedTitle.match(new RegExp(regex, 'i'));
   }
-  public scale = 1.5;
+  public scale = 0;
 }
 
 export default class TorrentRanker {
