@@ -37,7 +37,7 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
   const completedRows = completed.map(media => {
       return `${f.sp(2)}${formatCompleted(media, f)}`;
   });
-  const rows = [...downloadRows, ...completedRows, 'hello'];
+  const rows = [...downloadRows, ...completedRows];
 
   this.downloadManager.memoryManager.log(); // TODO: Remove
   this.downloadManager.downloadClient.logTorrents(); // TODO: Remove
