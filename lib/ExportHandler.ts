@@ -32,24 +32,31 @@ export default class ExportHandler {
     if (!useFtp) {
       // The FTP copy process creates any folders needed in the FTP directory, but the
       // normal copy process does not.
-      log.debug(`exportVideo: Creating missing folders in export directory`);
+      log.debug(`ExportHandler: Creating missing folders in export directory`);
       await util.createSubdirs(exportRoot, dirs);
     }
     const exportPath = path.join(exportRoot, dirs);
 
     // Move the files to the final directory.
-    log.debug(`exportVideo: Copying videos to ${useFtp ? 'FTP server at ' : ''}${exportPath}`);
+    log.debug(`ExportHandler: Copying videos to ${exportPath}${useFtp ? 'via ftp' : ''}`);
     const torrentPath = path.join(this.downloadRoot, vt.getDownloadPath());
     const files = await fs.readdir(torrentPath);
     const copyActions = files.map(filePath => {
-      const from = path.join(torrentPath, filePath);
-      const to = path.join(exportPath, path.basename(filePath));
+      let from, to;
+      try {
+        from = path.join(torrentPath, filePath);
+        to = path.join(exportPath, path.basename(filePath));
+      } catch (err) {
+        log.error(`Copy failed from ${from} to ${to}`);
+        throw err;
+      }
       return useFtp ? this.ftpCopy(from, to) : fs.copy(from, to);
     });
     await Promise.all(copyActions);
   }
 
   private ftpCopy(src: string, dst: string): Promise<void> {
+    log.debug(`ExportHandler: ftpCopy(${src}, ${dst}`);
     const hostIp = ExportHandler.FTP_HOST_IP;
     const c = new Client();
     const directory = path.dirname(dst);
