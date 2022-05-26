@@ -1,4 +1,3 @@
-import * as events from 'events';
 import getFolderSize from 'get-folder-size';
 import rmfr from 'rmfr';
 import * as path from 'path';
@@ -9,12 +8,12 @@ import { promisify } from 'util';
 
 const getFolderSizeAsync = promisify(getFolderSize);
 
-export class DownloadClient extends events.EventEmitter {
+export class DownloadClient {
+  public static MAX_TORRENT_CONNS = 30;
+
   private _client: WebTorrent.Instance|null;
 
-  constructor(public downloadRoot: string) {
-    super();
-  }
+  constructor(public downloadRoot: string) {}
 
   // TODO: Remove
   public logTorrents() {
@@ -127,7 +126,7 @@ export class DownloadClient extends events.EventEmitter {
   }
 
   private startClient(): void {
-    this._client = new WebTorrent();
+    this._client = new WebTorrent({ maxConns: DownloadClient.MAX_TORRENT_CONNS });
     this._client.on('error', (err) => {
       log.subProcessError(`WebTorrent fatal error: ${err}`);
       this.startClient();
