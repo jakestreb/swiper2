@@ -56,27 +56,34 @@ export default class ExportHandler {
   }
 
   private ftpCopy(src: string, dst: string): Promise<void> {
-    log.debug(`ExportHandler: ftpCopy(${src}, ${dst}`);
-    const hostIp = ExportHandler.FTP_HOST_IP;
-    const c = new Client();
-    const directory = path.dirname(dst);
-    return new Promise((resolve, reject) => {
-      c.on('ready', async () => {
-        // Make the necessary directories
-        c.mkdir(directory, true, (_mkDirErr: Error|undefined) => {
-          // Suppress errors thrown because the directory already exists.
-          if (_mkDirErr && !/already exists/.exec(_mkDirErr.message)) {
-            reject(`FTP mkDir error: ${_mkDirErr} (directory: ${directory})`);
-          }
-          // Copy the file
-          c.put(src, dst, (_putErr: Error) => {
-            if (_putErr) { reject(`FTP put error: ` + _putErr); }
-            c.end();
-            resolve();
+    log.debug(`ExportHandler: ftpCopy(${src}, ${dst})`);
+    let directory: string;
+
+    try {
+      const hostIp = ExportHandler.FTP_HOST_IP;
+      const c = new Client();
+      directory = path.dirname(dst);
+      return new Promise((resolve, reject) => {
+        c.on('ready', async () => {
+          // Make the necessary directories
+          c.mkdir(directory, true, (_mkDirErr: Error|undefined) => {
+            // Suppress errors thrown because the directory already exists.
+            if (_mkDirErr && !/already exists/.exec(_mkDirErr.message)) {
+              reject(`FTP mkDir error: ${_mkDirErr} (directory: ${directory})`);
+            }
+            // Copy the file
+            c.put(src, dst, (_putErr: Error) => {
+              if (_putErr) { reject(`FTP put error: ` + _putErr); }
+              c.end();
+              resolve();
+            });
           });
         });
+        c.connect({ host: hostIp });
       });
-      c.connect({ host: hostIp });
-    });
+    } catch (err) {
+      log.error(`ftpCopy ERROR!! ${directory!}`)
+      throw err;
+    }
   }
 }
