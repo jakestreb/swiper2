@@ -40,8 +40,8 @@ export default class ExportHandler {
     // Move the files to the final directory.
     log.debug(`ExportHandler: Copying videos to ${exportPath}${useFtp ? 'via ftp' : ''}`);
     const torrentPath = path.join(this.downloadRoot, vt.getDownloadPath());
-    const files = await fs.readdir(torrentPath);
-    const copyActions = files.map(filePath => {
+    const files = await util.getFiles(torrentPath);
+    const copyActions = files.map((filePath: string) => {
       let from, to;
       try {
         from = path.join(torrentPath, filePath);
@@ -53,29 +53,23 @@ export default class ExportHandler {
       return useFtp ? this.ftpCopy(from, to) : fs.copy(from, to);
     });
     await Promise.all(copyActions);
-    console.warn('HHHHHH');
   }
 
   private ftpCopy(src: string, dst: string): Promise<void> {
     log.debug(`ExportHandler: ftpCopy(${src}, ${dst})`);
     const hostIp = ExportHandler.FTP_HOST_IP;
     const c = new Client();
-    console.warn('DDDDDD');
     const directory = path.dirname(dst);
-    console.warn('EEEEEE');
     return new Promise((resolve, reject) => {
       c.on('ready', async () => {
-        console.warn('AAAAA');
         // Make the necessary directories
         c.mkdir(directory, true, (_mkDirErr: Error|undefined) => {
-          console.warn('BBBBB', _mkDirErr);
           // Suppress errors thrown because the directory already exists.
           if (_mkDirErr && !/already exists/.exec(_mkDirErr.message)) {
             reject(`FTP mkDir error: ${_mkDirErr} (directory: ${directory})`);
           }
           // Copy the file
           c.put(src, dst, (_putErr: Error) => {
-            console.warn('CCCCC', _putErr);
             if (_putErr) { reject(`FTP put error: ` + _putErr); }
             c.end();
             resolve();

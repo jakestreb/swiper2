@@ -1,9 +1,14 @@
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 import * as path from 'path';
-import { promisify } from 'util';
 
-const access = promisify(fs.access);
-const mkdir = promisify(fs.mkdir);
+export async function getFiles(dir: string): Promise<any> {
+  const dirents = await fs.readdir(dir, { withFileTypes: true });
+  const files = await Promise.all(dirents.map((dirent) => {
+    const res = path.resolve(dir, dirent.name);
+    return dirent.isDirectory() ? getFiles(res) : res;
+  }));
+  return Array.prototype.concat(...files);
+}
 
 export async function createSubdirs(existingPath: string, subPath: string): Promise<string> {
   let createdPath = existingPath;
@@ -11,9 +16,9 @@ export async function createSubdirs(existingPath: string, subPath: string): Prom
   for (const pathElem of dirs) {
     createdPath = path.join(createdPath, pathElem);
     try {
-      await access(createdPath, fs.constants.F_OK);
+      await fs.access(createdPath, fs.constants.F_OK);
     } catch {
-      await mkdir(createdPath);
+      await fs.mkdir(createdPath);
     }
   }
   return createdPath;

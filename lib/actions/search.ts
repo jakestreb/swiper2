@@ -113,7 +113,7 @@ async function formatSelection(
   const removed = await db.torrents.getWithStatus('removed');
   const startIndex = PER_PAGE * pageNum;
   const endIndex = startIndex + PER_PAGE - 1;
-  const filteredTorrents = torrents.filter(t => active.some(at => t.hash === at.hash));
+  const filteredTorrents = torrents.filter(t => !active.some(at => t.hash === at.hash));
   const someTorrents = filteredTorrents.slice(startIndex, startIndex + PER_PAGE);
   const torrentRows = someTorrents.map((t, i) => {
     const isRemoved = removed.some(r => t.hash === r.hash);
@@ -123,7 +123,7 @@ async function formatSelection(
     }
     return [numberRow.join(f.sp(1)), formatTorrent(t, f)].join('\n');
   });
-  const commands = formatCommands([startIndex + 1, endIndex + 1], torrents.length, f);
+  const commands = formatCommands([startIndex + 1, endIndex + 1], filteredTorrents.length, f);
   return [torrentRows.join('\n\n'), commands].join('\n\n');
 }
 
