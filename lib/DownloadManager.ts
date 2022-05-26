@@ -198,6 +198,7 @@ export default class DownloadManager {
 
     // Export and cleanup torrents
     await this.exportHandler.export(vTorrent);
+    console.warn('GGGGGG');
     await this.downloadClient.destroyAndDeleteVideo(tVideo);
     await db.torrents.delete(...torrents.map(t => t.id));
 
