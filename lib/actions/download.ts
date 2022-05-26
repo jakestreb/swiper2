@@ -1,38 +1,86 @@
-import * as log from '../common/logger';
-import {getDescription, getVideo, Media, Video} from '../common/media';
-import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import {assignMeta, getBestTorrent, Torrent} from '../torrents/util';
+import db from '../db';
+import Swiper from '../Swiper';
 
 export async function download(this: Swiper, convo: Conversation): Promise<SwiperReply> {
-  // Check if the media item is a single video for special handling.
-  const media = convo.media as Media;
-  const video: Video|null = getVideo(media);
-  let best: Torrent|null = null;
-  if (video) {
-    log.info(`Searching for ${getDescription(video)} downloads`);
-    const torrents = await this.searchClient.search(video);
-    const videoMeta = await this.dbManager.addMetadata(video);
-    best = getBestTorrent(videoMeta, torrents);
-    if (!best) {
-      log.debug(`Swiper: _download failed to find torrent`);
-      // If the target is a single video and an automated search failed, show the torrents.
-      convo.torrents = torrents;
-      convo.commandFn = () => this.search(convo);
-      return this.search(convo);
-    }
-    log.debug(`Swiper: _download best torrent found`);
-    // Queue and set the torrent / assign the meta so it doesn't have to be searched again.
-    await this.dbManager.addToQueued(media, convo.id);
-    await this.dbManager.setTorrent(video.id, best);
-    assignMeta(video, best);
-  } else {
-    // Queue the download.
-    await this.dbManager.addToQueued(media, convo.id);
-  }
+  const f = this.getTextFormatter(convo);
 
-  this.downloadManager.ping();
+  let isAnyReleased = false;
+
+  const media = convo.media as IMedia;
+  const video: IVideo|null = media.getVideo();
+  if (video) {
+    const existing = await db.videos.getOne(video.id);
+    const wt = existing ? await db.videos.addTorrents(existing) : null;
+    if (wt && wt.status === 'downloading' && wt.torrents.length > 0) {
+      // For videos that already have torrents, add another
+      await this.worker.addJob({
+        type: 'AddTorrent',
+        videoId: video.id,
+        startAt: new Date(),
+      });
+      return {
+        data: `Added new search for ${video.format(f)}`,
+        final: true
+      };
+    }
+    isAnyReleased = isReleased(video);
+    try {
+      await db.media.insert(media, {
+        addedBy: convo.id,
+        status: isAnyReleased ? 'searching' : 'unreleased',
+      });
+    } catch (err) {
+      if (err.code !== 'SQLITE_CONSTRAINT') {
+        throw err;
+      }
+      return {
+        data: 'Video must be removed before re-downloading',
+        final: true
+      };
+    }
+    await checkOrAwaitRelease(this, video);
+  } else {
+    const show = media as IShow;
+    isAnyReleased = show.episodes.some(e => isReleased(e));
+    try {
+      await db.shows.insert(show, { addedBy: convo.id, status: 'searching' });
+    } catch (err) {
+      if (err.code !== 'SQLITE_CONSTRAINT') {
+        throw err;
+      }
+      return {
+        data: 'Show must be removed before re-downloading',
+        final: true
+      };
+    }
+    await Promise.all(show.episodes.map(async e => {
+      if (!isReleased(e)) {
+        await db.episodes.setStatus(e, 'unreleased');
+      }
+      await checkOrAwaitRelease(this, e);
+    }));
+  }
   return {
-    data: `Queued ${getDescription(media)} for download`,
+    data: `${isAnyReleased ? 'Queued' : 'Scheduled'} ${media.format(f)} for download`,
     final: true
   };
+}
+
+function getDefinitiveRelease(video: IVideo): Date|undefined {
+  const releases = (video as IMovie).releases;
+  return releases ? releases.digital : (video as IEpisode).airDate;
+}
+
+function isReleased(video: IVideo) {
+  const definitiveRelease = getDefinitiveRelease(video);
+  return Boolean(definitiveRelease && new Date() >= definitiveRelease);
+}
+
+function checkOrAwaitRelease(swiper: Swiper, video: IVideo) {
+  const hasAirDate = video.isEpisode() && video.airDate;
+  return swiper.worker.addJob({
+    type: hasAirDate ? 'StartSearching' : 'CheckForRelease',
+    videoId: video.id,
+    startAt: video.getSearchDate(),
+  });
 }

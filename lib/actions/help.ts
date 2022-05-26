@@ -1,43 +1,91 @@
-import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import * as commands from './_helpcommands.json';
+import Swiper from '../Swiper';
 
-const ALL_CMDS = [...commands.basic, ...commands.monitoring, ...commands.advanced];
+const COMMANDS = [{
+  name: 'queue',
+  description: 'shows current downloads',
+}, {
+  name: 'scheduled',
+  description: 'shows scheduled downloads',
+}, {
+  name: 'info',
+  description: 'shows release dates for a movie/show',
+  examples: [
+    "info the santa clause",
+    "info wandavision",
+  ]
+}, {
+  name: 'download',
+  description: 'downloads a movie/show\nre-running adds an additional torrent',
+  examples: [
+    "download the lion king",
+    "download batman 1989",
+    "download stranger things s2",
+    "download the office s1 e2-4 & e6"
+  ]
+}, {
+  name: "remove",
+  description: "removes a queued/scheduled movie/show, or a torrent of that movie/show",
+  examples: [
+    "remove pulp fiction",
+    "remove severance s2",
+    "remove the office s1 e2-4 & e6",
+    "remove torrent pulp fiction",
+    "remove torrent severance s2 e1",
+    "remove torrent the office"
+  ]
+}, {
+  name: "cancel",
+  description: "ends the current conversation"
+}, {
+  name: "search",
+  description: "gives a list of torrent options for a movie/episode",
+  examples: [
+    "search old yeller",
+    "search game of thrones s1 e2"
+  ]
+}];
 
 export function help(this: Swiper, convo: Conversation): SwiperReply {
+  const f = this.getTextFormatter(convo);
+
   if (!convo.input) {
+    const basics = [
+      f.commands(
+        `${f.b('download')} [show or movie]`,
+        `${f.b('remove')} [show or movie]`,
+        `${f.b('remove torrent')} [show or movie]`
+      ),
+      f.commands(
+        f.b('queue'),
+        f.b('scheduled'),
+        `${f.b('info')} [show or movie]`
+      ),
+      f.commands(
+        `${f.b('help')} [command]`,
+        `${f.b('cancel')} to end any conversation`,
+      ),
+    ].join('\n\n');
+
     return {
-      data: `\`COMMANDS\`\n` +
-        `\`  \`${cmdGroup(commands.basic)}\n` +
-        `\`  \`${cmdGroup(commands.monitoring)}\n` +
-        `\`  \`${cmdGroup(commands.advanced)}\n\n` +
-        `help \`command\` for details`,
+      data: basics,
       final: true
     };
   } else {
-    const cmd = ALL_CMDS.find(_cmd => _cmd.name === convo.input);
+    const cmd = COMMANDS.find(cmd => cmd.name === convo.input);
     if (!cmd) {
       return {
-        data: `command \`${convo.input}\` not recognized`,
+        data: `Command not recognized`,
         final: true
       };
     } else {
-      let examples = '';
+      const items = [cmd.name, cmd.description];
       if (cmd.examples) {
-        examples = `\n_Ex:_\n` +
-          `${cmd.examples.map(ex => `\`  ${ex}\``).join('\n')}`;
+        items.push(f.commands(...cmd.examples));
       }
       return {
-        data: `\`${convo.input}\`\n_${cmd.description}_${examples}`,
+        data: items.join('\n\n'),
         final: true
       };
     }
   }
-}
-
-function cmdGroup(group: any) {
-  return group.map((cmd: any) => cmdName(cmd)).join(', ');
-}
-
-function cmdName(cmd: any) {
-  return cmd.emphasize ? `*${cmd.name}*` : cmd.name;
 }

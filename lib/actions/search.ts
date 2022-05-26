@@ -1,34 +1,35 @@
-import * as log from '../common/logger';
-import {getDescription, Media} from '../common/media';
-import {matchNumber} from '../common/util';
-import {Conversation, Swiper, SwiperReply} from '../Swiper';
-import {assignMeta, getTorrentString, Torrent} from '../torrents/util';
+import db from '../db';
+import * as matchUtil from './helpers/matchUtil';
+import * as log from '../log';
+import * as util from '../util';
+import Swiper from '../Swiper';
+import TorrentSearch from '../apis/TorrentSearch';
 
 // Number of torrents to show per page
-const PER_PAGE = 4;
+const PER_PAGE = 3;
 
-export interface SearchOptions {
-  reassignTorrent?: boolean; // When true, does not begin a new download but just reassigns the torrent.
-  blacklist?: boolean; // When true and reassign is true, the reassigned torrent is also blacklisted.
-}
+const STAR = '\u2605';
 
-export async function search(this: Swiper, convo: Conversation, options: SearchOptions = {}): Promise<SwiperReply> {
+const REMOVED = '(removed)';
+
+export async function search(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   log.debug(`Swiper: search`);
+  const f = this.getTextFormatter(convo);
 
-  const media = convo.media as Media;
-  const video = media.type === 'tv' ? media.episodes[0] : media;
-  const videoMeta = await this.dbManager.addMetadata(video);
+  const media = convo.media as IMedia;
+  const video = media.isShow() ? media.episodes[0] : media as IMovie;
+  const activeTorrents = await db.torrents.getForVideo(video.id);
 
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
-    log.info(`Searching for ${getDescription(video)} downloads`);
-    convo.torrents = await this.searchClient.search(video);
+    log.info(`Searching for ${video} downloads`);
+    convo.torrents = await TorrentSearch.search(video);
     convo.pageNum = 0;
   }
 
-  if (convo.torrents.length === 0) {
+  if (convo.torrents!.length === 0) {
     return {
-      data: `No torrents found`,
+      data: 'No torrents found',
       final: true
     };
   }
@@ -36,8 +37,12 @@ export async function search(this: Swiper, convo: Conversation, options: SearchO
   // Display the torrents to the user.
   convo.pageNum = convo.pageNum || 0;
 
-  const showPage = () => showTorrents(convo.torrents!, convo.pageNum!,
-    videoMeta.magnet || undefined, videoMeta.blacklisted);
+  const showPage = async () => {
+    const { torrents, pageNum } = convo;
+    return {
+      data: await formatSelection(torrents!, pageNum!, activeTorrents, f),
+    };
+  };
 
   const startIndex = PER_PAGE * convo.pageNum;
   const navs = [];
@@ -47,7 +52,7 @@ export async function search(this: Swiper, convo: Conversation, options: SearchO
   if (startIndex + PER_PAGE < convo.torrents.length) {
     navs.push({value: 'next', regex: /\bn(ext)?\b/gi});
   }
-  const match = matchNumber(convo.input, navs);
+  const match = matchUtil.matchNumber(convo.input, navs);
   if (match === 'next') {
     // Go forward a page.
     convo.pageNum += 1;
@@ -69,47 +74,78 @@ export async function search(this: Swiper, convo: Conversation, options: SearchO
   }
   const torrent = convo.torrents[torrentNum - 1];
 
-  // Assign the torrent magnet to the video and queue it for download.
-  if (options.reassignTorrent) {
-    // Stop downloading and ping the download manager so it's able to start up the download
-    // again afterward.
-    await this.dbManager.markAsFailed(video);
-    await this.downloadManager.pingAndWait();
-    if (options.blacklist) {
-      await this.dbManager.blacklistMagnet(video.id);
+  try {
+    await db.media.insert(media, { addedBy: convo.id, status: 'identified' });
+  } catch (err) {
+    if (err.code !== 'SQLITE_CONSTRAINT') {
+      throw err;
+    }
+    const existing = await db.videos.getOne(video.id);
+    if (!existing) {
+      throw err;
+    }
+    if (existing.status !== 'downloading') {
+      return {
+        data: 'Video must be removed before re-downloading',
+        final: true
+      };
     }
   }
-  await this.dbManager.addToQueued(media, convo.id);
-  await this.dbManager.setTorrent(video.id, torrent);
-  assignMeta(video, torrent);
-  this.downloadManager.ping();
+
+  await db.torrents.insert({ ...torrent, videoId: video.id, status: 'paused' });
+
+  await this.downloadManager.addToQueue(video);
 
   return {
-    data: `Queued ${getDescription(video)} for download`,
+    data: `Queued ${video.format(f)} for download`,
     final: true
   };
 }
 
 // Show a subset of the torrents decided by the pageNum.
-function showTorrents(
-  torrents: Torrent[],
+async function formatSelection(
+  torrents: TorrentResult[],
   pageNum: number,
-  lastMagnet: string = '',
-  blacklisted: string[] = []
-): SwiperReply {
+  active: ITorrent[],
+  f: TextFormatter,
+): Promise<string> {
+  log.debug('search: Formatting page');
+  const removed = await db.torrents.getWithStatus('removed');
   const startIndex = PER_PAGE * pageNum;
-  const prev = startIndex > 0;
-  const next = (startIndex + PER_PAGE) < torrents.length;
-  const someTorrents = torrents.slice(startIndex, startIndex + PER_PAGE);
+  const endIndex = startIndex + PER_PAGE - 1;
+  const filteredTorrents = torrents.filter(t => active.some(at => t.hash === at.hash));
+  const someTorrents = filteredTorrents.slice(startIndex, startIndex + PER_PAGE);
   const torrentRows = someTorrents.map((t, i) => {
-    const repeatStr = t.magnet === lastMagnet ? '(Prev selection) ' : '';
-    const blacklistStr = blacklisted.includes(t.magnet) ? '(BLACKLISTED) ' : '';
-    return `\` ${startIndex + i + 1} \`_${blacklistStr || repeatStr}_${getTorrentString(t)}`;
+    const isRemoved = removed.some(r => t.hash === r.hash);
+    const numberRow = [f.b(`${startIndex + i + 1}`)];
+    if (isRemoved) {
+      numberRow.push(REMOVED);
+    }
+    return [numberRow.join(f.sp(1)), formatTorrent(t, f)].join('\n');
   });
-  const respStr = prev && next ? `\`prev\` or \`next\`` : (next ? `\`next\`` : (prev ? `\`prev\`` : ``));
-  const str = torrentRows.join(`\n`);
-  return {
-    data: `${str}\n\nGive \`num\` to download` + (respStr ? ` or ${respStr} to see more` : ``)
-  };
+  const commands = formatCommands([startIndex + 1, endIndex + 1], torrents.length, f);
+  return [torrentRows.join('\n\n'), commands].join('\n\n');
 }
 
+function formatTorrent(torrent: TorrentResult, f: TextFormatter): string {
+  const peers = `${torrent.seeders} peers`;
+  const size = util.formatSize(torrent.sizeMb);
+  const parsedDate = util.parseDate(torrent.uploadTime);
+  const date = parsedDate ? util.formatDateSimple(parsedDate) : torrent.uploadTime;
+  const rating = STAR.repeat(torrent.starRating);
+
+  const data = f.dataRow(rating, peers, size, date);
+  const title = torrent.title.replace(/\./g, ' ');
+
+  return [data, title].join('\n');
+}
+
+function formatCommands(range: number[], total: number, f: TextFormatter): string {
+  const prev = range[0] === 0 ? '' : 'prev';
+  const next = range[1] === total - 1 ? '' : 'next';
+  const rangeTotal = (range[1] - range[0]) + 1;
+  const spread = [...Array(rangeTotal).keys()]
+    .map(n => n + range[0])
+    .join('/');
+  return f.commands(f.b(spread), f.b(prev), f.b(next));
+}
