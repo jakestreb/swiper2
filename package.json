@@ -10,6 +10,8 @@
     "start": "npm run build && node dist/index.js",
     "dev": "ts-node index.ts",
     "reset": "rm records.db & rm -rf downloads/*",
+    "update-pi": "scripts/update-pi.sh",
+    "ship": "npm run build; git push; npm run update-pi",
     "lines": "git -C lib grep ^ | wc -l"
   },
   "repository": {
