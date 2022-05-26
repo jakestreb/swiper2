@@ -122,7 +122,7 @@ export default class TMDB {
         throw new Error(`No results`);
       }
       return results[0];
-    } catch (err) {
+    } catch (err: any) {
       log.error(err);
       throw new Error(`Failed The Movie Database search: ${err}`);
     }

@@ -23,6 +23,14 @@ export default class Show extends Media implements IMedia {
     this.addedBy = values.addedBy;
   }
 
+  public getNextToAir(): IEpisode|null {
+    return util.getNextToAir(this.episodes);
+  }
+
+  public getLastAired(): IEpisode|null {
+    return util.getLastAired(this.episodes);
+  }
+
   public getVideo(): IVideo|null {
     if (this.episodes.length === 1) {
       return this.episodes[0];

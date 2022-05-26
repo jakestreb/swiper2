@@ -10,11 +10,22 @@ export async function scheduled(this: Swiper, convo: Conversation): Promise<Swip
 
   const unreleased = await db.media.getWithStatus('unreleased');
 
-  const movies: string[] = unreleased
-    .filter(media => media.type === 'movie')
+  const movies: string[] = (unreleased as IMovie[])
+    .filter(media => media.isMovie())
+    .sort((a, b) => {
+      const timeA = a.getExpectedRelease()?.getTime() || 0;
+      const timeB = b.getExpectedRelease()?.getTime() || 0;
+      return timeA - timeB;
+    })
     .map(movie => formatMovieRow(movie as IMovie, f));
-  const shows: string[] = unreleased
-    .filter(media => media.type === 'tv')
+
+  const shows: string[] = (unreleased as IShow[])
+    .filter(media => media.isShow())
+    .sort((a, b) => {
+      const timeA = (a.getNextToAir() || a.getLastAired())?.airDate?.getTime() || 0;
+      const timeB = (b.getNextToAir() || b.getLastAired())?.airDate?.getTime() || 0;
+      return timeA - timeB;
+    })
     .map(show => formatShowRow(show as IShow, f));
 
   let rows: string[] = [];

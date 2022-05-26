@@ -29,7 +29,7 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
         addedBy: convo.id,
         status: isAnyReleased ? 'searching' : 'unreleased',
       });
-    } catch (err) {
+    } catch (err: any) {
       if (err.code !== 'SQLITE_CONSTRAINT') {
         throw err;
       }
@@ -44,7 +44,7 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
     isAnyReleased = show.episodes.some(e => isReleased(e));
     try {
       await db.shows.insert(show, { addedBy: convo.id, status: 'searching' });
-    } catch (err) {
+    } catch (err: any) {
       if (err.code !== 'SQLITE_CONSTRAINT') {
         throw err;
       }

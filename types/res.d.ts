@@ -46,6 +46,8 @@ declare type IShow = IMedia & {
   type: 'tv';
   episodes: IEpisode[];
 
+  getNextToAir(): IEpisode|null;
+  getLastAired(): IEpisode|null;
   sortEpisodes(): void;
   filterEpisodes(filter: EpisodesDescriptor): void;
 }

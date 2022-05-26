@@ -76,7 +76,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 
   try {
     await db.media.insert(media, { addedBy: convo.id, status: 'identified' });
-  } catch (err) {
+  } catch (err: any) {
     if (err.code !== 'SQLITE_CONSTRAINT') {
       throw err;
     }

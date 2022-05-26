@@ -138,7 +138,7 @@ async function getDirectorySizeMb(directory: string): Promise<number> {
   try {
     const folderSize = await getFolderSizeAsync(directory);
     return folderSize / 1024 / 1024;
-  } catch (err) {
+  } catch (err: any) {
     if (err.code === 'ENOENT') {
       return 0;
     }
