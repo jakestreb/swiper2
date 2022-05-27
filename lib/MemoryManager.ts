@@ -2,7 +2,7 @@ import checkDiskSpace from 'check-disk-space'
 
 export default class MemoryManager {
 
-  private static MARGIN_MB = 250;
+  private static MARGIN_MB = 1000;
 
   constructor(public downloadRoot: string) {}
 

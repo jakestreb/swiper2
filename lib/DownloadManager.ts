@@ -104,7 +104,7 @@ export default class DownloadManager {
 
     // Iterate through videos starting any torrents where there's space
     // Once all the space is allocated, pause any remaining torrents
-    const originalFree = await this.memoryManager.getFreeMb();
+    const originalFree = await this.memoryManager.getAvailableMb();
     let storageRemaining = originalFree;
 
     await sortedTorrents.reduce(async (prevPromise, vt) => {
