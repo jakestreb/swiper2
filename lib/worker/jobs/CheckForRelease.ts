@@ -19,7 +19,8 @@ export class CheckForRelease extends Base {
       return true;
     }
 
-    const success = await TorrentSearch.addBestTorrent(video);
+    // Wait until there's a torrent rated 4 stars or better
+    const success = await TorrentSearch.addBestTorrent(video, 4);
     if (success) {
       await this.swiper.downloadManager.addToQueue(video);
       this.swiper.downloadManager.ping();

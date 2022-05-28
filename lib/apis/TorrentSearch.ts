@@ -37,9 +37,9 @@ export default class TorrentSearch {
     return this.lock.acquire(() => this.doRetrySearch(video));
   }
 
-  public static async addBestTorrent(video: IVideo): Promise<boolean> {
+  public static async addBestTorrent(video: IVideo, minRating: number = 0): Promise<boolean> {
     const torrents = await this.search(video);
-    const best = await this.getBestTorrent(video, torrents);
+    const best = await this.getBestTorrent(video, torrents, minRating);
     if (!best) {
       log.debug(`TorrentSearch: getBestTorrent(${video}) failed (no torrent found)`);
       return false;
@@ -50,27 +50,29 @@ export default class TorrentSearch {
     return !!torrent;
   }
 
-  public static async getBestTorrent(video: IVideo, torrents: TorrentResult[]): Promise<TorrentResult|null> {
+  public static async getBestTorrent(video: IVideo, torrents: TorrentResult[], minRating: number = 0): Promise<TorrentResult|null> {
     log.debug(`TorrentSearch: getBestTorrent(${video})`);
     const selected = await db.torrents.getForVideo(video.id);
     const removed = await db.torrents.getWithStatus('removed');
     const doNotPick = new Set([...selected, ...removed].map(t => t.hash));
-    console.warn('do not pick', doNotPick);
+    const ranker = new TorrentRanker(video);
 
     let bestTorrent: TorrentResult|null = null;
     let bestScore = 0;
     torrents
       .filter(t => !doNotPick.has(t.hash))
       .forEach(t => {
-        const score = new TorrentRanker(video).getScore(t);
+        const score = ranker.getScore(t);
         if (score > bestScore) {
           bestTorrent = t;
           bestScore = score;
         }
       });
 
-    console.warn('picked', (bestTorrent as any) ? bestTorrent!.hash : null);
-    return bestTorrent;
+    if (ranker.getStars(bestTorrent!) >= minRating) {
+      return bestTorrent;
+    }
+    return null;
   }
 
   private static doRetrySearch(video: IVideo): Promise<TorrentResult[]> {
