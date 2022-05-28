@@ -4,6 +4,8 @@ import BaseJob from './jobs/Base';
 import * as jobs from './jobs';
 import Swiper from '../Swiper';
 
+const oneDay = 24 * 60 * 60 * 1000;
+
 export default class Worker {
   private jobs: {[type: string]: typeof BaseJob} = jobs;
   private nextRun: Date|null = null;
@@ -54,10 +56,15 @@ export default class Worker {
       this.pingInProgress = true;
       this.pingLock = db.jobs.getNext();
       const nextJob: IJob|void = await this.pingLock;
-      if (nextJob && (!this.nextRun || nextJob.nextRunAt < this.nextRun)) {
+      if (nextJob && nextJob.nextRunAt.getTime() > (Date.now() + oneDay)) {
+        // If the next job is over a day ahead, reschedule ping (timeout can overflow)
+        clearTimeout(this.currentTimeout!);
+        this.currentTimeout = setTimeout(() => this.ping(),
+          Date.now() + oneDay);
+      } else if (nextJob && (!this.nextRun || nextJob.nextRunAt < this.nextRun)) {
         clearTimeout(this.currentTimeout!);
         this.nextRun = nextJob.nextRunAt;
-        this.currentTimeout = setTimeout(async () => this.runJob(nextJob),
+        this.currentTimeout = setTimeout(() => this.runJob(nextJob),
           this.nextRun.getTime() - Date.now());
       }
       this.pingInProgress = false;

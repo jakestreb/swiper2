@@ -53,11 +53,12 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
         final: true
       };
     }
-    await Promise.all(show.episodes.map(async e => {
+    await Promise.all(show.episodes.map(async (e, i) => {
       if (!isReleased(e)) {
         await db.episodes.setStatus(e, 'unreleased');
       }
-      await checkOrAwaitRelease(this, e);
+      // Add a small delay for each additional search to preserve order
+      await checkOrAwaitRelease(this, e, i * 10);
     }));
   }
   return {
@@ -76,11 +77,12 @@ function isReleased(video: IVideo) {
   return Boolean(definitiveRelease && new Date() >= definitiveRelease);
 }
 
-function checkOrAwaitRelease(swiper: Swiper, video: IVideo) {
+function checkOrAwaitRelease(swiper: Swiper, video: IVideo, delayS: number = 0) {
   const hasAirDate = video.isEpisode() && video.airDate;
+  const hasAired = video.getSearchDate() < new Date();
   return swiper.worker.addJob({
     type: hasAirDate ? 'StartSearching' : 'CheckForRelease',
     videoId: video.id,
-    startAt: video.getSearchDate(),
+    startAt: hasAired ? new Date(Date.now() + delayS * 1000) : video.getSearchDate(),
   });
 }

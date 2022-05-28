@@ -5,6 +5,7 @@ import Swiper from '../Swiper';
 const UP_ARROW = '\u2191';
 const DOWN_ARROW = '\u2913';
 const HOURGLASS = '\u29D6';
+const X = '\u2A09';
 
 const UPLOADING = '(uploading)';
 
@@ -35,7 +36,7 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
     return rows.join('\n');
   }));
   const completedRows = completed.map(media => {
-      return `${f.sp(2)}${formatCompleted(media, f)}`;
+      return `${X} ${formatCompleted(media, f)}`;
   });
   const rows = [...downloadRows, ...completedRows];
 

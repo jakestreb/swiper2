@@ -31,14 +31,14 @@ export class DownloadClient {
     return new Promise((resolve, reject) => {
       this.client.add(vt.hash, { path: downloadPath }, wtTorrent => {
         wtTorrent.on('done', async () => {
-          log.subProcess(`Torrent done ${vt.video}`);
+          log.debug(`Torrent done ${vt.video}`);
           resolve();
         });
         wtTorrent.on('error', async (err) => {
           log.subProcessError(`Torrent error: ${err}`);
           this.deleteTorrentFiles(vt)
             .catch(err => {
-              log.subProcessError(`Torrent file delete error: ${err}`);
+              log.error(`Torrent file delete error: ${err}`);
             });
           wtTorrent.destroy();
           reject(err);

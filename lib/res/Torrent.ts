@@ -15,6 +15,7 @@ interface BuildArg {
 const NO_PEERS = '(awaiting peers)';
 const PAUSED = '(awaiting space)';
 const REMOVED = '(removed)';
+const SLOW = '(slow)';
 
 export default class Torrent implements ITorrent {
   public id: number;
@@ -67,10 +68,14 @@ export default class Torrent implements ITorrent {
 function getTorrentStatusText(status: TorrentStatus, peers: number) {
   if (status === 'removed') {
     return REMOVED;
+  } else if (status === 'paused') {
+    return PAUSED;
+  } else if (peers === 0) {
+    return NO_PEERS;
+  } else if (status === 'slow') {
+    return SLOW;
   }
-  const isPaused = status === 'paused';
-  const hasPeers = peers > 0;
-  return isPaused ? PAUSED : (!hasPeers ? NO_PEERS : '');
+  return '';
 }
 
 function formatSize(sizeMb: number) {

@@ -10,11 +10,11 @@ import Swiper from './Swiper';
 export default class DownloadManager {
 
   private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
+  private static MAX_DOWNLOADS = 2;
 
-  public memoryManager: MemoryManager;
   public downloadClient: DownloadClient;
-
   private exportHandler: ExportHandler;
+  public memoryManager: MemoryManager;
 
   private managingPromise: Promise<void>;
   private inProgress: boolean = false;
@@ -24,8 +24,8 @@ export default class DownloadManager {
     const downloadRoot = DownloadManager.DOWNLOAD_ROOT;
 
     this.downloadClient = new DownloadClient(downloadRoot);
-    this.memoryManager = new MemoryManager(downloadRoot);
     this.exportHandler = new ExportHandler(downloadRoot);
+    this.memoryManager = new MemoryManager(downloadRoot);
 
     this.ping();
     this.startUploads();
@@ -106,6 +106,7 @@ export default class DownloadManager {
     // Once all the space is allocated, pause any remaining torrents
     const originalFree = await this.memoryManager.getAvailableMb();
     let storageRemaining = originalFree;
+    let spotsRemaining = DownloadManager.MAX_DOWNLOADS;
 
     await sortedTorrents.reduce(async (prevPromise, vt) => {
       await prevPromise;
@@ -117,10 +118,11 @@ export default class DownloadManager {
         progressMb,
         freeMb: originalFree,
         totalMb: await this.memoryManager.getTotalMb(),
-      });
-      if (storageRemaining - allocateMb > 0) {
+      }, storageRemaining - allocateMb > 0);
+      if (storageRemaining - allocateMb > 0 && spotsRemaining > 0) {
         // Allocate
         storageRemaining -= allocateMb;
+        spotsRemaining -= 1;
         if (!this.isStarted || vt.status === 'paused') {
           toStart.push(vt);
         }
