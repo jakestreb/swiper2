@@ -10,7 +10,7 @@ import Swiper from './Swiper';
 export default class DownloadManager {
 
   private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
-  private static MAX_DOWNLOADS = 2;
+  private static MAX_DOWNLOADS = parseInt(process.env.MAX_DOWNLOADS || '1', 10);
 
   public downloadClient: DownloadClient;
   private exportHandler: ExportHandler;
