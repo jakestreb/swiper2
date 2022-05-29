@@ -1,8 +1,8 @@
 import rmfr from 'rmfr';
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
-import * as log from './log';
-import * as util from './util';
+import * as log from '../log';
+import * as util from '../util';
 
 export default class DownloadClient {
   public static MAX_TORRENT_CONNS = 30;
