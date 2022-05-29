@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "tslint -p tsconfig.json",
     "build": "tsc",
-    "start": "npm run build && node dist/index.js",
+    "start": "npm run build && DEBUG=* node --max-old-space-size=3072 dist/index.js",
     "dev": "ts-node index.ts",
     "reset": "rm records.db & rm -rf downloads/*",
     "update-pi": "scripts/update-pi.sh",
