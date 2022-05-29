@@ -7,7 +7,7 @@ export default class DownloadProcess extends ChildProcess {
 	}
 
 	public get processPath() {
-		return './lib/downloader/runner.ts';
+		return './dist/lib/downloader/runner';
 	}
 
   public async download(vt: VTorrent): Promise<void> {
@@ -20,10 +20,11 @@ export default class DownloadProcess extends ChildProcess {
     const promise = this.call('getProgress', torrent.hash);
     if (timeoutMs && timeoutMs > 0) {
       const timeoutPromise = new Promise(resolve => {
-        setTimeout(() => {
+        const timeout = setTimeout(() => {
           log.error(`getProgress timed out after ${timeoutMs}ms`);
           resolve({});
         }, timeoutMs);
+        promise.then(() => clearTimeout(timeout));
       });
       return Promise.race([promise, timeoutPromise]);
     }

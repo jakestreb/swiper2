@@ -42,6 +42,7 @@ export default abstract class ChildProcess {
 		}
 		this.child = child.fork(this.processPath);
 		this.child.on('message', (resp: Response) => {
+			console.warn('RESPONSE', resp);
 			const resolver = this.resolvers[resp.id];
 			if (!resolver) {
 				throw new Error('Child process messaged with no call to resolve');
@@ -58,7 +59,11 @@ export default abstract class ChildProcess {
 		this.child.on('error', (err) => {
 			throw err;
 		});
-		this.child.send(['constructor', this.buildArgs]);
+		this.child.send({
+			id: 0,
+			fn: 'constructor',
+			args: this.buildArgs,
+		});
 		this.started = true;
 	}
 

@@ -12,7 +12,7 @@ import * as process from 'process'
 setInterval(() => {
   const used: any = process.memoryUsage();
   for (let key in used) {
-    console.log(`Memory: ${key} ${Math.round(used[key] / 1024 / 1024 * 100) / 100} MB`);
+    log.debug(`Memory: ${key} ${Math.round(used[key] / 1024 / 1024 * 100) / 100} MB`);
   }
 }, 15000);
 

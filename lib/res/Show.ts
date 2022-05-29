@@ -13,7 +13,6 @@ export default class Show extends Media implements IMedia {
   public type: 'tv' = 'tv';
   public id: number;
   public episodes: IEpisode[] = [];
-  public title: string;
   public addedBy?: number;
 
   constructor(values: BuildArg) {
