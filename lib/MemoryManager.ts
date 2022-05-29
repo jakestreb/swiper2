@@ -7,7 +7,7 @@ const getFolderSizeAsync = promisify(getFolderSize);
 
 export default class MemoryManager {
 
-  private static MAX_MEMORY_MB = parseInt(process.env.MAX_MEMORY_MB || '0', 10) || 20000;
+  private static MAX_MEMORY_MB = parseInt(process.env.MAX_MEMORY_MB || '0', 10) || 100000;
   private static MARGIN_MB = 1000;
 
   constructor(public downloadRoot: string) {}
