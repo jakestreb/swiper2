@@ -49,7 +49,7 @@ export default class Torrent implements ITorrent {
     return (this as VTorrent);
   }
 
-  public format(f: TextFormatter, peers: number|null, progress: number|null): string {
+  public format(f: TextFormatter, peers?: number, progress?: number): string {
     const data = f.dataRow(
       this.resolution,
       formatSize(this.sizeMb),
@@ -65,7 +65,7 @@ export default class Torrent implements ITorrent {
   }
 }
 
-function getTorrentStatusText(status: TorrentStatus, peers: number|null) {
+function getTorrentStatusText(status: TorrentStatus, peers?: number) {
   if (status === 'removed') {
     return REMOVED;
   } else if (status === 'paused') {
@@ -74,20 +74,20 @@ function getTorrentStatusText(status: TorrentStatus, peers: number|null) {
     return NO_PEERS;
   } else if (status === 'slow') {
     return SLOW;
-  } else if (peers === null) {
+  } else if (!peers) {
     return '(downloading)';
   }
   return '';
 }
 
-function formatSize(sizeMb: number|null) {
+function formatSize(sizeMb?: number) {
   return sizeMb ? `${(sizeMb / 1000).toFixed(1)}GB` : null;
 }
 
-function formatPeers(peers: number|null): string|null {
+function formatPeers(peers?: number): string|null {
   return peers ? `${peers}x` : null;
 }
 
-function formatProgress(progress: number|null) {
+function formatProgress(progress?: number) {
   return progress ? `${progress.toFixed(1)}%` : null;
 }

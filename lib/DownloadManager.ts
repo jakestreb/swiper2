@@ -1,10 +1,11 @@
+import rmfr from 'rmfr';
 import * as path from 'path';
 import db from './db';
 import * as log from './log';
 import * as util from './util';
 import ExportHandler from './ExportHandler';
 import MemoryManager from './MemoryManager';
-import DownloadClient from './DownloadClient';
+import DownloadProcess from './downloader/DownloadProcess';
 import Swiper from './Swiper';
 
 export default class DownloadManager {
@@ -12,7 +13,9 @@ export default class DownloadManager {
   private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
   private static MAX_DOWNLOADS = parseInt(process.env.MAX_DOWNLOADS || '1', 10);
 
-  public downloadClient: DownloadClient;
+  public downloadRoot = DownloadManager.DOWNLOAD_ROOT;
+
+  public downloadProcess: DownloadProcess;
   private exportHandler: ExportHandler;
   public memoryManager: MemoryManager;
 
@@ -21,11 +24,11 @@ export default class DownloadManager {
   private isStarted: boolean = false;
 
   constructor(public swiper: Swiper) {
-    const downloadRoot = DownloadManager.DOWNLOAD_ROOT;
+    this.downloadProcess = new DownloadProcess(this.downloadRoot);
+    this.exportHandler = new ExportHandler(this.downloadRoot);
+    this.memoryManager = new MemoryManager(this.downloadRoot);
 
-    this.downloadClient = new DownloadClient(downloadRoot);
-    this.exportHandler = new ExportHandler(downloadRoot);
-    this.memoryManager = new MemoryManager(downloadRoot);
+    this.downloadProcess.start();
 
     this.ping();
     this.startUploads();
@@ -50,16 +53,18 @@ export default class DownloadManager {
     });
   }
 
-  public getProgress(torrent: ITorrent): DownloadProgress {
-    return this.downloadClient.getProgress(torrent);
+  public getProgress(torrent: ITorrent, timeoutMs?: number): Promise<DownloadProgress> {
+    return this.downloadProcess.getProgress(torrent, timeoutMs);
   }
 
-  public destroyAndDeleteVideo(video: TVideo): Promise<void> {
-    return this.downloadClient.destroyAndDeleteVideo(video);
+  public async destroyAndDeleteVideo(video: TVideo): Promise<void> {
+    await Promise.all(video.torrents.map(t => this.downloadProcess.destroyTorrent(t)));
+    await this.deleteVideoFiles(video);
   }
 
-  public destroyAndDeleteTorrent(torrent: VTorrent): Promise<void> {
-    return this.downloadClient.destroyAndDeleteTorrent(torrent);
+  public async destroyAndDeleteTorrent(torrent: VTorrent): Promise<void> {
+    await this.downloadProcess.destroyTorrent(torrent);
+    await this.deleteTorrentFiles(torrent);
   }
 
   // This function should generally not be awaited.
@@ -91,7 +96,7 @@ export default class DownloadManager {
     const sorted = util.sortByPriority(withTorrents, this.getVideoPriority.bind(this));
 
     const sortedTorrents: VTorrent[] = [];
-    sorted.forEach(v => {
+    sorted.forEach(async v => {
       const ts = util.sortByPriority(v.torrents, this.getTorrentPriority.bind(this));
       ts.forEach(t => {
         (t as VTorrent).video = v;
@@ -163,7 +168,8 @@ export default class DownloadManager {
 
     // Run the download
     await db.torrents.setStatus(torrent, 'downloading');
-    await this.downloadClient.download(torrent);
+    await this.downloadProcess.download(torrent);
+    log.debug(`Torrent ${torrent.video} download completed`);
 
     // On completion, mark the video status as uploading
     await db.torrents.setStatus(torrent, 'completed');
@@ -177,7 +183,7 @@ export default class DownloadManager {
 
   private async stopDownload(torrent: VTorrent): Promise<void> {
     await db.torrents.setStatus(torrent, 'paused');
-    await this.downloadClient.stopDownload(torrent);
+    await this.downloadProcess.stopDownload(torrent);
   }
 
   private async startUploads() {
@@ -200,7 +206,7 @@ export default class DownloadManager {
 
     // Export and cleanup torrents
     await this.exportHandler.export(vTorrent);
-    await this.downloadClient.destroyAndDeleteVideo(tVideo);
+    await this.destroyAndDeleteVideo(tVideo);
     await db.torrents.delete(...torrents.map(t => t.id));
 
     // Mark video as completed and delete in 24 hours
@@ -228,10 +234,24 @@ export default class DownloadManager {
   }
 
   private getTorrentPriority(torrent: ITorrent): number[] {
-    const downloadProgress = this.getProgress(torrent);
     const isSlow = torrent.status === 'slow';
-    const { progress, peers } = downloadProgress;
     // From important to least
-    return [-isSlow, +progress, +peers];
+    return [-isSlow];
+  }
+
+  private async deleteVideoFiles(video: IVideo): Promise<void> {
+    try {
+      await rmfr(path.join(this.downloadRoot, video.getDownloadPath()));
+    } catch (err) {
+      log.subProcessError(`Error deleting video files: ${err}`);
+    }
+  }
+
+  private async deleteTorrentFiles(torrent: ITorrent): Promise<void> {
+    try {
+      await rmfr(path.join(this.downloadRoot, torrent.getDownloadPath()));
+    } catch (err) {
+      log.subProcessError(`Error deleting torrent files: ${err}`);
+    }
   }
 }

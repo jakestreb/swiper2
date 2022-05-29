@@ -18,10 +18,10 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
   const sorted = util.sortByPriority(downloadingWithTorrents, getSortPriority);
 
   const downloadRows = await Promise.all(sorted.map(async video => {
-    const torrentRows = video.torrents.map(t => {
-      const { progress, peers } = this.downloadManager.getProgress(t);
+    const torrentRows = await Promise.all(video.torrents.map(async t => {
+      const { progress, peers } = await this.downloadManager.getProgress(t, 2000);
       return `${f.sp(2)}${t.format(f, peers, progress)}`;
-    });
+    }));
     const searchTxt = await getSearchTxt(video);
     const rows = [`${getIcon(video)} ${video.format(f)}`];
     if (video.status === 'downloading' && torrentRows.length > 0) {

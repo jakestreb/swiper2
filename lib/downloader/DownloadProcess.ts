@@ -15,20 +15,30 @@ export default class DownloadProcess extends ChildProcess {
     return this.call('download', vt.hash, vt.getDownloadPath());
   }
 
-  public getProgress(torrent: ITorrent): Promise<DownloadProgress> {
+  public getProgress(torrent: ITorrent, timeoutMs?: number): Promise<DownloadProgress> {
     log.debug(`DownloadClient: getProgress(${torrent.id})`);
-    return this.call('getProgress', torrent.hash);
+    const promise = this.call('getProgress', torrent.hash);
+    if (timeoutMs && timeoutMs > 0) {
+      const timeoutPromise = new Promise(resolve => {
+        setTimeout(() => {
+          log.error(`getProgress timed out after ${timeoutMs}ms`);
+          resolve({});
+        }, timeoutMs);
+      });
+      return Promise.race([promise, timeoutPromise]);
+    }
+    return promise;
   }
 
   public async stopDownload(torrent: ITorrent): Promise<void> {
     return this.call('stopDownload', torrent.hash);
   }
 
-  public async destroyVideoTorrents(video: TVideo): Promise<void> {
-    await Promise.all(video.torrents.map(t => this.destroyTorrent(t)));
-  }
-
   public async destroyTorrent(torrent: ITorrent): Promise<void> {
-    return this.call('destroyTorrent', torrent.hash);
+    try {
+      return this.call('destroyTorrent', torrent.getDownloadPath());
+    } catch (err) {
+      log.error(`Error destroying torrent ${torrent.id}: ${err}`);
+    }
   }
 }

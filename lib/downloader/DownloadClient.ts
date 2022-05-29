@@ -1,4 +1,3 @@
-import rmfr from 'rmfr';
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
 import * as log from '../log';
@@ -9,42 +8,22 @@ export default class DownloadClient {
 
   private _client: WebTorrent.Instance|null;
 
-  constructor(public downloadRoot: string) {}
-
-  // TODO: Remove
-  public logTorrents() {
-    console.warn('TORRENTS', this.client.torrents.map(t => t.infoHash));
+  constructor(public downloadRoot: string) {
+    console.warn('BUILT DOWNLOAD CLIENT', downloadRoot);
   }
 
-  public async download(vt: VTorrent): Promise<void> {
-    log.debug(`DownloadClient: download(${vt.video})`);
-    const subDirs = vt.getDownloadPath();
-    const downloadPath = await util.createSubdirs(this.downloadRoot, subDirs);
+  public async download(hash: string, subPath: string): Promise<void> {
+    const downloadPath = await util.createSubdirs(this.downloadRoot, subPath);
     return new Promise((resolve, reject) => {
-      this.client.add(vt.hash, { path: downloadPath }, wtTorrent => {
-        wtTorrent.on('done', async () => {
-          log.debug(`Torrent done ${vt.video}`);
-          resolve();
-        });
-        wtTorrent.on('error', async (err) => {
-          log.subProcessError(`Torrent error: ${err}`);
-          this.deleteTorrentFiles(vt)
-            .catch(err => {
-              log.error(`Torrent file delete error: ${err}`);
-            });
-          wtTorrent.destroy();
-          reject(err);
-        });
+      this.client.add(hash, { path: downloadPath }, wtTorrent => {
+        wtTorrent.on('done', () => resolve());
+        wtTorrent.on('error', (err) => reject(`Torrent download error: ${err}`));
       });
     });
   }
 
-  public getProgress(torrent: ITorrent): DownloadProgress {
-    log.debug(`DownloadClient: getProgress(${torrent.id})`);
-    const wtTorrent = this.client.get(torrent.hash);
-    if (wtTorrent) {
-      console.warn('TORRENT', wtTorrent.infoHash);
-    }
+  public getProgress(hash: string): DownloadProgress {
+    const wtTorrent = this.client.get(hash);
     return {
       progress: wtTorrent ? wtTorrent.progress * 100 : 0,
       speed: wtTorrent ? wtTorrent.downloadSpeed / (1024 * 1024) : 0, // MB/s
@@ -53,9 +32,9 @@ export default class DownloadClient {
     };
   }
 
-  public async stopDownload(torrent: ITorrent): Promise<void> {
+  public async stopDownload(hash: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.client.remove(torrent.hash, {}, err => {
+      this.client.remove(hash, {}, err => {
         if (err) {
           reject(err);
         } else {
@@ -65,39 +44,12 @@ export default class DownloadClient {
     });
   }
 
-  public async destroyAndDeleteVideo(video: TVideo): Promise<void> {
-    await Promise.all(video.torrents.map(t => this.destroyTorrent(t)));
-    await this.deleteVideoFiles(video);
-  }
-
-  public async destroyAndDeleteTorrent(torrent: VTorrent): Promise<void> {
-    await this.destroyTorrent(torrent);
-    await this.deleteTorrentFiles(torrent);
-  }
-
-  private async deleteVideoFiles(video: IVideo): Promise<void> {
-    try {
-      await rmfr(path.join(this.downloadRoot, video.getDownloadPath()));
-    } catch (err) {
-      log.subProcessError(`Error deleting video files: ${err}`);
-    }
-  }
-
-  private async deleteTorrentFiles(torrent: ITorrent): Promise<void> {
-    try {
-      await rmfr(path.join(this.downloadRoot, torrent.getDownloadPath()));
-    } catch (err) {
-      log.subProcessError(`Error deleting torrent files: ${err}`);
-    }
-  }
-
-  private async destroyTorrent(torrent: ITorrent): Promise<void> {
-    const torrentPath = path.join(this.downloadRoot, torrent.getDownloadPath());
+  public async destroyTorrent(subPath: string): Promise<void> {
+    const torrentPath = path.join(this.downloadRoot, subPath);
     const toDestroy = this.client.torrents.find(ct => ct.path === torrentPath);
     if (!toDestroy) {
       // Assume Swiper was reset after download and torrent is already destroyed
-      log.error(`Torrent ${torrent.id} not found in client to destroy`);
-      return;
+      throw new Error(`Torrent already destroyed`);
     }
     return new Promise((resolve, reject) => {
       toDestroy.destroy({}, (err) => {

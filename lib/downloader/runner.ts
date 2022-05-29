@@ -11,7 +11,11 @@ process.on('message', async (req) => {
 		return;
 	}
 
-	// @ts-ignore
-	const result = await downloadClient[fn](...args);
-	process.send!({ id, result });
+	try {
+		// @ts-ignore
+		const result = await downloadClient[fn](...args);
+		process.send!({ id, result });
+	} catch (err) {
+		process.send!({ id, err: `${err}` });
+	}
 });

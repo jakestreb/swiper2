@@ -84,10 +84,10 @@ declare interface JobDescription {
 }
 
 declare interface DownloadProgress {
-  progress: number;  // (0-100)
-  speed: number;     // (MB/s)
-  remaining: number; // (min)
-  peers: number;
+  progress?: number;  // (0-100)
+  speed?: number;     // (MB/s)
+  remaining?: number; // (min)
+  peers?: number;
 }
 
 declare interface DBInsertOptions {

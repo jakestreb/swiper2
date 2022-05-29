@@ -8,7 +8,13 @@ interface Request {
 
 interface Response {
 	id: number;
-	result: any;
+	result?: any;
+	err?: string;
+}
+
+interface Resolver {
+	resolve: (value: unknown) => void;
+	reject: (reason?: any) => void;
 }
 
 export default abstract class ChildProcess {
@@ -17,9 +23,7 @@ export default abstract class ChildProcess {
 	private started: boolean = false;
 
 	private id: number = 0;
-	private resolvers: {[id: number]: (result: any) => void} = {};
-
-	// private pendingResolver: ((result: any) => void)|null = null;
+	private resolvers: {[id: number]: Resolver} = {};
 
 	constructor(...buildArgs: any[]) {
 		this.buildArgs = buildArgs || [];
@@ -42,7 +46,11 @@ export default abstract class ChildProcess {
 			if (!resolver) {
 				throw new Error('Child process messaged with no call to resolve');
 			}
-			resolver(resp.result);
+			if (resp.err) {
+				resolver.reject(`Webtorrent error: ${resp.err}`);
+			} else {
+				resolver.resolve(resp.result);
+			}
 		});
 		this.child.on('exit', () => {
 			this.started = false;
@@ -58,9 +66,9 @@ export default abstract class ChildProcess {
 		if (!this.started) {
 			throw new Error('Child process not started');
 		}
-		return new Promise(resolve => {
+		return new Promise((resolve, reject) => {
 			const id = this.nextId;
-			this.resolvers[id] = resolve;
+			this.resolvers[id] = { resolve, reject };
 			this.child.send({ id, fn, args } as Request);
 		});
 	}
