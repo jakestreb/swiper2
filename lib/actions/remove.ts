@@ -71,9 +71,9 @@ export async function removeTorrent(swiper: Swiper, convo: Conversation, f: Text
   if (storedVideos.length > 0) {
     const video = storedVideos[0];
     const torrent = storedVideos[0].torrents[0];
-    const { progress, peers } = swiper.downloadManager.getProgress(torrent);
+    const { progress, peers } = await swiper.downloadManager.getProgress(torrent, 2000);
     return {
-      data: formatConfirmTorrent(torrent.addVideo(video), peers, progress, f),
+      data: formatConfirmTorrent(torrent.addVideo(video), f, peers, progress),
     };
   }
 
@@ -118,7 +118,7 @@ async function doRemoveTorrent(swiper: Swiper, video: TVideo, torrent: ITorrent)
     }
 }
 
-  // Requires mediaQuery to be set.
+// Requires mediaQuery to be set.
 async function addStoredMediaIfFound(convo: Conversation): Promise<void> {
   const mediaQuery = convo.mediaQuery;
   if (!mediaQuery) {
@@ -159,7 +159,7 @@ function formatConfirmMedia(media: IMedia, f: TextFormatter): string {
   return `Remove ${media.format(f)}?`;
 }
 
-function formatConfirmTorrent(t: VTorrent, peers: number, progress: number, f: TextFormatter): string {
+function formatConfirmTorrent(t: VTorrent, f: TextFormatter, peers?: number, progress?: number): string {
   return [
     `Remove torrent from ${t.video.format(f)}`,
     `${t.format(f, peers, progress)}?`,

@@ -73,7 +73,7 @@ declare interface ITorrent {
 
   getDownloadPath(): string;
   addVideo(v: IVideo): VTorrent;
-  format(f: TextFormatter, peers: number, progress: number): string;
+  format(f: TextFormatter, peers?: number, progress?: number): string;
   toString(): string;
 }
 
