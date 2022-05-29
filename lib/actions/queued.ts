@@ -19,9 +19,8 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
 
   const downloadRows = await Promise.all(sorted.map(async video => {
     const torrentRows = video.torrents.map(t => {
-      // TODO: UNCOMMENT!!!!
-      // const { progress, peers } = this.downloadManager.getProgress(t);
-      return `${f.sp(2)}${t.format(f, 0, 0)}`;
+      const { progress, peers } = this.downloadManager.getProgress(t);
+      return `${f.sp(2)}${t.format(f, peers, progress)}`;
     });
     const searchTxt = await getSearchTxt(video);
     const rows = [`${getIcon(video)} ${video.format(f)}`];
