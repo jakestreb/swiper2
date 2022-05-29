@@ -13,7 +13,7 @@ interface BuildArg {
 }
 
 const NO_PEERS = '(awaiting peers)';
-const PAUSED = '(awaiting space)';
+const PAUSED = '(waiting)';
 const REMOVED = '(removed)';
 const SLOW = '(slow)';
 

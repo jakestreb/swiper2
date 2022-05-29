@@ -19,8 +19,9 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
 
   const downloadRows = await Promise.all(sorted.map(async video => {
     const torrentRows = video.torrents.map(t => {
-      const { progress, peers } = this.downloadManager.getProgress(t);
-      return `${f.sp(2)}${t.format(f, peers, progress)}`;
+      // TODO: UNCOMMENT!!!!
+      // const { progress, peers } = this.downloadManager.getProgress(t);
+      return `${f.sp(2)}${t.format(f, 0, 0)}`;
     });
     const searchTxt = await getSearchTxt(video);
     const rows = [`${getIcon(video)} ${video.format(f)}`];
@@ -41,7 +42,6 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
   const rows = [...downloadRows, ...completedRows];
 
   this.downloadManager.memoryManager.log(); // TODO: Remove
-  this.downloadManager.downloadClient.logTorrents(); // TODO: Remove
   return {
     data: rows.length > 0 ? rows.join('\n') : 'No downloads',
     final: true
