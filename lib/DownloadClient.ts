@@ -1,14 +1,10 @@
-import getFolderSize from 'get-folder-size';
 import rmfr from 'rmfr';
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
 import * as log from './log';
 import * as util from './util';
-import { promisify } from 'util';
 
-const getFolderSizeAsync = promisify(getFolderSize);
-
-export class DownloadClient {
+export default class DownloadClient {
   public static MAX_TORRENT_CONNS = 30;
 
   private _client: WebTorrent.Instance|null;
@@ -18,10 +14,6 @@ export class DownloadClient {
   // TODO: Remove
   public logTorrents() {
     console.warn('TORRENTS', this.client.torrents.map(t => t.infoHash));
-  }
-
-  public getDownloadedMb(t: ITorrent): Promise<number> {
-    return getDirectorySizeMb(path.join(this.downloadRoot, t.getDownloadPath()));
   }
 
   public async download(vt: VTorrent): Promise<void> {
@@ -131,17 +123,5 @@ export class DownloadClient {
       log.subProcessError(`WebTorrent fatal error: ${err}`);
       this.startClient();
     });
-  }
-}
-
-async function getDirectorySizeMb(directory: string): Promise<number> {
-  try {
-    const folderSize = await getFolderSizeAsync(directory);
-    return folderSize / 1024 / 1024;
-  } catch (err: any) {
-    if (err.code === 'ENOENT') {
-      return 0;
-    }
-    throw err;
   }
 }

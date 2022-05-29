@@ -4,7 +4,7 @@ import * as log from './log';
 import * as util from './util';
 import ExportHandler from './ExportHandler';
 import MemoryManager from './MemoryManager';
-import {DownloadClient} from './DownloadClient';
+import DownloadClient from './DownloadClient';
 import Swiper from './Swiper';
 
 export default class DownloadManager {
@@ -104,19 +104,19 @@ export default class DownloadManager {
 
     // Iterate through videos starting any torrents where there's space
     // Once all the space is allocated, pause any remaining torrents
-    const originalFree = await this.memoryManager.getAvailableMb();
+    const originalFree = await this.memoryManager.getRemainingMb();
     let storageRemaining = originalFree;
     let spotsRemaining = DownloadManager.MAX_DOWNLOADS;
 
     await sortedTorrents.reduce(async (prevPromise, vt) => {
       await prevPromise;
-      const progressMb = await this.downloadClient.getDownloadedMb(vt);
+      const progressMb = await this.memoryManager.getProgressMb(vt);
       const allocateMb = vt.sizeMb - progressMb;
       console.warn(`queue ${vt.video}?`, {
         storageRemaining,
         allocateMb,
         progressMb,
-        freeMb: originalFree,
+        allowedMb: originalFree,
         totalMb: await this.memoryManager.getTotalMb(),
       }, storageRemaining - allocateMb > 0);
       if (storageRemaining - allocateMb > 0 && spotsRemaining > 0) {
