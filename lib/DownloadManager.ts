@@ -117,14 +117,18 @@ export default class DownloadManager {
       await prevPromise;
       const progressMb = await this.memoryManager.getProgressMb(vt);
       const allocateMb = vt.sizeMb - progressMb;
-      console.warn(`queue ${vt.video}?`, {
+
+      const spaceLeft = storageRemaining - allocateMb > 0;
+      const spotsLeft = spotsRemaining > 0;
+      const info = JSON.stringify({
+        spotsRemaining,
         storageRemaining,
         allocateMb,
         progressMb,
-        allowedMb: originalFree,
-        totalMb: await this.memoryManager.getTotalMb(),
-      }, storageRemaining - allocateMb > 0);
-      if (storageRemaining - allocateMb > 0 && spotsRemaining > 0) {
+      });
+      log.debug(`${spaceLeft && spotsLeft ? '' : 'Not'} queuing ${vt.video}: ${info}`);
+
+      if (spaceLeft && spotsLeft) {
         // Allocate
         storageRemaining -= allocateMb;
         spotsRemaining -= 1;
