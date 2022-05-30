@@ -3,7 +3,6 @@ import DownloadClient from './DownloadClient';
 let downloadClient: DownloadClient;
 
 process.on('message', async (req) => {
-	console.warn('REQUEST', req);
 	const { id, fn, args } = req;
 
 	if (fn === 'constructor') {

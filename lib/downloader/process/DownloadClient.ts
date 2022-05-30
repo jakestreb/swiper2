@@ -1,16 +1,14 @@
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
-import * as log from '../log';
-import * as util from '../util';
+import * as log from '../../log';
+import * as util from '../../util';
 
 export default class DownloadClient {
-  public static MAX_TORRENT_CONNS = 30;
+  public static MAX_TORRENT_CONNS = 18;
 
   private _client: WebTorrent.Instance|null;
 
-  constructor(public downloadRoot: string) {
-    console.warn('BUILT DOWNLOAD CLIENT', downloadRoot);
-  }
+  constructor(public downloadRoot: string) {}
 
   public async download(hash: string, subPath: string): Promise<void> {
     const downloadPath = await util.createSubdirs(this.downloadRoot, subPath);

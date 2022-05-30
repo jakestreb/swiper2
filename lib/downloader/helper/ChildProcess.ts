@@ -42,7 +42,6 @@ export default abstract class ChildProcess {
 		}
 		this.child = child.fork(this.processPath);
 		this.child.on('message', (resp: Response) => {
-			console.warn('RESPONSE', resp);
 			const resolver = this.resolvers[resp.id];
 			if (!resolver) {
 				throw new Error('Child process messaged with no call to resolve');

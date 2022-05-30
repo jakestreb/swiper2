@@ -1,4 +1,4 @@
-import ChildProcess from './ChildProcess';
+import ChildProcess from './helper/ChildProcess';
 import * as log from '../log';
 
 export default class DownloadProcess extends ChildProcess {
@@ -7,7 +7,7 @@ export default class DownloadProcess extends ChildProcess {
 	}
 
 	public get processPath() {
-		return './dist/lib/downloader/runner';
+		return './dist/lib/downloader/process/runner';
 	}
 
   public async download(vt: VTorrent): Promise<void> {
