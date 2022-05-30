@@ -81,6 +81,7 @@ export default class CommManager {
 
   private addTelegramListener() {
     this.telegramBot.on("text", (message: any) => {
+      log.debug(`Received telegram message: ${message.text}`);
       this.handleClientMsg('telegram', message.chat.id, message.text)
       .catch(err => {
         log.error(`Error handling telegram request "${message}": ${err}`);
