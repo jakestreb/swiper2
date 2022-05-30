@@ -48,7 +48,8 @@ export default class DownloadClient {
     const toDestroy = this.client.torrents.find(ct => ct.path === torrentPath);
     if (!toDestroy) {
       // Assume Swiper was reset after download and torrent is already destroyed
-      throw new Error(`Torrent already destroyed`);
+      log.subProcessError('Torrent already destroyed');
+      return;
     }
     return new Promise((resolve, reject) => {
       toDestroy.destroy({}, (err) => {

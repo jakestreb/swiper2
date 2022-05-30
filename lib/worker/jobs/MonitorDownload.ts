@@ -2,7 +2,7 @@ import * as util from '../../util';
 import db from '../../db';
 import Base from './Base';
 
-const SLOW_SPEED_MBS = 0.02;
+const SLOW_SPEED_MBS = 0.1;
 
 // For 'downloading' videos, check progress to update torrent statuses
 export class MonitorDownload extends Base {
@@ -21,24 +21,23 @@ export class MonitorDownload extends Base {
 
 			// Mark fast
 			await Promise.all(torrents
-				.filter(t => !this.isSlow(t))
-				.map(t => {
-					this.slowCounts[t.id] = 0;
-					if (t.status === 'slow') {
-						return db.torrents.setStatus(t, 'downloading');
+				.map(async t => {
+					const isSlow = await this.isSlow(t);
+					if (isSlow) {
+						this.slowCounts[t.id] = this.slowCounts[t.id] || 0;
+						this.slowCounts[t.id] += 1;
+						if (t.status === 'downloading' && this.slowCounts[t.id] >= MonitorDownload.MARK_SLOW_AFTER) {
+							await db.torrents.setStatus(t, 'slow');
+							this.swiper.downloadManager.ping();
+						}
+					} else {
+						this.slowCounts[t.id] = 0;
+						if (t.status === 'slow') {
+							await db.torrents.setStatus(t, 'downloading');
+						}
 					}
-				}));
-
-			// Mark slow
-			await Promise.all(torrents
-				.filter(t => this.isSlow(t))
-				.map(t => {
-					this.slowCounts[t.id] = this.slowCounts[t.id] || 0;
-					this.slowCounts[t.id] += 1;
-					if (t.status === 'downloading' && this.slowCounts[t.id] >= MonitorDownload.MARK_SLOW_AFTER) {
-						return db.torrents.setStatus(t, 'slow');
-					}
-				}));
+				})
+			);
 
 			console.warn('torrent slow counts', this.slowCounts);
 			await util.delay(MonitorDownload.INTERVAL_S * 1000);

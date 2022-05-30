@@ -10,7 +10,7 @@ export default class DownloadProcess extends ChildProcess {
 		return './dist/lib/downloader/process/runner';
 	}
 
-  public async download(vt: VTorrent): Promise<void> {
+  public download(vt: VTorrent): Promise<void> {
     log.debug(`DownloadClient: download(${vt.video})`);
     return this.call('download', vt.hash, vt.getDownloadPath());
   }
@@ -31,15 +31,11 @@ export default class DownloadProcess extends ChildProcess {
     return promise;
   }
 
-  public async stopDownload(torrent: ITorrent): Promise<void> {
+  public stopDownload(torrent: ITorrent): Promise<void> {
     return this.call('stopDownload', torrent.hash);
   }
 
-  public async destroyTorrent(torrent: ITorrent): Promise<void> {
-    try {
-      return this.call('destroyTorrent', torrent.getDownloadPath());
-    } catch (err) {
-      log.error(`Error destroying torrent ${torrent.id}: ${err}`);
-    }
+  public destroyTorrent(torrent: ITorrent): Promise<void> {
+    return this.call('destroyTorrent', torrent.getDownloadPath());
   }
 }
