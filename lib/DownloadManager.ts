@@ -229,7 +229,7 @@ export default class DownloadManager {
   }
 
   private getVideoPriority(video: TVideo): number[] {
-    const isSlow = video.torrents.every(t => t.status === 'slow' || t.status === 'paused');
+    const isSlow = video.torrents.some(t => t.status === 'slow');
     const isMovie = video.isMovie();
     const season = video.isEpisode() ? video.seasonNum : 0;
     const episode = video.isEpisode() ? video.episodeNum : 0;
