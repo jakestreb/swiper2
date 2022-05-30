@@ -8,7 +8,7 @@ const getFolderSizeAsync = promisify(getFolderSize);
 export default class MemoryManager {
 
   private static MAX_MEMORY_MB = parseInt(process.env.MAX_MEMORY_MB || '0', 10) || 100000;
-  private static MARGIN_MB = 1000;
+  private static AVAILABILITY_MARGIN_MB = 1000;
 
   constructor(public downloadRoot: string) {}
 
@@ -21,7 +21,7 @@ export default class MemoryManager {
 
   public async getAvailableMb() {
     const free = await this.getFreeMb();
-    return free - MemoryManager.MARGIN_MB;
+    return free - MemoryManager.AVAILABILITY_MARGIN_MB;
   }
 
   public getUsedMb() {
@@ -32,24 +32,9 @@ export default class MemoryManager {
     return getDirectorySizeMb(path.join(this.downloadRoot, t.getDownloadPath()));
   }
 
-  // TODO: Remove (used for logging only)
-  public async getTotalMb() {
-    const { size } = await checkDiskSpace(this.downloadRoot);
-    return size / 1024 / 1024;
-  }
-
-  // TODO: Remove (used for logging only)
-  public async getFreeMb() {
-    // return os.freemem() / 1024 / 1024;
+  private async getFreeMb() {
     const { free } = await checkDiskSpace(this.downloadRoot);
     return free / 1024 / 1024;
-  }
-
-  // TODO: Remove (used for logging only)
-  public async log() {
-    const total = await this.getTotalMb();
-    const free = await this.getFreeMb();
-    console.warn('free / total', free, total);
   }
 }
 
