@@ -4,7 +4,8 @@ import * as log from '../../log';
 import * as util from '../../util';
 
 export default class DownloadClient {
-  public static MAX_TORRENT_CONNS = 18;
+  public static downloadLimitMbps = 40;
+  public static uploadLimitMbps = 5;
 
   private _client: WebTorrent.Instance|null;
 
@@ -68,7 +69,9 @@ export default class DownloadClient {
   }
 
   private startClient(): void {
-    this._client = new WebTorrent({ maxConns: DownloadClient.MAX_TORRENT_CONNS });
+    const downloadLimit = (DownloadClient.downloadLimitMbps * 1024 * 1024) / 8;
+    const uploadLimit = (DownloadClient.uploadLimitMbps * 1024 * 1024) / 8;
+    this._client = new WebTorrent({downloadLimit, uploadLimit} as any);
     this._client.on('error', (err) => {
       log.subProcessError(`WebTorrent fatal error: ${err}`);
       this.startClient();
