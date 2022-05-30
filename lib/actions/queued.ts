@@ -9,8 +9,40 @@ const X = '\u2A09';
 
 const UPLOADING = '(uploading)';
 
+// TODO: REMOVE
+let isCheckingInternet = false;
+
+function checkInternet(cb: (b: boolean) => any) {
+    require('dns').lookup('google.com',function(err: any) {
+        if (err && err.code == "ENOTFOUND") {
+            cb(false);
+        } else {
+            cb(true);
+        }
+    })
+}
+
+// example usage:
+checkInternet(function(isConnected: boolean) {
+    if (isConnected) {
+        // connected to the internet
+    } else {
+        // not connected to the internet
+    }
+});
+
 export async function queued(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const f = this.getTextFormatter(convo);
+
+  if (!isCheckingInternet) {
+    isCheckingInternet = true;
+    setInterval(
+      () => checkInternet((isConnected: boolean) => {
+        console.warn('HAS INTERNET', isConnected);
+      }),
+      5000
+    );
+  }
 
   const downloading = await db.videos.getWithStatus('searching', 'downloading', 'uploading');
   const completed = await db.media.getWithStatus('completed');

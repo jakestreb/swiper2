@@ -4,36 +4,49 @@ import Base from './Base';
 
 const SLOW_SPEED_MBS = 0.2;
 
-// For 'downloading' (and 'slow') videos, check progress to update torrent status
+// For 'downloading' videos, check progress to update torrent statuses
 export class MonitorDownload extends Base {
-	public static schedule: JobSchedule = 'repeated';
-	public static initDelayS: number = 60;
+	public static INTERVAL_S = 30;
+	public static MARK_SLOW_AFTER = 4;
+
+	public static schedule: JobSchedule = 'once';
+
+	public slowCounts: {[id: number]: number} = {};
 
 	public async run(videoId: number): Promise<boolean> {
-		const video = await db.videos.getOne(videoId);
-		if (!video) {
-			throw new Error(`MonitorDownload job run on invalid videoId: ${videoId}`);
+		let video = await db.videos.getOne(videoId);
+
+		while (video && video.status === 'downloading') {
+			const torrents = await db.torrents.getForVideo(video.id);
+
+			// Mark fast
+			await Promise.all(torrents
+				.filter(t => !this.isSlow(t))
+				.map(t => {
+					this.slowCounts[t.id] = 0;
+					if (t.status === 'slow') {
+						return db.torrents.setStatus(t, 'downloading');
+					}
+				}));
+
+			// Mark slow
+			await Promise.all(torrents
+				.filter(t => this.isSlow(t))
+				.map(t => {
+					this.slowCounts[t.id] = this.slowCounts[t.id] || 0;
+					this.slowCounts[t.id] += 1;
+					if (t.status === 'downloading' && this.slowCounts[t.id] >= MonitorDownload.MARK_SLOW_AFTER) {
+						return db.torrents.setStatus(t, 'slow');
+					}
+				}));
+
+			console.warn('torrent slow counts', this.slowCounts);
+			await util.delay(MonitorDownload.INTERVAL_S * 1000);
+			video = await db.videos.getOne(videoId);
 		}
-		if (video.status !== 'downloading') {
-			// Done monitoring
-			return true;
-		}
 
-		const torrents = await db.torrents.getForVideo(video.id);
-
-    let slowToFast = torrents.filter(t => t.status === 'slow' && !this.isSlow(t));
-    let fastToSlow = torrents.filter(t => t.status === 'downloading' && this.isSlow(t));
-
-		// Wait 10s and re-check before applying statuses
-		await util.delay(10000);
-
-    slowToFast = slowToFast.filter(t => !this.isSlow(t));
-    fastToSlow = fastToSlow.filter(t => this.isSlow(t));
-
-    await Promise.all(slowToFast.map(t => db.torrents.setStatus(t, 'downloading')));
-    await Promise.all(fastToSlow.map(t => db.torrents.setStatus(t, 'slow')));
-
-		return false;
+		// Success on completion
+		return true;
 	}
 
   private async isSlow(t: ITorrent) {
