@@ -1,20 +1,9 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-// import {EventEmitter} from 'events';
-// EventEmitter.defaultMaxListeners = Infinity; // Hides a repeated warning from 'webtorrent'
-
 import * as log from './lib/log';
 import Swiper from './lib/Swiper';
 import * as process from 'process'
-
-// Prints the output as an object
-setInterval(() => {
-  const used: any = process.memoryUsage();
-  for (let key in used) {
-    log.debug(`Memory: ${key} ${Math.round(used[key] / 1024 / 1024 * 100) / 100} MB`);
-  }
-}, 15000);
 
 // import * as heapProfile from 'heap-profile';
 

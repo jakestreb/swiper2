@@ -1,4 +1,5 @@
 import * as child from 'child_process';
+import * as log from '../../log';
 
 interface Request {
 	id: number;
@@ -54,9 +55,10 @@ export default abstract class ChildProcess {
 		});
 		this.child.on('exit', () => {
 			this.started = false;
+			this.start(); // Restart on exit
 		});
 		this.child.on('error', (err) => {
-			throw err;
+			log.error(`Download process fatal error: ${err}`);
 		});
 		this.child.send({
 			id: 0,
