@@ -31,7 +31,6 @@ export function unknown(this: Swiper, convo: Conversation): SwiperReply {
   const commands = [...randomMovies, ...randomTv].map(c => `download ${c}`);
 
   const data = [
-    'A few options',
     f.commands(...shuffle(commands)),
     f.commands('help'),
   ].join('\n\n');
