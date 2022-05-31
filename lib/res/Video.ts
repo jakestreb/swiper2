@@ -4,7 +4,7 @@ interface BuildArg {
   id: number;
   status: Status;
   addedBy?: number;
-  queueIndex?: number;
+  queueIndex: number;
 }
 
 export default abstract class Video implements IVideo {

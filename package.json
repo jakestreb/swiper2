@@ -11,7 +11,7 @@
     "dev": "ts-node index.ts",
     "reset": "rm records.db & rm -rf downloads/*",
     "update-pi": "scripts/update-pi.sh",
-    "ship": "npm run build; git push; npm run update-pi",
+    "ship": "scripts/ship.sh",
     "lines": "git -C lib grep ^ | wc -l"
   },
   "repository": {

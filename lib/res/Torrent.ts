@@ -9,7 +9,7 @@ interface BuildArg {
   resolution: string;
   sizeMb: number;
   status: TorrentStatus;
-  queueIndex?: number;
+  queueIndex: number;
 }
 
 const NO_PEERS = '(awaiting peers)';
@@ -25,7 +25,7 @@ export default class Torrent implements ITorrent {
   public resolution: string;
   public sizeMb: number;
   public status: TorrentStatus;
-  public queueIndex?: number;
+  public queueIndex: number;
 
   public video?: IVideo;
 
