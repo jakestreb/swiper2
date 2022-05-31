@@ -234,7 +234,7 @@ export default class DownloadManager {
     const season = video.isEpisode() ? video.seasonNum : 0;
     const episode = video.isEpisode() ? video.episodeNum : 0;
     // From important to least
-    return [-isSlow, +isMovie, -season, -episode];
+    return [-isSlow, +isMovie, -video.queueIndex, -season, -episode];
   }
 
   private getTorrentPriority(torrent: ITorrent): number[] {

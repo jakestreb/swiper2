@@ -32,7 +32,7 @@ export default class Torrents extends Base<TorrentDBRow, ITorrent> {
       resolution TEXT,
       sizeMb INTEGER,
       status TEXT,
-      queueIndex INTEGER DEFAULT -1,
+      queueIndex INTEGER DEFAULT 0,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 

@@ -10,7 +10,7 @@ interface BuildArg {
   showTitle: string;
   airDate?: Date;
   addedBy?: number;
-  queueIndex?: number;
+  queueIndex: number;
 }
 
 export default class Episode extends Video implements IEpisode {

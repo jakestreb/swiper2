@@ -8,7 +8,7 @@ declare interface IVideo {
   type: string;
   status: Status;
   addedBy?: number;
-  queueIndex?: number;
+  queueIndex: number;
 
   isMovie(): this is IMovie;
   isEpisode(): this is IEpisode;
@@ -69,7 +69,7 @@ declare interface ITorrent {
   resolution: string;
   sizeMb: number;
   status: TorrentStatus;
-  queueIndex?: number;
+  queueIndex: number;
 
   getDownloadPath(): string;
   addVideo(v: IVideo): VTorrent;

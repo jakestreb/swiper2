@@ -13,7 +13,7 @@ export default abstract class Video implements IVideo {
   public id: number;
   public status: Status;
   public addedBy?: number;
-  public queueIndex?: number;
+  public queueIndex: number;
 
   public torrents?: ITorrent[];
   public badFilenameChars: RegExp = /[\\/:*?"<>|'\.]/g;
