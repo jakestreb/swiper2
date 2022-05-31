@@ -7,7 +7,7 @@ interface BuildArg {
   title: string;
   year: string;
   releases: Releases;
-  queueIndex?: number;
+  queueIndex: number;
 }
 
 export default class Movie extends Video implements IVideo, IMedia {
