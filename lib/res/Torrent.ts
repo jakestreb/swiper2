@@ -68,7 +68,7 @@ export default class Torrent implements ITorrent {
 function getTorrentStatusText(status: TorrentStatus, peers?: number) {
   if (status === 'removed') {
     return REMOVED;
-  } else if (status === 'paused') {
+  } else if (status === 'paused' || status === 'pending') {
     return PAUSED;
   } else if (peers === 0) {
     return NO_PEERS;

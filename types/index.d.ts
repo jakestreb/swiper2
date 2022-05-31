@@ -5,7 +5,7 @@ declare module 'parse-torrent-name';
 declare type Status = 'identified'|'unreleased'|'searching'|'downloading'|'uploading'|'completed';
 
 // Note torrents should only have status 'removed' if they were singularly removed
-declare type TorrentStatus = 'downloading'|'slow'|'paused'|'completed'|'removed';
+declare type TorrentStatus = 'pending'|'downloading'|'slow'|'paused'|'completed'|'removed';
 
 declare type JobStatus = 'pending'|'running'|'done';
 

@@ -132,10 +132,10 @@ export default class DownloadManager {
         // Allocate
         storageRemaining -= allocateMb;
         spotsRemaining -= 1;
-        if (!this.isStarted || vt.status === 'paused') {
+        if (!this.isStarted || vt.status === 'paused' || vt.status === 'pending') {
           toStart.push(vt);
         }
-      } else if (vt.status !== 'paused') {
+      } else if (vt.status !== 'paused' && vt.status !== 'pending') {
         toPause.push(vt);
       }
     }, Promise.resolve());
@@ -229,12 +229,12 @@ export default class DownloadManager {
   }
 
   private getVideoPriority(video: TVideo): number[] {
-    const isSlow = video.torrents.some(t => t.status === 'slow');
+    const isSlow = video.torrents.every(t => t.status === 'slow' || t.status === 'paused');
     const isMovie = video.isMovie();
     const season = video.isEpisode() ? video.seasonNum : 0;
     const episode = video.isEpisode() ? video.episodeNum : 0;
     // From important to least
-    return [-isSlow, +isMovie, -video.queueIndex, -season, -episode];
+    return [-isSlow, +isMovie, -season, -episode];
   }
 
   private getTorrentPriority(torrent: ITorrent): number[] {

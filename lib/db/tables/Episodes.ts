@@ -24,7 +24,7 @@ export default class Episodes extends Base<EpisodeDBRow, IEpisode> {
       showId INTEGER,
       showTitle TEXT,
       status TEXT DEFAULT unreleased,
-      queueIndex INTEGER DEFAULT 0,
+      queueIndex INTEGER DEFAULT -1,
       addedBy INTEGER,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);

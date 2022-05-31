@@ -92,7 +92,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
     }
   }
 
-  await db.torrents.insert({ ...torrent, videoId: video.id, status: 'paused' });
+  await db.torrents.insert({ ...torrent, videoId: video.id, status: 'pending' });
 
   await this.downloadManager.addToQueue(video);
 

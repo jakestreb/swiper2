@@ -7,7 +7,7 @@ const SLOW_SPEED_MBS = 0.1;
 // For 'downloading' videos, check progress to update torrent statuses
 export class MonitorDownload extends Base {
 	public static INTERVAL_S = 30;
-	public static MARK_SLOW_AFTER = 4;
+	public static MARK_SLOW_AFTER = 5;
 
 	public static schedule: JobSchedule = 'once';
 

@@ -45,7 +45,7 @@ export default class TorrentSearch {
       return false;
     }
     log.debug(`TorrentSearch: getBestTorrent(${video}) succeeded`);
-    const torrent = { ...best, status: 'paused' as TorrentStatus, videoId: video.id };
+    const torrent = { ...best, status: 'pending' as TorrentStatus, videoId: video.id };
     await db.torrents.insert(torrent);
     return !!torrent;
   }
