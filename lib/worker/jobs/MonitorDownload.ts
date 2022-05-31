@@ -17,7 +17,8 @@ export class MonitorDownload extends Base {
 		let video = await db.videos.getOne(videoId);
 
 		while (video && video.status === 'downloading') {
-			const torrents = await db.torrents.getForVideo(video.id);
+			const allTorrents = await db.torrents.getForVideo(video.id);
+			const torrents = allTorrents.filter(t => t.status === 'downloading' || t.status === 'slow');
 
 			// Mark fast
 			await Promise.all(torrents

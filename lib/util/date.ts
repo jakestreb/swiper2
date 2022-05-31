@@ -42,14 +42,14 @@ export function formatWaitTime(date: Date): string {
     const n = Math.ceil(Math.max(s, 1));
     return `${n}s`;
   } else if (s < 60 * 60) {
-    const n = Math.ceil(s / 60);
+    const n = Math.floor(s / 60);
     return `${n}m`;
   } else if (s < 60 * 60 * 48) {
-    const nh = Math.ceil(h);
+    const nh = Math.floor(h);
     const ns = Math.ceil(s % (60 * 60));
     return `${nh}h ${ns}m`;
   }
-  const n = Math.ceil(h / 24);
+  const n = Math.floor(h / 24);
   return `${n}d`;
 }
 
