@@ -18,12 +18,13 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 
   const media = convo.media as IMedia;
   const video = media.isShow() ? media.episodes[0] : media as IMovie;
-  const activeTorrents = await db.torrents.getForVideo(video.id);
+  const active = await db.torrents.getForVideo(video.id);
 
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
     log.info(`Searching for ${video} downloads`);
-    convo.torrents = await TorrentSearch.search(video);
+    const results = await TorrentSearch.search(video);
+    convo.torrents = results.filter(t => !active.some(at => compareHashes(t.hash, at.hash)));
     convo.pageNum = 0;
   }
 
@@ -40,7 +41,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   const showPage = async () => {
     const { torrents, pageNum } = convo;
     return {
-      data: await formatSelection(torrents!, pageNum!, activeTorrents, f),
+      data: await formatSelection(torrents!, pageNum!, f),
     };
   };
 
@@ -74,26 +75,32 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   }
   const torrent = convo.torrents[torrentNum - 1];
 
+  // Add torrent to existing video, if there is one
+  const existing = await db.videos.getOne(video.id);
+  if (existing && existing.status === 'downloading' && active.length > 0) {
+    await db.torrents.insert({ ...torrent, videoId: video.id, status: 'pending' });
+    await this.downloadManager.ping();
+    return {
+      data: `Added new torrent for ${video.format(f)}`,
+      final: true
+    };
+  }
+
+  // Try to add video
   try {
     await db.media.insert(media, { addedBy: convo.id, status: 'identified' });
   } catch (err: any) {
     if (err.code !== 'SQLITE_CONSTRAINT') {
       throw err;
     }
-    const existing = await db.videos.getOne(video.id);
-    if (!existing) {
-      throw err;
-    }
-    if (existing.status !== 'downloading') {
-      return {
-        data: 'Video must be removed before re-downloading',
-        final: true
-      };
-    }
+    return {
+      data: 'Video must be removed before re-downloading',
+      final: true
+    };
   }
 
+  // Add torrent and add video to queue
   await db.torrents.insert({ ...torrent, videoId: video.id, status: 'pending' });
-
   await this.downloadManager.addToQueue(video);
 
   return {
@@ -106,24 +113,22 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 async function formatSelection(
   torrents: TorrentResult[],
   pageNum: number,
-  active: ITorrent[],
   f: TextFormatter,
 ): Promise<string> {
   log.debug('search: Formatting page');
   const removed = await db.torrents.getWithStatus('removed');
   const startIndex = PER_PAGE * pageNum;
   const endIndex = startIndex + PER_PAGE - 1;
-  const filteredTorrents = torrents.filter(t => !active.some(at => t.hash === at.hash));
-  const someTorrents = filteredTorrents.slice(startIndex, startIndex + PER_PAGE);
-  const torrentRows = someTorrents.map((t, i) => {
-    const isRemoved = removed.some(r => t.hash === r.hash);
+  const pageTorrents = torrents.slice(startIndex, startIndex + PER_PAGE);
+  const torrentRows = pageTorrents.map((t, i) => {
+    const isRemoved = removed.some(r => compareHashes(t.hash, r.hash));
     const numberRow = [f.b(`${startIndex + i + 1}`)];
     if (isRemoved) {
       numberRow.push(REMOVED);
     }
     return [numberRow.join(f.sp(1)), formatTorrent(t, f)].join('\n');
   });
-  const commands = formatCommands([startIndex + 1, endIndex + 1], filteredTorrents.length, f);
+  const commands = formatCommands([startIndex + 1, endIndex + 1], torrents.length, f);
   return [torrentRows.join('\n\n'), commands].join('\n\n');
 }
 
@@ -148,4 +153,8 @@ function formatCommands(range: number[], total: number, f: TextFormatter): strin
     .map(n => n + range[0])
     .join('/');
   return f.commands(f.b(spread), f.b(prev), f.b(next));
+}
+
+function compareHashes(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase();
 }

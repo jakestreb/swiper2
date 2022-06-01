@@ -75,7 +75,7 @@ export default class DownloadClient {
     this._client = new WebTorrent({downloadLimit, uploadLimit} as any);
     this._client.on('error', (err) => {
       log.subProcessError(`WebTorrent fatal error: ${err}`);
-      this.startClient();
+      this.startClient(); // Restart webtorrent on error
     });
   }
 }

@@ -109,7 +109,7 @@ async function doRemoveMedia(swiper: Swiper, media: IMedia): Promise<void> {
 async function doRemoveTorrent(swiper: Swiper, video: TVideo, torrent: ITorrent): Promise<void> {
     await swiper.downloadManager.destroyAndDeleteTorrent(torrent.addVideo(video));
     await db.torrents.setStatus(torrent, 'removed');
-    if (video.torrents.length <= 1) {
+    if (video.torrents.length === 0) {
       await swiper.worker.addJob({
         type: 'StartSearching',
         videoId: video.id,
