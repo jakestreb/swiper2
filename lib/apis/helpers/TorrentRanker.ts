@@ -24,7 +24,8 @@ class TitlePriority extends ResourcePriority<boolean> {
   public ranks = [true];
   public predicate = (v: boolean, t: PartialTorrent) => {
     const title = this.video.getFileSafeTitle();
-    const regex = title.split(/\s/).join('[\\W]+');
+    let regex = title.split(/\s/).join('[\\W]+'); // Allow any word separators parsed
+    regex = `(?<![a-z].*)${regex}(?!.*[a-z])`; // Allow no extra words in parsed
     const { parsedTitle } = t;
     return !!parsedTitle.match(new RegExp(regex, 'i'));
   }
