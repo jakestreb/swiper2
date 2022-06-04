@@ -23,7 +23,7 @@ const COMMANDS = [{
   ],
   examples: [
     "info the santa clause",
-    "info wandavision",
+    "i wandavision",
   ]
 }, {
   name: 'download',
@@ -34,9 +34,9 @@ const COMMANDS = [{
   ],
   examples: [
     "download the lion king",
-    "download batman 1989",
-    "download stranger things s2",
-    "download the office s1 e2-4 & e6"
+    "d batman 1989",
+    "d stranger things s2",
+    "d the office s1 e2-4 & e6"
   ]
 }, {
   name: "remove",
@@ -47,19 +47,20 @@ const COMMANDS = [{
   ],
   examples: [
     "remove pulp fiction",
-    "remove severance s2",
-    "remove the office s1 e2-4 & e6",
+    "r severance s2",
+    "r the office s1 e2-4 & e6",
   ]
 }, {
   name: "remove",
   description: "Cancel selected torrent",
   basics: [
     "remove torrent [show or movie]",
+    "rt [show or movie]",
   ],
   examples: [
     "remove torrent pulp fiction",
-    "remove torrent severance s2 e1",
-    "remove torrent the office"
+    "rt severance s2 e1",
+    "rt the office"
   ]
 }, {
   name: "cancel",
@@ -86,19 +87,19 @@ export function help(this: Swiper, convo: Conversation): SwiperReply {
   if (!convo.input) {
     const basics = [
       f.commands(
-        `${f.b('download')} [show or movie]`,
-        `${f.b('search')} [show or movie]`,
-        `${f.b('remove')} [show or movie]`,
-        `${f.b('remove torrent')} [show or movie]`
+        'download [show or movie]',
+        'search [show or movie]',
+        'remove [show or movie]',
+        'remove torrent [show or movie]',
       ),
       f.commands(
-        f.b('queued'),
-        f.b('scheduled'),
-        `${f.b('info')} [show or movie]`
+        'queued',
+        'scheduled',
+        'info [show or movie]',
       ),
       f.commands(
-        `${f.b('help')} [command]`,
-        `${f.b('cancel')} to end any conversation`,
+        'help [command]',
+        'cancel to end any conversation',
       ),
     ].join('\n\n');
 

@@ -59,8 +59,7 @@ export default class Worker {
       if (nextJob && nextJob.nextRunAt.getTime() > (Date.now() + oneDay)) {
         // If the next job is over a day ahead, reschedule ping (timeout can overflow)
         clearTimeout(this.currentTimeout!);
-        this.currentTimeout = setTimeout(() => this.ping(),
-          Date.now() + oneDay);
+        this.currentTimeout = setTimeout(() => this.ping(), oneDay);
       } else if (nextJob && (!this.nextRun || nextJob.nextRunAt < this.nextRun)) {
         clearTimeout(this.currentTimeout!);
         this.nextRun = nextJob.nextRunAt;
