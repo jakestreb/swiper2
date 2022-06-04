@@ -84,29 +84,35 @@ export default class Show extends Media implements IMedia {
   }
 
   private episodesToString(): string {
-    let str = '';
+    let seasons: string[] = [];
     let lastEpisode = -1;
     let lastSeason = -1;
-    let seasonEnder = '';
+    let str = '';
+    let strEnder = '';
 
     this.episodes.forEach((episode: IEpisode, i: number) => {
       const si = episode.seasonNum;
       const ei = episode.episodeNum;
       if (si > lastSeason) {
         // New season
-        str += `${seasonEnder}S${si} E${ei}`;
-        seasonEnder = '';
+        if (str.length > 0) {
+          seasons.push(`${str}${strEnder}`);
+        }
+        str = `S${si} E${ei}`;
+        strEnder = '';
       } else if (si === lastSeason && (ei > lastEpisode + 1)) {
         // Same season, later episode
-        str += `${seasonEnder} & E${ei}`;
-        seasonEnder = '';
+        str += `${strEnder} & E${ei}`;
+        strEnder = '';
       } else {
         // Next episode
-        seasonEnder = '-${ei}';
+        strEnder = `-${ei}`;
       }
       lastSeason = si;
       lastEpisode = ei;
     });
-    return `${str}${seasonEnder}`;
+
+    seasons.push(`${str}${strEnder}`);
+    return seasons.join(', ');
   }
 }
