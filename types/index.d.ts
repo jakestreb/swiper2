@@ -25,7 +25,7 @@ declare interface SwiperReply {
 
 declare interface MediaQuery {
   title: string;
-  type: 'movie'|'tv'|'torrent'|null;
+  type: 'movie'|'tv'|null;
   episodes: EpisodesDescriptor|null;
   year: string|null;
 }

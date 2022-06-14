@@ -94,13 +94,6 @@ export default class Swiper {
     return remove.call(this, convo);
   }
 
-  @reqMediaQuery
-  public async removeTorrent(convo: Conversation): Promise<SwiperReply> {
-    log.debug(`Swiper: remove torrent`);
-    convo.mediaQuery = { ...(convo.mediaQuery! || {}), type: 'torrent' };
-    return remove.call(this, convo);
-  }
-
   public async queued(convo: Conversation): Promise<SwiperReply> {
     log.debug(`Swiper: queued`);
     return queued.call(this, convo);
@@ -176,9 +169,6 @@ export default class Swiper {
       case "rm":
       case "r":
         return () => this.remove(convo);
-      case "removetorrent":
-      case "rt":
-        return () => this.removeTorrent(convo);
       case "scheduled":
       case "schedule":
       case "s":

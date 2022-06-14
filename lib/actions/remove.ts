@@ -7,8 +7,7 @@ export async function remove(this: Swiper, convo: Conversation): Promise<SwiperR
 
   await addStoredMediaIfFound(convo);
 
-  const storedMedia = convo.storedMedia;
-  if (!storedMedia) {
+  if (!convo.storedMedia && !convo.storedVideos) {
     return {
       data: `Nothing matching ${convo.mediaQuery!.title} was found`,
       final: true,
@@ -105,16 +104,13 @@ async function doRemoveMedia(swiper: Swiper, media: IMedia): Promise<void> {
 // Remove DB torrent
 // Destroy active download of the torrent
 // Remove download files
-// If that was the last torrent, start searching for a new one
+// If that was the last torrent, remove the video
 async function doRemoveTorrent(swiper: Swiper, video: TVideo, torrent: ITorrent): Promise<void> {
   await swiper.downloadManager.destroyAndDeleteTorrent(torrent.addVideo(video));
   await db.torrents.setStatus(torrent, 'removed');
   if (video.torrents.length === 0) {
-    await swiper.worker.addJob({
-      type: 'StartSearching',
-      videoId: video.id,
-      startAt: new Date(),
-    });
+    await swiper.worker.removeJobs(video.id);
+    await db.videos.delete(video.id);
   }
   swiper.downloadManager.ping();
 }
@@ -127,19 +123,22 @@ async function addStoredMediaIfFound(convo: Conversation): Promise<void> {
   }
   // Search the database for all matching Movies/Shows.
   if (!convo.storedMedia) {
-    const searchType = mediaQuery.type === 'torrent' ? null : mediaQuery.type;
-    let mediaItems = await db.media.search(mediaQuery.title || '*', { type: searchType || undefined });
+    const searchType = mediaQuery.type || undefined;
+    let mediaItems = await db.media.search(mediaQuery.title || '*', { type: searchType });
     mediaItems = filterMediaEpisodes(mediaItems, mediaQuery.episodes || 'all');
     if (mediaItems.length > 0) {
-      convo.storedMedia = mediaItems;
-      if (mediaQuery.type === 'torrent') {
-        // Remove torrent must ask video-by-video
-        const videoArrays = convo.storedMedia.map(m => m.getVideos());
-        const videos = ([] as IVideo[]).concat(...videoArrays)
-          .filter(v => v.status === 'downloading');
-        const withTorrents = await Promise.all(videos.map(v => db.videos.addTorrents(v)));
-        convo.storedVideos = withTorrents.filter(v => v.torrents.length > 0);
+      // If a single video with multiple torrents was queried, add to storedVideos to
+      // ask about removing each torrent individually
+      const singleVideo = mediaItems[0].getVideo();
+      if (mediaItems.length === 1 && singleVideo) {
+        const withTorrents = await db.videos.addTorrents(singleVideo);
+        if (withTorrents.torrents.length > 1) {
+          convo.storedVideos = [withTorrents];
+          return;
+        }
       }
+      // Otherwise, add to stored media to ask about removing entire media items
+      convo.storedMedia = mediaItems;
     }
   }
 }

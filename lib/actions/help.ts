@@ -40,7 +40,7 @@ const COMMANDS = [{
   ]
 }, {
   name: "remove",
-  description: "Cancel download of a show/movie",
+  description: "Cancel download of a show/movie\nRemove a torrent from a single download",
   basics: [
     "remove [show or movie]",
     "r [show or movie]",
@@ -49,18 +49,6 @@ const COMMANDS = [{
     "remove pulp fiction",
     "r severance s2",
     "r the office s1 e2-4 & e6",
-  ]
-}, {
-  name: "remove",
-  description: "Cancel selected torrent",
-  basics: [
-    "remove torrent [show or movie]",
-    "rt [show or movie]",
-  ],
-  examples: [
-    "remove torrent pulp fiction",
-    "rt severance s2 e1",
-    "rt the office"
   ]
 }, {
   name: "cancel",
@@ -90,7 +78,6 @@ export function help(this: Swiper, convo: Conversation): SwiperReply {
         'download [show or movie]',
         'search [show or movie]',
         'remove [show or movie]',
-        'remove torrent [show or movie]',
       ),
       f.commands(
         'queued',

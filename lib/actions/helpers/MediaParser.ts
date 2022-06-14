@@ -75,7 +75,7 @@ export default class MediaParser {
       const splitStr = input.split(' ');
       const keyword = splitStr[0];
       let type: MediaQuery["type"] = null;
-      if (keyword === 'tv' || keyword === 'movie' || keyword === 'torrent') {
+      if (keyword === 'tv' || keyword === 'movie') {
         // If the type was included, set it and remove it from the titleStr
         type = keyword;
         input = splitStr.slice(1).join(' ');
