@@ -107,15 +107,16 @@ async function doRemoveMedia(swiper: Swiper, media: IMedia): Promise<void> {
 // Remove download files
 // If that was the last torrent, start searching for a new one
 async function doRemoveTorrent(swiper: Swiper, video: TVideo, torrent: ITorrent): Promise<void> {
-    await swiper.downloadManager.destroyAndDeleteTorrent(torrent.addVideo(video));
-    await db.torrents.setStatus(torrent, 'removed');
-    if (video.torrents.length === 0) {
-      await swiper.worker.addJob({
-        type: 'StartSearching',
-        videoId: video.id,
-        startAt: new Date(),
-      });
-    }
+  await swiper.downloadManager.destroyAndDeleteTorrent(torrent.addVideo(video));
+  await db.torrents.setStatus(torrent, 'removed');
+  if (video.torrents.length === 0) {
+    await swiper.worker.addJob({
+      type: 'StartSearching',
+      videoId: video.id,
+      startAt: new Date(),
+    });
+  }
+  swiper.downloadManager.ping();
 }
 
 // Requires mediaQuery to be set.
