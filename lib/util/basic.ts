@@ -3,6 +3,19 @@ export function sum(array: number[]): number {
   return array.reduce((a, b) => a + b, 0);
 }
 
+export function max<T>(array: T[], callback?: (elem: T) => any): T|null {
+  let best: T|null = null;
+  let bestScore = -Infinity;
+  array.forEach(elem => {
+    const score = callback ? callback(elem) : elem;
+    if (score > bestScore) {
+      best = elem;
+      bestScore = score;
+    }
+  });
+  return best;
+}
+
 export function delay(ms: number): Promise<void> {
   return new Promise(resolve => {
     setTimeout(resolve, ms < 0 ? 0 : ms);

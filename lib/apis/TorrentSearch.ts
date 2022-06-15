@@ -52,26 +52,28 @@ export default class TorrentSearch {
 
   public static async getBestTorrent(video: IVideo, torrents: TorrentResult[], minRating: number = 0): Promise<TorrentResult|null> {
     log.debug(`TorrentSearch: getBestTorrent(${video})`);
-    const selected = await db.torrents.getForVideo(video.id);
-    const removed = await db.torrents.getWithStatus('removed');
-    const doNotPick = new Set([...selected, ...removed].map(t => t.hash));
     const ranker = new TorrentRanker(video);
 
-    let bestTorrent: TorrentResult|null = null;
-    let bestScore = 0;
-    torrents
-      .filter(t => !doNotPick.has(t.hash))
-      .forEach(t => {
-        const score = ranker.getScore(t);
-        if (score > bestScore) {
-          bestTorrent = t;
-          bestScore = score;
-        }
-      });
+    const selected = await db.torrents.getForVideo(video.id);
+    const removed = await db.torrents.getWithStatus('removed');
+    const selectedSet = new Set(selected.map(t => t.hash));
+    const removedSet = new Set(removed.map(t => t.hash));
 
-    if (ranker.getStars(bestTorrent!) >= minRating) {
-      return bestTorrent;
+    const freshResults = torrents.filter(t =>
+      !selectedSet.has(t.hash) && !removedSet.has(t.hash));
+    const removedResults = torrents.filter(t => removedSet.has(t.hash));
+
+    const bestFresh = util.max(freshResults, t => ranker.getScore(t));
+    if (bestFresh && ranker.getStars(bestFresh) >= minRating) {
+      return bestFresh;
     }
+
+    // Re-add best removed if there are no fresh options remaining
+    const bestRemoved = util.max(removedResults, t => ranker.getScore(t));
+    if (bestRemoved && ranker.getStars(bestRemoved) >= minRating) {
+      return bestRemoved;
+    }
+
     return null;
   }
 
