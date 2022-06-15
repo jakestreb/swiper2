@@ -59,7 +59,7 @@ const COMMANDS = [{
   ]
 }, {
   name: "search",
-  description: "Select torrent for a show/movie\nRe-run to add a torrent",
+  description: "Show torrents for a show/movie\nRe-run to select a torrent to add",
   basics: [
     "search [show or movie]",
   ],
