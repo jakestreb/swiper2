@@ -9,6 +9,7 @@ interface BuildArg {
   resolution: string;
   sizeMb: number;
   status: TorrentStatus;
+  isUserPick: boolean;
   queueIndex: number;
 }
 
@@ -25,6 +26,7 @@ export default class Torrent implements ITorrent {
   public resolution: string;
   public sizeMb: number;
   public status: TorrentStatus;
+  public isUserPick: boolean;
   public queueIndex: number;
 
   public video?: IVideo;
@@ -37,6 +39,7 @@ export default class Torrent implements ITorrent {
     this.resolution = values.resolution;
     this.sizeMb = values.sizeMb;
     this.status = values.status;
+    this.isUserPick = values.isUserPick;
     this.queueIndex = values.queueIndex;
   }
 

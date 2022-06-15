@@ -8,6 +8,7 @@ interface TorrentInsertArg {
   resolution: string;
   sizeMb: number;
   status: TorrentStatus;
+  isUserPick: boolean;
 }
 
 interface TorrentDBRow {
@@ -18,6 +19,7 @@ interface TorrentDBRow {
   resolution: string;
   sizeMb: number;
   status: TorrentStatus;
+  isUserPick: boolean;
   queueIndex: number;
   createdAt: Date;
 }
@@ -32,6 +34,7 @@ export default class Torrents extends Base<TorrentDBRow, ITorrent> {
       resolution TEXT,
       sizeMb INTEGER,
       status TEXT,
+      isUserPick INTEGER DEFAULT 0,
       queueIndex INTEGER DEFAULT -1,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
@@ -60,9 +63,9 @@ export default class Torrents extends Base<TorrentDBRow, ITorrent> {
   }
 
   public async insert(arg: TorrentInsertArg): Promise<void> {
-    await this.run(`INSERT INTO torrents (hash, videoId, quality, resolution, sizeMb, status)`
-    	+ ` VALUES (?, ?, ?, ?, ?, ?)`,
-        [arg.hash, arg.videoId, arg.quality, arg.resolution, arg.sizeMb, arg.status]);
+    await this.run(`INSERT INTO torrents (hash, videoId, quality, resolution, sizeMb, status, isUserPick)`
+      + ` VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [arg.hash, arg.videoId, arg.quality, arg.resolution, arg.sizeMb, arg.status, arg.isUserPick]);
   }
 
   public async setQueueOrder(torrents: ITorrent[]): Promise<void> {

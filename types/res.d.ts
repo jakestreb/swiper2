@@ -69,6 +69,7 @@ declare interface ITorrent {
   resolution: string;
   sizeMb: number;
   status: TorrentStatus;
+  isUserPick: boolean;
   queueIndex: number;
 
   getDownloadPath(): string;

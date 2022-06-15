@@ -119,19 +119,19 @@ export default class DownloadManager {
       const allocateMb = vt.sizeMb - progressMb;
 
       const spaceLeft = storageRemaining - allocateMb > 0;
-      const spotsLeft = spotsRemaining > 0;
+      const spotsLeft = vt.status === 'slow' || spotsRemaining > 0;
       const info = JSON.stringify({
         spotsRemaining,
         storageRemaining,
         allocateMb,
         progressMb,
       });
-      log.debug(`${spaceLeft && spotsLeft ? '' : 'Not'} queuing ${vt.video}: ${info}`);
+      log.debug(`${spaceLeft && spotsLeft ? '' : 'Not '}Queuing ${vt.video}: ${info}`);
 
       if (spaceLeft && spotsLeft) {
         // Allocate
         storageRemaining -= allocateMb;
-        spotsRemaining -= 1;
+        spotsRemaining -= vt.status === 'slow' ? 0 : 1;
         if (!this.isStarted || vt.status === 'paused' || vt.status === 'pending') {
           toStart.push(vt);
         }

@@ -78,7 +78,12 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   // Add torrent to existing video, if there is one
   const existing = await db.videos.getOne(video.id);
   if (existing && existing.status === 'downloading' && active.length > 0) {
-    await db.torrents.insert({ ...torrent, videoId: video.id, status: 'pending' });
+    await db.torrents.insert({
+      ...torrent,
+      videoId: video.id,
+      status: 'pending',
+      isUserPick: true,
+    });
     await this.downloadManager.ping();
     return {
       data: `Added new torrent for ${video.format(f)}`,
@@ -100,7 +105,12 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   }
 
   // Add torrent and add video to queue
-  await db.torrents.insert({ ...torrent, videoId: video.id, status: 'pending' });
+  await db.torrents.insert({
+    ...torrent,
+    videoId: video.id,
+    status: 'pending',
+    isUserPick: true,
+  });
   await this.downloadManager.addToQueue(video);
 
   return {

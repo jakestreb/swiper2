@@ -23,11 +23,14 @@ export default class DownloadClient {
 
   public getProgress(hash: string): DownloadProgress {
     const wtTorrent = this.client.get(hash);
+    if (!wtTorrent) {
+      return {};
+    }
     return {
-      progress: wtTorrent ? wtTorrent.progress * 100 : 0,
-      speed: wtTorrent ? wtTorrent.downloadSpeed / (1024 * 1024) : 0, // MB/s
-      remaining: wtTorrent ? Math.round(wtTorrent.timeRemaining / (60 * 1000)) : -1,
-      peers: wtTorrent ? wtTorrent.numPeers : 0,
+      progress: wtTorrent.progress * 100,
+      speed: wtTorrent.downloadSpeed / (1024 * 1024), // MB/s
+      remaining: Math.round(wtTorrent.timeRemaining / (60 * 1000)),
+      peers: wtTorrent.numPeers,
     };
   }
 

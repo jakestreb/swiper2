@@ -85,6 +85,7 @@ export default class Worker {
   private async doRunJob(job: IJob): Promise<void> {
     if (!await db.jobs.getOne(job.id)) {
       // Check if the job was since removed
+      log.debug(`Aborting ${job.type} job ${job.videoId} run since job was removed`);
       return;
     }
     if (!await db.videos.getOne(job.videoId)) {
