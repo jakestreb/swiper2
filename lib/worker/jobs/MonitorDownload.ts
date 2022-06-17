@@ -3,7 +3,7 @@ import db from '../../db';
 import Base from './Base';
 import * as log from '../../log';
 
-const SLOW_SPEED_MBS = 0.05;
+const SLOW_SPEED_MBS = 0.02;
 
 // For 'downloading' videos, check progress to update torrent statuses
 export class MonitorDownload extends Base {
@@ -68,8 +68,8 @@ export class MonitorDownload extends Base {
 			this.slowCounts[t.id] = 0;
 			if (t.status === 'slow') {
 				await db.torrents.setStatus(t, 'downloading');
-				return;
 			}
+			return;
 		}
 
 		this.slowCounts[t.id] = this.slowCounts[t.id] || 0;

@@ -2,8 +2,22 @@ import ChildProcess from './helper/ChildProcess';
 import * as log from '../log';
 
 export default class DownloadProcess extends ChildProcess {
+  public activeDownloads: {[hash: string]: VTorrent} = {};
+
 	constructor(downloadRoot: string) {
 		super(downloadRoot);
+
+    // On start, restart all active downloads
+    this.on('start', async () => {
+      await Promise.all(
+        Object.keys(this.activeDownloads)
+        .map(hash => this.activeDownloads[hash])
+        .map(t => {
+          log.info(`Restarting download: ${t}`);
+          this.download(t);
+        })
+      );
+    });
 	}
 
 	public get processPath() {
@@ -12,30 +26,27 @@ export default class DownloadProcess extends ChildProcess {
 
   public download(vt: VTorrent): Promise<void> {
     log.debug(`DownloadClient: download(${vt.video})`);
+    this.activeDownloads[vt.hash] = vt;
     return this.call('download', vt.hash, vt.getDownloadPath());
   }
 
-  public getProgress(torrent: ITorrent, timeoutMs?: number): Promise<DownloadProgress> {
+  public async getProgress(torrent: ITorrent, timeoutMs?: number): Promise<DownloadProgress> {
     log.debug(`DownloadClient: getProgress(${torrent.id})`);
-    const promise = this.call('getProgress', torrent.hash);
-    if (timeoutMs && timeoutMs > 0) {
-      const timeoutPromise = new Promise(resolve => {
-        const timeout = setTimeout(() => {
-          log.error(`getProgress timed out after ${timeoutMs}ms`);
-          resolve({});
-        }, timeoutMs);
-        promise.then(() => clearTimeout(timeout));
-      });
-      return Promise.race([promise, timeoutPromise]);
+    try {
+      return await this.callWithTimeout('getProgress', timeoutMs || 0, torrent.hash);
+    } catch (err) {
+      log.error(`DownloadClient: getProgress(${torrent.id}) failed`);
+      return {};
     }
-    return promise;
   }
 
   public stopDownload(torrent: ITorrent): Promise<void> {
+    delete this.activeDownloads[torrent.hash];
     return this.call('stopDownload', torrent.hash);
   }
 
   public destroyTorrent(torrent: ITorrent): Promise<void> {
+    delete this.activeDownloads[torrent.hash];
     return this.call('destroyTorrent', torrent.getDownloadPath());
   }
 }
