@@ -65,14 +65,14 @@ export default class TorrentRanker {
     return util.sum(scores);
   }
 
-  // Gives a star rating from 1-4
-  public getStars(t: PartialTorrent): 1|2|3|4|5 {
+  // Gives a star rating from 0-5
+  public getStars(t: PartialTorrent): 0|1|2|3|4|5 {
     const maxRating = util.sum(this.priorities.map(p => p.scale));
     const score = this.getScore(t);
     if (score === maxRating) {
       return 5;
     }
     const frac = score / maxRating;
-    return Math.max(Math.ceil(frac * 4), 1) as 1|2|3|4;
+    return Math.ceil(frac * 4) as 0|1|2|3|4;
   }
 }

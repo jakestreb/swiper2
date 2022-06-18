@@ -36,22 +36,22 @@ export class MonitorDownload extends Base {
 		const maxCount = MonitorDownload.MAX_AUTO_TORRENTS;
 
 		const allTorrents = await db.torrents.getForVideo(video.id);
-		const torrents = allTorrents.filter(t => t.status === 'downloading' || t.status === 'slow');
+		const downloading = allTorrents.filter(t => t.status === 'downloading' || t.status === 'slow');
 
-		if (torrents.length === 0) {
+		if (downloading.length === 0) {
 			return;
 		}
 
 		// Manage individual torrents
-		await Promise.all(torrents.map(async t => this.manageTorrent(t)));
-
-		console.warn('torrent slow counts', this.slowCounts); // TODO: REMOVE
+		await Promise.all(downloading.map(async t => this.manageTorrent(t)));
 
 		// Add new torrent if others are stuck
 		const isStuck = (t: ITorrent) => !t.isUserPick && this.slowCounts[t.id] >= addAfterCount;
+		const isSearching = await db.jobs.getNextRun(video.id, ['AddTorrent']);
+		const count = allTorrents.length;
 
-		if (torrents.every(t => isStuck(t)) && torrents.length < maxCount) {
-    	log.info(`MonitorDownload: adding torrent for stuck video ${video}`);
+		if (!isSearching && downloading.every(t => isStuck(t)) && count < maxCount) {
+    	log.info(`MonitorDownload: adding torrent #${count + 1} for stuck video ${video}`);
 		  await this.swiper.worker.addJob({
 		    type: 'AddTorrent',
 		    videoId: video.id,
@@ -68,6 +68,7 @@ export class MonitorDownload extends Base {
 			this.slowCounts[t.id] = 0;
 			if (t.status === 'slow') {
 				await db.torrents.setStatus(t, 'downloading');
+				this.swiper.downloadManager.ping();
 			}
 			return;
 		}

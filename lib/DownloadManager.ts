@@ -95,14 +95,27 @@ export default class DownloadManager {
     // Sort videos and video torrents by priority
     const sorted = util.sortByPriority(withTorrents, this.getVideoPriority.bind(this));
 
-    const sortedTorrents: VTorrent[] = [];
-    sorted.forEach(async v => {
+    const videoTorrents = sorted.map(v => {
       const ts = util.sortByPriority(v.torrents, this.getTorrentPriority.bind(this));
-      ts.forEach(t => {
-        (t as VTorrent).video = v;
-      });
-      sortedTorrents.push(...(ts as VTorrent[]));
+      return ts.map(t => t.addVideo(v));
     });
+
+    // Order torrents round robin by video
+    const sortedTorrents: VTorrent[] = [];
+    let vi = 0, ti = 0;
+    while (videoTorrents.length > 0) {
+      const ts = videoTorrents[vi];
+      if (ti < ts.length) {
+        sortedTorrents.push(ts[ti]);
+        vi += 1;
+      } else {
+        videoTorrents.splice(vi, 1);
+      }
+      if (vi % videoTorrents.length === 0) {
+        vi = 0;
+        ti += 1;
+      }
+    }
 
     const toStart: VTorrent[] = [];
     const toPause: VTorrent[] = [];
@@ -233,14 +246,16 @@ export default class DownloadManager {
     const isMovie = video.isMovie();
     const season = video.isEpisode() ? video.seasonNum : 0;
     const episode = video.isEpisode() ? video.episodeNum : 0;
-    // From important to least
+    // From most important to least
     return [-isSlow, +isMovie, -season, -episode];
   }
 
   private getTorrentPriority(torrent: ITorrent): number[] {
+    const isPaused = torrent.status === 'paused';
     const isSlow = torrent.status === 'slow';
-    // From important to least
-    return [-isSlow];
+    const isPending = torrent.status === 'pending';
+    // From most important to least
+    return [-isPaused, -isSlow, -isPending];
   }
 
   private async deleteVideoFiles(video: IVideo): Promise<void> {

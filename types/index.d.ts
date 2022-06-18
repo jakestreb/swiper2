@@ -74,7 +74,7 @@ declare type TorrentResult = PartialTorrent & {
   hash: string;
   quality: string;
   score: number;
-  starRating: 1|2|3|4|5;
+  starRating: 0|1|2|3|4|5;
 }
 
 declare interface JobDescription {

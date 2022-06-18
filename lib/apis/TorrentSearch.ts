@@ -37,11 +37,11 @@ export default class TorrentSearch {
     return this.lock.acquire(() => this.doRetrySearch(video));
   }
 
-  public static async addBestTorrent(video: IVideo, minRating: number = 0): Promise<boolean> {
+  public static async addBestTorrent(video: IVideo, minRating: number = 1): Promise<boolean> {
     const torrents = await this.search(video);
     const best = await this.getBestTorrent(video, torrents, minRating);
     if (!best) {
-      log.debug(`TorrentSearch: getBestTorrent(${video}) failed (no torrent found)`);
+      log.debug(`TorrentSearch: getBestTorrent(${video}, ${minRating}) failed (no torrent found)`);
       return false;
     }
     log.debug(`TorrentSearch: getBestTorrent(${video}) succeeded`);
@@ -55,7 +55,7 @@ export default class TorrentSearch {
     return !!torrent;
   }
 
-  public static async getBestTorrent(video: IVideo, torrents: TorrentResult[], minRating: number = 0): Promise<TorrentResult|null> {
+  public static async getBestTorrent(video: IVideo, torrents: TorrentResult[], minRating: number = 1): Promise<TorrentResult|null> {
     log.debug(`TorrentSearch: getBestTorrent(${video})`);
     const ranker = new TorrentRanker(video);
 
