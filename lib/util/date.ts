@@ -46,8 +46,9 @@ export function formatWaitTime(date: Date): string {
     return `${n}m`;
   } else if (s < 60 * 60 * 48) {
     const nh = Math.floor(h);
-    const ns = Math.ceil(s % (60 * 60));
-    return `${nh}h ${ns}m`;
+    const ns = s % (60 * 60);
+    const nm = Math.floor(ns / 60);
+    return `${nh}h ${nm}m`;
   }
   const n = Math.floor(h / 24);
   return `${n}d`;
