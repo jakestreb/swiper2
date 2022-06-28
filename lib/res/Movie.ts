@@ -14,7 +14,7 @@ export default class Movie extends Video implements IVideo, IMedia {
   private static SEARCH_DAYS_BEFORE_DIGITAL = 10;
   private static SEARCH_DAYS_AFTER_THEATRICAL = 21;
 
-  private static EXPECT_DAYS_AFTER_THEATRICAL = 90;
+  private static EXPECT_DAYS_AFTER_THEATRICAL = 60;
 
   public type: 'movie' = 'movie';
   public title: string;
