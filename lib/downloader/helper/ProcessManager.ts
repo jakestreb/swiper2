@@ -19,9 +19,10 @@ interface Resolver {
 	reject: (reason?: any) => void;
 }
 
-export default abstract class ChildProcess extends EventEmitter {
-	public static HEALTH_CHECK_INTERVAL_S = 30; // TODO: Unused
-	public static FAIL_HEALTH_CHECK_AFTER = 6; // TODO: Unused
+export default abstract class ProcessManager extends EventEmitter {
+	public static HEALTH_CHECK_INTERVAL_S = 30;
+	public static HEALTH_CHECK_TIMEOUT_S = 10;
+	public static FAIL_HEALTH_CHECK_AFTER = 10;
 
 	private child: child.ChildProcess;
 	private buildArgs: any[];
@@ -65,6 +66,7 @@ export default abstract class ChildProcess extends EventEmitter {
 			log.error('Download process exited, restarting');
 			if (this.healthCheckTimeout) {
 				clearTimeout(this.healthCheckTimeout);
+				this.healthCheckFailCount = 0;
 			}
 			this.started = false;
 			this.start();
@@ -78,6 +80,7 @@ export default abstract class ChildProcess extends EventEmitter {
 			args: this.buildArgs,
 		});
 		this.started = true;
+		this.runHealthChecks();
 		this.emit('start');
 	}
 
@@ -110,12 +113,11 @@ export default abstract class ChildProcess extends EventEmitter {
 	    return promise;
 	}
 
-	// TODO: Unused
 	public async healthCheck(): Promise<void> {
-		return;
+		const timeoutMs = ProcessManager.HEALTH_CHECK_TIMEOUT_S * 1000;
+		return this.callWithTimeout('healthCheck', timeoutMs);
 	}
 
-	// TODO: Unused
 	private runHealthChecks(): void {
 		setTimeout(async () => {
 			if (!this.started) {
@@ -125,15 +127,16 @@ export default abstract class ChildProcess extends EventEmitter {
 				await this.healthCheck();
 				this.healthCheckFailCount = 0;
 			} catch (err) {
-				log.error(`ChildProcess health check failed: ${err}`);
+				log.error(`ProcessManager health check failed: ${err}`);
 				this.healthCheckFailCount += 1;
-				if (this.healthCheckFailCount >= ChildProcess.FAIL_HEALTH_CHECK_AFTER) {
+				if (this.healthCheckFailCount >= ProcessManager.FAIL_HEALTH_CHECK_AFTER) {
 					this.healthCheckFailCount = 0;
+					log.error(`Restarting download process: too many health checks failed`);
 					this.restart();
 					return;
 				}
 			}
 			this.runHealthChecks();
-		}, ChildProcess.HEALTH_CHECK_INTERVAL_S * 1000)
+		}, ProcessManager.HEALTH_CHECK_INTERVAL_S * 1000)
 	}
 }

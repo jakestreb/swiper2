@@ -5,7 +5,7 @@ import * as log from './log';
 import * as util from './util';
 import ExportHandler from './ExportHandler';
 import MemoryManager from './MemoryManager';
-import DownloadProcess from './downloader/DownloadProcess';
+import Downloader from './downloader/Downloader';
 import Swiper from './Swiper';
 
 export default class DownloadManager {
@@ -15,7 +15,7 @@ export default class DownloadManager {
 
   public downloadRoot = DownloadManager.DOWNLOAD_ROOT;
 
-  public downloadProcess: DownloadProcess;
+  public downloader: Downloader;
   private exportHandler: ExportHandler;
   public memoryManager: MemoryManager;
 
@@ -24,11 +24,11 @@ export default class DownloadManager {
   private isStarted: boolean = false;
 
   constructor(public swiper: Swiper) {
-    this.downloadProcess = new DownloadProcess(this.downloadRoot);
+    this.downloader = new Downloader(this.downloadRoot);
     this.exportHandler = new ExportHandler(this.downloadRoot);
     this.memoryManager = new MemoryManager(this.downloadRoot);
 
-    this.downloadProcess.start();
+    this.downloader.start();
 
     this.ping();
     this.startUploads();
@@ -54,16 +54,16 @@ export default class DownloadManager {
   }
 
   public getProgress(torrent: ITorrent, timeoutMs?: number): Promise<DownloadProgress> {
-    return this.downloadProcess.getProgress(torrent, timeoutMs);
+    return this.downloader.getProgress(torrent, timeoutMs);
   }
 
   public async destroyAndDeleteVideo(video: TVideo): Promise<void> {
-    await Promise.all(video.torrents.map(t => this.downloadProcess.destroyTorrent(t)));
+    await Promise.all(video.torrents.map(t => this.downloader.destroyTorrent(t)));
     await this.deleteVideoFiles(video);
   }
 
   public async destroyAndDeleteTorrent(torrent: VTorrent): Promise<void> {
-    await this.downloadProcess.destroyTorrent(torrent);
+    await this.downloader.destroyTorrent(torrent);
     await this.deleteTorrentFiles(torrent);
   }
 
@@ -185,7 +185,7 @@ export default class DownloadManager {
 
     // Run the download
     await db.torrents.setStatus(torrent, 'downloading');
-    await this.downloadProcess.download(torrent);
+    await this.downloader.download(torrent);
     log.debug(`Torrent ${torrent.video} download completed`);
 
     // On completion, mark the video status as uploading
@@ -200,7 +200,7 @@ export default class DownloadManager {
 
   private async stopDownload(torrent: VTorrent): Promise<void> {
     await db.torrents.setStatus(torrent, 'paused');
-    await this.downloadProcess.stopDownload(torrent);
+    await this.downloader.stopDownload(torrent);
   }
 
   private async startUploads() {

@@ -1,19 +1,19 @@
-import DownloadClient from './DownloadClient';
+import DownloadProcess from './DownloadProcess';
 
-let downloadClient: DownloadClient;
+let childProcess: DownloadProcess;
 
 process.on('message', async (req) => {
 	const { id, fn, args } = req;
 
 	if (fn === 'constructor') {
 		// @ts-ignore
-		downloadClient = new DownloadClient(...args);
+		childProcess = new DownloadProcess(...args);
 		return;
 	}
 
 	try {
 		// @ts-ignore
-		const result = await downloadClient[fn](...args);
+		const result = await childProcess[fn](...args);
 		process.send!({ id, result });
 	} catch (err) {
 		process.send!({ id, err: `${err}` });

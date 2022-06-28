@@ -1,7 +1,7 @@
-import ChildProcess from './helper/ChildProcess';
+import ProcessManager from './helper/ProcessManager';
 import * as log from '../log';
 
-export default class DownloadProcess extends ChildProcess {
+export default class Downloader extends ProcessManager {
   public activeDownloads: {[hash: string]: VTorrent} = {};
 
 	constructor(downloadRoot: string) {

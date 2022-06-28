@@ -1,15 +1,18 @@
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
+import ChildProcess from './ChildProcess';
 import * as log from '../../log';
 import * as util from '../../util';
 
-export default class DownloadClient {
+export default class DownloadProcess extends ChildProcess {
   public static downloadLimitMbps = 40;
   public static uploadLimitMbps = 5;
 
   private _client: WebTorrent.Instance|null;
 
-  constructor(public downloadRoot: string) {}
+  constructor(public downloadRoot: string) {
+    super();
+  }
 
   public async download(hash: string, subPath: string): Promise<void> {
     const downloadPath = await util.createSubdirs(this.downloadRoot, subPath);
@@ -73,8 +76,8 @@ export default class DownloadClient {
   }
 
   private startClient(): void {
-    const downloadLimit = (DownloadClient.downloadLimitMbps * 1024 * 1024) / 8;
-    const uploadLimit = (DownloadClient.uploadLimitMbps * 1024 * 1024) / 8;
+    const downloadLimit = (DownloadProcess.downloadLimitMbps * 1024 * 1024) / 8;
+    const uploadLimit = (DownloadProcess.uploadLimitMbps * 1024 * 1024) / 8;
     this._client = new WebTorrent({downloadLimit, uploadLimit} as any);
     this._client.on('error', (err) => {
       log.subProcessError(`WebTorrent fatal error: ${err}`);
