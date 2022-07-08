@@ -50,9 +50,12 @@ export default class TVDB {
   }
 
   public static async toShow(info: TVDBShow, imdbId: string): Promise<IShow> {
+    const yearRegex = /\(\d{4}\)/g;
+    // Sometimes, the year in parenthesis is included in the title - if so, remove it
+    const title = info.seriesName.replace(yearRegex, '').trim();
     const show: IShow = new Show({
       id: convertImdbId(imdbId),
-      title: info.seriesName,
+      title,
       episodes: [],
     });
     show.episodes = info.episodes.map(ep => new Episode({

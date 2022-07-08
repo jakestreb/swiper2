@@ -1,5 +1,6 @@
 import * as child from 'child_process';
 import * as log from '../../log';
+import * as util from '../../util';
 import EventEmitter from 'events';
 
 interface Request {
@@ -101,16 +102,7 @@ export default abstract class ProcessManager extends EventEmitter {
 
 	public async callWithTimeout(fn: string, timeoutMs: number, ...args: any[]): Promise<any> {
 	    const promise = this.call(fn, ...args);
-	    if (timeoutMs && timeoutMs > 0) {
-	      const timeoutPromise = new Promise((resolve, reject) => {
-	        const timeout = setTimeout(() => {
-	          reject(`${fn} timed out after ${timeoutMs}ms`);
-	        }, timeoutMs);
-	        promise.then(() => clearTimeout(timeout));
-	      });
-	      return Promise.race([promise, timeoutPromise]);
-	    }
-	    return promise;
+	    return util.awaitWithTimeout(promise, timeoutMs, `${fn} timed out after ${timeoutMs}ms`);
 	}
 
 	public async healthCheck(): Promise<void> {

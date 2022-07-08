@@ -48,3 +48,16 @@ export function execCapture(str: string, regex: RegExp): Array<string|null> {
   }
   return match.slice(1);
 }
+
+export function awaitWithTimeout<T>(promise: Promise<T>, timeoutMs: number, errMsg?: string): Promise<T> {
+    if (timeoutMs && timeoutMs > 0) {
+      const timeoutPromise = new Promise<T>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(errMsg || `Promise timed out after ${timeoutMs}ms`);
+        }, timeoutMs);
+        promise.then(() => clearTimeout(timeout));
+      });
+      return Promise.race([promise, timeoutPromise]);
+    }
+    return promise;
+}

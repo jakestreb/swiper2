@@ -87,7 +87,7 @@ export default class TorrentSearch {
       log.debug(`TorrentSearch: performing search for ${video}`);
       let results;
       try {
-        results = await this.doSearch(video);
+        results = await util.awaitWithTimeout(this.doSearch(video), 10000, 'Torrent search timed out');
         if (results.length === 0 && retries > 0) {
           throw new Error('No torrents found with retries remaining');
         }
