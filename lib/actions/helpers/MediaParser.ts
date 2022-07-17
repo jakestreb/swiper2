@@ -30,10 +30,7 @@ export default class MediaParser {
         convo.input = ''; // Clear the input since it has already been used.
       } catch (err) {
         logger.error(`Media lookup failed: ${err}`);
-        return {
-          err: 'Media lookup failed',
-          final: true
-        };
+        throw err;
       }
     }
 

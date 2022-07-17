@@ -49,7 +49,7 @@ export function execCapture(str: string, regex: RegExp): Array<string|null> {
   return match.slice(1);
 }
 
-export function awaitWithTimeout<T>(promise: Promise<T>, timeoutMs: number, errMsg?: string): Promise<T> {
+export function awaitWithTimeout<T>(promise: Promise<T>, timeoutMs: number, errMsg?: string|Error): Promise<T> {
     if (timeoutMs && timeoutMs > 0) {
       const timeoutPromise = new Promise<T>((resolve, reject) => {
         const timeout = setTimeout(() => {

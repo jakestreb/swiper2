@@ -3,6 +3,7 @@ import * as readline from 'readline';
 import * as log from '../log';
 import TextFormatter from './formatters/TextFormatter';
 import TelegramFormatter from './formatters/TelegramFormatter';
+import PublicError from '../util/errors/PublicError'
 
 type CommType = 'cli'|'telegram';
 type SwiperMsgHandler = (id: number, msg?: string) => Promise<void>
@@ -70,24 +71,14 @@ export default class CommManager {
   private addCliListener() {
     const terminal = readline.createInterface(process.stdin, process.stdout);
     terminal.on('line', (line: string) => {
-      this.handleClientMsg('cli', this.commandLineId, line.trim())
-      .catch(err => {
-        log.error(`Error handling cli request "${line.trim()}": ${err}`);
-        log.info('\n');
-        this.replyToClient(this.commandLineId, {err: `Something went wrong`})
-      });
+      this.handleClientMsg('cli', this.commandLineId, line.trim());
     });
   }
 
   private addTelegramListener() {
     this.telegramBot.on("text", (message: any) => {
       log.debug(`Received telegram message: ${message.text} (${new Date(message.date * 1000)})`);
-      this.handleClientMsg('telegram', message.chat.id, message.text)
-      .catch(err => {
-        log.error(`Error handling telegram request "${message}": ${err}`);
-        log.info('\n');
-        this.replyToClient(message.chat.id, {err: `Something went wrong`})
-      });
+      this.handleClientMsg('telegram', message.chat.id, message.text);
     });
 
     this.telegramBot.on("polling_error", (message: any) => log.error(`Telegram error: ${message}`));
@@ -97,6 +88,15 @@ export default class CommManager {
     if (!this.clientCommTypes[id]) {
       this.clientCommTypes[id] = commType;
     }
-    await this.msgHandler(id, msg);
+    try {
+      await this.msgHandler(id, msg);
+    } catch (err) {
+      log.error(`Error handling ${commType} request "${msg}": ${err}`);
+      let reply = 'Something went wrong';
+      if (err instanceof PublicError) {
+        reply = err.message;
+      }
+      this.replyToClient(id, {err: reply});
+    }
   }
 }

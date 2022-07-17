@@ -4,6 +4,7 @@ import * as log from '../log';
 import ConcurrencyLock from './helpers/ConcurrencyLock';
 import TorrentRanker from './helpers/TorrentRanker';
 import db from '../db';
+import PublicError from '../util/errors/PublicError'
 
 // Typescript doesn't recognize the default export of TSA.
 const TorrentSearchApi = require('torrent-search-api');
@@ -87,7 +88,7 @@ export default class TorrentSearch {
       log.debug(`TorrentSearch: performing search for ${video}`);
       let results;
       try {
-        results = await util.awaitWithTimeout(this.doSearch(video), 30000, 'Torrent search timed out');
+        results = await this.doSearch(video);
         if (results.length === 0 && retries > 0) {
           throw new Error('No torrents found with retries remaining');
         }
@@ -102,7 +103,9 @@ export default class TorrentSearch {
         throw err;
       }
     };
-    return doRetrySearch(TorrentSearch.searchRetryCount);
+    const searchPromise = doRetrySearch(TorrentSearch.searchRetryCount);
+    const timeoutError = new PublicError('Torrent search timed out');
+    return util.awaitWithTimeout(searchPromise, 30000, timeoutError);
   }
 
   private static async doSearch(video: IVideo): Promise<TorrentResult[]> {
