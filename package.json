@@ -12,6 +12,7 @@
     "reset": "rm records.db & rm -rf downloads/*",
     "update-pi": "scripts/update-pi.sh",
     "ship": "scripts/ship.sh",
+    "logs": "scripts/view-logs.sh",
     "lines": "git -C lib grep ^ | wc -l"
   },
   "repository": {
