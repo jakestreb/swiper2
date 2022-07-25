@@ -54,7 +54,7 @@ function formatShow(show: IShow, f: TextFormatter) {
   const { episodes } = show;
 
   const episodesBySeason: { [seasonNum: number]: IEpisode[] } = {};
-  episodes.forEach((e, i) => {
+  episodes.forEach(e => {
     const current = episodesBySeason[e.seasonNum] || [];
     episodesBySeason[e.seasonNum] = [...current, e];
   });
@@ -62,9 +62,10 @@ function formatShow(show: IShow, f: TextFormatter) {
   const unaired = util.getNextToAir(show.episodes);
   let details: IEpisode[] = [];
   if (unaired) {
-    const index = show.episodes.findIndex(e => e.id === unaired.id);
+    const seasonEpisodes = episodesBySeason[unaired.seasonNum];
+    const index = seasonEpisodes.findIndex(e => e.id === unaired.id);
     const startIndex = Math.max(index - 1, 0);
-    details = episodes.slice(startIndex, startIndex + 2);
+    details = seasonEpisodes.slice(startIndex, startIndex + 2);
   }
 
   const contentRows = Object.keys(episodesBySeason)
