@@ -35,6 +35,8 @@ export default abstract class ProcessManager extends EventEmitter {
 	private healthCheckTimeout: NodeJS.Timeout|null = null;
 	private healthCheckFailCount: number = 0;
 
+	private rebootTimeout: NodeJS.Timeout|null = null;
+
 	private id: number = 0;
 	private resolvers: {[id: number]: Resolver} = {};
 
@@ -72,6 +74,9 @@ export default abstract class ProcessManager extends EventEmitter {
 				clearTimeout(this.healthCheckTimeout);
 				this.healthCheckFailCount = 0;
 			}
+			if (this.rebootTimeout) {
+				clearTimeout(this.rebootTimeout);
+			}
 			this.started = false;
 			this.start();
 		});
@@ -85,8 +90,8 @@ export default abstract class ProcessManager extends EventEmitter {
 		});
 		this.started = true;
 		this.runHealthChecks();
+		this.runRebootTimer();
 		this.emit('start');
-		setTimeout(() => this.restart(), ProcessManager.REBOOT_EVERY_M * 60 * 1000);
 	}
 
 	public restart(): void {
@@ -116,7 +121,7 @@ export default abstract class ProcessManager extends EventEmitter {
 	}
 
 	private runHealthChecks(): void {
-		setTimeout(async () => {
+		this.healthCheckTimeout = setTimeout(async () => {
 			if (!this.started) {
 				return;
 			}
@@ -135,5 +140,14 @@ export default abstract class ProcessManager extends EventEmitter {
 			}
 			this.runHealthChecks();
 		}, ProcessManager.HEALTH_CHECK_INTERVAL_S * 1000)
+	}
+
+	private runRebootTimer(): void {
+		this.rebootTimeout = setTimeout(() => {
+			if (!this.started) {
+				return;
+			}
+			this.restart();
+		}, ProcessManager.REBOOT_EVERY_M * 60 * 1000);
 	}
 }
