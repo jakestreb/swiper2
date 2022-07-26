@@ -21,9 +21,12 @@ interface Resolver {
 }
 
 export default abstract class ProcessManager extends EventEmitter {
-	public static HEALTH_CHECK_INTERVAL_S = 30;
-	public static HEALTH_CHECK_TIMEOUT_S = 10;
-	public static FAIL_HEALTH_CHECK_AFTER = 10;
+	public static HEALTH_CHECK_INTERVAL_S = 20;
+	public static HEALTH_CHECK_TIMEOUT_S = 8;
+	public static FAIL_HEALTH_CHECK_AFTER = 6;
+
+	// Reboot every n minutes to prevent stuck downloads
+	public static REBOOT_EVERY_M = 30;
 
 	private child: child.ChildProcess;
 	private buildArgs: any[];
@@ -83,9 +86,11 @@ export default abstract class ProcessManager extends EventEmitter {
 		this.started = true;
 		this.runHealthChecks();
 		this.emit('start');
+		setTimeout(() => this.restart(), ProcessManager.REBOOT_EVERY_M * 60 * 1000);
 	}
 
 	public restart(): void {
+		log.info('Restarting download process');
 		this.child.kill('SIGINT');
 	}
 

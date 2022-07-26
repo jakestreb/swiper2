@@ -85,10 +85,11 @@ function formatShow(show: IShow, f: TextFormatter) {
 }
 
 function formatSeasonRow(first: IEpisode, last: IEpisode, f: TextFormatter) {
+  const oneEpisode = first.episodeNum === last.episodeNum;
   const items = [
     getSeasonIcon(first, last),
     f.b(`S${last.seasonNum}`),
-    `(E${first.episodeNum}-${last.episodeNum})`
+    oneEpisode ? `(E${first.episodeNum})` : `(E${first.episodeNum}-${last.episodeNum})`
   ];
   if (first.airDate && last.airDate) {
     items.push(util.getMonthRange(new Date(first.airDate), new Date(last.airDate)));

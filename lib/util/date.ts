@@ -31,7 +31,11 @@ export function getMorning(): Date {
 }
 
 export function getMonthRange(from: Date, to: Date): string {
-  return `${months[from.getMonth()]} - ${months[to.getMonth()]} ${to.getFullYear()}`;
+  const oneMonth = from.getMonth() === to.getMonth()
+    && from.getFullYear() === to.getFullYear();
+  const monthRange = oneMonth ? months[to.getMonth()] :
+    `${months[from.getMonth()]} - ${months[to.getMonth()]}`;
+  return `${monthRange} ${to.getFullYear()}`;
 }
 
 // Format wait time
