@@ -58,8 +58,15 @@ export default class Shows extends Base<ShowDBRow, IShow> {
   }
 
   public async insert(arg: ShowInsertArg, options: DBInsertOptions): Promise<void> {
-    await this.run(`INSERT INTO shows (id, title, addedBy) VALUES (?, ?, ?)`,
+    // Do not error on duplicate show insertion (just non-completed episode insertion)
+    try {
+      await this.run(`INSERT INTO shows (id, title, addedBy) VALUES (?, ?, ?)`,
         [arg.id, arg.title, options.addedBy]);
+    } catch (err: any) {
+      if (err.code !== 'SQLITE_CONSTRAINT') {
+        throw err;
+      }
+    }
     await Promise.all(arg.episodes.map(e => this.db.episodes.insert(e, options)));
   }
 }

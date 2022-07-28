@@ -63,10 +63,24 @@ export default class Episodes extends Base<EpisodeDBRow, IEpisode> {
   }
 
   public async insert(arg: IEpisode, options: DBInsertOptions): Promise<void> {
-    await this.run(`INSERT INTO episodes (id, seasonNum, episodeNum, airDate, ` +
+    const doInsert = () => this.run(`INSERT INTO episodes (id, seasonNum, episodeNum, airDate, ` +
         `showId, showTitle, status, addedBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [arg.id, arg.seasonNum, arg.episodeNum, arg.airDate, arg.showId,
           arg.showTitle, options.status, options.addedBy]);
+    try {
+      await doInsert();
+    } catch (err: any) {
+      // If the episode remains as completed, remove it and re-insert
+      if (err.code !== 'SQLITE_CONSTRAINT') {
+        throw err;
+      }
+      const duplicate = await this.getOne(arg.id);
+      if (!duplicate || duplicate && duplicate.status !== 'completed') {
+        throw err;
+      }
+      await this.run('DELETE FROM episodes WHERE id = ?', [arg.id]);
+      await doInsert();
+    }
   }
 
   public async delete(...ids: number[]): Promise<void> {

@@ -75,10 +75,25 @@ export default class Movies extends Base<MovieDBRow, IMovie> {
 
   public async insert(arg: MovieInsertArg, options: DBInsertOptions): Promise<void> {
     const { theatrical, digital } = arg.releases;
-    await this.run('INSERT INTO movies '
+    const doInsert = () => this.run('INSERT INTO movies '
       + '(id, title, year, theatricalRelease, digitalRelease, status, addedBy) '
       + 'VALUES (?, ?, ?, ?, ?, ?, ?)',
         [arg.id, arg.title, arg.year, theatrical, digital, options.status, options.addedBy]);
+    try {
+      await doInsert();
+    } catch (err: any) {
+      // If the movie remains as completed, remove it and re-insert
+      if (err.code !== 'SQLITE_CONSTRAINT') {
+        throw err;
+      }
+      const duplicate = await this.getOne(arg.id);
+      if (!duplicate || duplicate && duplicate.status !== 'completed') {
+        throw err;
+      }
+      await this.run('DELETE FROM movies WHERE id = ?', [arg.id]);
+      await doInsert();
+    }
+
   }
 
   public async delete(...ids: number[]): Promise<void> {
