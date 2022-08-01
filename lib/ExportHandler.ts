@@ -1,6 +1,7 @@
 import * as fs from 'fs-extra';
 import Client from 'ftp';
 import * as path from 'path';
+import sanitize from 'sanitize-filename';
 
 import * as log from './log';
 import * as util from './util';
@@ -48,7 +49,8 @@ export default class ExportHandler {
       let from, to;
       try {
         from = filePath;
-        to = path.join(exportPath, path.basename(filePath));
+        const fileName = sanitize(path.basename(filePath));
+        to = path.join(exportPath, fileName);
       } catch (err) {
         log.error(`Copy failed from ${from} to ${to}`);
         throw err;
