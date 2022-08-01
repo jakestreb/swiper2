@@ -75,8 +75,11 @@ export default class ExportHandler {
             reject(`FTP mkDir error: ${mkDirErr} (directory: ${directory})`);
           }
           // Copy the file
+          console.warn('PUT SOURCE', src);
+          console.warn('PUT DEST', dst);
           c.put(src, dst, (putErr: Error) => {
             if (putErr) {
+              console.warn('PUT ERROR!!!', putErr);
               reject(`FTP put error: ${putErr}`);
             }
             c.end();
