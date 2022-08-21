@@ -8,10 +8,11 @@ export default class DownloadProcess extends ChildProcess {
   public static downloadLimitMbps = 40;
   public static uploadLimitMbps = 5;
 
-  private _client: WebTorrent.Instance|null;
+  private client: WebTorrent.Instance;
 
   constructor(public downloadRoot: string) {
     super();
+    this.startClient();
   }
 
   public async download(hash: string, subPath: string): Promise<void> {
@@ -68,18 +69,11 @@ export default class DownloadProcess extends ChildProcess {
     });
   }
 
-  // Getter ensures the existence of the WebTorrent instance
-  private get client(): WebTorrent.Instance {
-    // If the client has shut down, restart it.
-    if (!this._client) { this.startClient(); }
-    return this._client!;
-  }
-
   private startClient(): void {
     const downloadLimit = (DownloadProcess.downloadLimitMbps * 1024 * 1024) / 8;
     const uploadLimit = (DownloadProcess.uploadLimitMbps * 1024 * 1024) / 8;
-    this._client = new WebTorrent({downloadLimit, uploadLimit} as any);
-    this._client.on('error', (err) => {
+    this.client = new WebTorrent({downloadLimit, uploadLimit} as any);
+    this.client.on('error', (err) => {
       log.subProcessError(`WebTorrent fatal error: ${err}`);
       this.startClient(); // Restart webtorrent on error
     });

@@ -25,9 +25,6 @@ export default abstract class ProcessManager extends EventEmitter {
 	public static HEALTH_CHECK_TIMEOUT_S = 8;
 	public static FAIL_HEALTH_CHECK_AFTER = 6;
 
-	// Reboot every n minutes to prevent stuck downloads
-	public static REBOOT_EVERY_M = 30;
-
 	private child: child.ChildProcess;
 	private buildArgs: any[];
 	private started: boolean = false;
@@ -90,7 +87,6 @@ export default abstract class ProcessManager extends EventEmitter {
 		});
 		this.started = true;
 		this.runHealthChecks();
-		this.runRebootTimer();
 		this.emit('start');
 	}
 
@@ -140,14 +136,5 @@ export default abstract class ProcessManager extends EventEmitter {
 			}
 			this.runHealthChecks();
 		}, ProcessManager.HEALTH_CHECK_INTERVAL_S * 1000)
-	}
-
-	private runRebootTimer(): void {
-		this.rebootTimeout = setTimeout(() => {
-			if (!this.started) {
-				return;
-			}
-			this.restart();
-		}, ProcessManager.REBOOT_EVERY_M * 60 * 1000);
 	}
 }

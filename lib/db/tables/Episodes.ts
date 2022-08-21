@@ -70,12 +70,13 @@ export default class Episodes extends Base<EpisodeDBRow, IEpisode> {
     try {
       await doInsert();
     } catch (err: any) {
-      // If the episode remains as completed, remove it and re-insert
+      // If the episode remains as monitoring/completed, remove it and re-insert
       if (err.code !== 'SQLITE_CONSTRAINT') {
         throw err;
       }
+      const busyStatuses: Status[] = ['downloading', 'uploading'];
       const duplicate = await this.getOne(arg.id);
-      if (!duplicate || duplicate && duplicate.status !== 'completed') {
+      if (!duplicate || duplicate && busyStatuses.includes(duplicate.status)) {
         throw err;
       }
       await this.run('DELETE FROM episodes WHERE id = ?', [arg.id]);

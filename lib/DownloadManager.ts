@@ -28,6 +28,7 @@ export default class DownloadManager {
     this.exportHandler = new ExportHandler(this.downloadRoot);
     this.memoryManager = new MemoryManager(this.downloadRoot);
 
+    this.downloader.on('downloadComplete', (vt: VTorrent) => this.onDownloadComplete(vt));
     this.downloader.start();
 
     this.ping();
@@ -185,17 +186,7 @@ export default class DownloadManager {
 
     // Run the download
     await db.torrents.setStatus(torrent, 'downloading');
-    await this.downloader.download(torrent);
-    log.debug(`Torrent ${torrent.video} download completed`);
-
-    // On completion, mark the video status as uploading
-    await db.torrents.setStatus(torrent, 'completed');
-    await db.videos.setStatus(torrent.video, 'uploading');
-
-    this.upload(torrent.videoId)
-      .catch(err => {
-        log.error(`Upload error: ${err}`);
-      });
+    return this.downloader.download(torrent);
   }
 
   private async stopDownload(torrent: VTorrent): Promise<void> {
@@ -272,5 +263,18 @@ export default class DownloadManager {
     } catch (err) {
       log.subProcessError(`Error deleting torrent files: ${err}`);
     }
+  }
+
+  private async onDownloadComplete(vt: VTorrent): Promise<void> {
+    log.debug(`Torrent ${vt.video} download completed`);
+
+    // On completion, mark the video status as uploading
+    await db.torrents.setStatus(vt, 'completed');
+    await db.videos.setStatus(vt.video, 'uploading');
+
+    this.upload(vt.videoId)
+      .catch(err => {
+        log.error(`Upload error: ${err}`);
+      });
   }
 }

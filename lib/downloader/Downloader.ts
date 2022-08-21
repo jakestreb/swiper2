@@ -24,10 +24,12 @@ export default class Downloader extends ProcessManager {
 		return './dist/lib/downloader/process/runner';
 	}
 
-  public download(vt: VTorrent): Promise<void> {
+  public async download(vt: VTorrent): Promise<void> {
     log.debug(`DownloadClient: download(${vt.video})`);
     this.activeDownloads[vt.hash] = vt;
-    return this.call('download', vt.hash, vt.getDownloadPath());
+    await this.call('download', vt.hash, vt.getDownloadPath());
+    this.emit('downloadComplete', vt);
+    return;
   }
 
   public async getProgress(torrent: ITorrent, timeoutMs?: number): Promise<DownloadProgress> {

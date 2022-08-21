@@ -82,12 +82,13 @@ export default class Movies extends Base<MovieDBRow, IMovie> {
     try {
       await doInsert();
     } catch (err: any) {
-      // If the movie remains as completed, remove it and re-insert
+      // If the movie remains as monitoring/completed, remove it and re-insert
       if (err.code !== 'SQLITE_CONSTRAINT') {
         throw err;
       }
+      const busyStatuses: Status[] = ['downloading', 'uploading'];
       const duplicate = await this.getOne(arg.id);
-      if (!duplicate || duplicate && duplicate.status !== 'completed') {
+      if (!duplicate || duplicate && busyStatuses.includes(duplicate.status)) {
         throw err;
       }
       await this.run('DELETE FROM movies WHERE id = ?', [arg.id]);
