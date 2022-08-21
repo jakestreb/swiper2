@@ -36,7 +36,8 @@ export default class TorrentRanker {
   private static AUTO_REJECT = [
     "HDCAM", "CAMRip", "CAM", "TS", "TELESYNC", "PDVD",
     "HD-?TS", "HD-?TC", "WP", "WORKPRINT", "HC", "SUB",
-    "SUBS", "KORSUB", "KOR", "TS-?RIP", "HQCAM",
+    "SUBS", "KORSUB", "KOR", "TS-?RIP", "HQCAM", "HINDI",
+    "DUBBED", "DUB",
   ];
 
   private priorities: ResourcePriority<any>[] = [];
