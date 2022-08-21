@@ -71,7 +71,7 @@ export default class Worker {
   }
 
   private async runJob(job: IJob) {
-    log.debug(`Running ${job.type} job ${job.videoId}`);
+    log.debug(`Preparing to run ${job.type} job ${job.videoId}`);
     await db.jobs.markRunning(job.id);
     this.nextRun = null;
     this.currentTimeout = null;
@@ -98,6 +98,7 @@ export default class Worker {
     const jobInst = new JobClass(this, this.swiper);
     let success = false;
     try {
+      log.debug(`Running ${job.type} job ${job.videoId}`);
       success = await jobInst.run(job.videoId, job.runCount);
       if (!success && JobClass.schedule !== 'once') {
         log.debug(`Rescheduling ${job.type} job ${job.videoId}`);
