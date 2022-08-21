@@ -67,6 +67,12 @@ const COMMANDS = [{
     "search old yeller",
     "search game of thrones s1 e2",
   ]
+}, {
+  name: "reboot",
+  description: "Reboot Swiper process",
+  basics: [
+    "reboot",
+  ]
 }];
 
 export function help(this: Swiper, convo: Conversation): SwiperReply {
@@ -86,6 +92,7 @@ export function help(this: Swiper, convo: Conversation): SwiperReply {
       ),
       f.commands(
         'help [command]',
+        'reboot',
         'cancel to end any conversation',
       ),
     ].join('\n\n');
