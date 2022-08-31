@@ -50,6 +50,7 @@ declare type IShow = IMedia & {
   getLastAired(): IEpisode|null;
   sortEpisodes(): void;
   filterEpisodes(filter: EpisodesDescriptor): void;
+  episodesToString(): string;
 }
 
 declare type IEpisode = IVideo & {

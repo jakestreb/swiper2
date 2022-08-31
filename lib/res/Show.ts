@@ -83,7 +83,7 @@ export default class Show extends Media implements IMedia {
     return `${this.title} (${this.episodesToString()})`;
   }
 
-  private episodesToString(): string {
+  public episodesToString(): string {
     let seasons: string[] = [];
     let lastEpisode = -1;
     let lastSeason = -1;

@@ -42,14 +42,13 @@ export async function scheduled(this: Swiper, convo: Conversation): Promise<Swip
 }
 
 function formatMovieRow(movie: IMovie, f: TextFormatter) {
-  // TODO: Calculate expected release
   const expected = movie.getExpectedRelease();
-  const items = [getIcon(movie.getSearchDate()), movie.format(f)];
+  const titleStr = [getIcon(movie.getSearchDate()), movie.format(f)].join(' ');
   if (expected) {
-    const airedStr = util.getAiredStr(expected);
-    items.push(f.i(airedStr));
+    const approxStr = `${f.sp(2)}${util.getApproximateDate(expected)}`;
+    return [titleStr, f.i(approxStr)].join('\n');
   }
-  return items.join(' ');
+  return titleStr;
 }
 
 function formatShowRow(show: IShow, f: TextFormatter) {
@@ -57,12 +56,13 @@ function formatShowRow(show: IShow, f: TextFormatter) {
   const next = util.getNextToAir(episodes);
   const last = util.getLastAired(episodes);
   const release = next ? next.airDate : (last ? last.airDate : undefined);
-  const items = [getIcon(release), show.format(f)];
+  const titleStr = [getIcon(release), `${f.b(show.title)}`].join(' ');
+  const fullStr = [titleStr, `${f.sp(2)}[${show.episodesToString()}]`].join('\n');
   if (release) {
     const airedStr = util.getAiredStr(new Date(release));
-    items.push(f.i(airedStr));
+    return [fullStr, f.i(airedStr)].join(' ');
   }
-  return items.join(' ');
+  return fullStr;
 }
 
 function getIcon(searchDate?: Date) {

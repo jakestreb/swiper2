@@ -2,6 +2,11 @@ import DateParser from './helpers/DateParser';
 
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const ranges = [
+  { name: 'Early', start: 1, end: 10 },
+  { name: 'Mid', start: 11, end: 21 },
+  { name: 'Late', start: 22, end: 31 },
+];
 const oneDay = 24 * 60 * 60 * 1000;
 
 export function parseDate(s: string|null): Date|null {
@@ -36,6 +41,18 @@ export function getMonthRange(from: Date, to: Date): string {
   const monthRange = oneMonth ? months[to.getMonth()] :
     `${months[from.getMonth()]} - ${months[to.getMonth()]}`;
   return `${monthRange} ${to.getFullYear()}`;
+}
+
+export function getApproximateDate(estimate: Date): string {
+  const getRange = (date: Date) => {
+    for (const range of ranges) {
+      const dateOfMonth = date.getDate();
+      if (dateOfMonth >= range.start && dateOfMonth <= range.end) {
+        return range.name;
+      }
+    }
+  };
+  return `${getRange(estimate)} ${months[estimate.getMonth()]}`;
 }
 
 // Format wait time
