@@ -57,7 +57,8 @@ function formatShowRow(show: IShow, f: TextFormatter) {
   const last = util.getLastAired(episodes);
   const release = next ? next.airDate : (last ? last.airDate : undefined);
   const titleStr = [getIcon(release), `${f.b(show.title)}`].join(' ');
-  const fullStr = [titleStr, `${f.sp(2)}[${show.episodesToString()}]`].join('\n');
+  const episodesStr = f.i(`(${show.episodesToString()})`);
+  const fullStr = [titleStr, `${f.sp(2)}${episodesStr}]`].join('\n');
   if (release) {
     const airedStr = util.getAiredStr(new Date(release));
     return [fullStr, f.i(airedStr)].join(' ');
