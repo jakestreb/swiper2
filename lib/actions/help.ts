@@ -27,7 +27,7 @@ const COMMANDS = [{
   ]
 }, {
   name: 'download',
-  description: 'Download a show/movie\nRe-run to add a torrent',
+  description: 'Download a show/movie\nRe-run to add another torrent',
   basics: [
     "download [show or movie]",
     "d [show or movie]",
@@ -59,7 +59,7 @@ const COMMANDS = [{
   ]
 }, {
   name: "search",
-  description: "Show torrents for a show/movie\nRe-run to select a torrent to add",
+  description: "Show torrents for a show/movie\nRe-run to select an additional torrent",
   basics: [
     "search [show or movie]",
   ],

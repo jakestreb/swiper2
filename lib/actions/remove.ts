@@ -5,7 +5,10 @@ import Swiper from '../Swiper';
 export async function remove(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const f = this.getTextFormatter(convo);
 
-  await addStoredMediaIfFound(convo);
+  // Add media from request string if it was not already added
+  if (!convo.storedMedia && !convo.storedVideos) {
+    await addStoredMediaIfFound(convo);
+  }
 
   if (!convo.storedMedia && !convo.storedVideos) {
     return {
@@ -50,23 +53,24 @@ export async function removeMedia(swiper: Swiper, convo: Conversation, f: TextFo
 
 export async function removeTorrent(swiper: Swiper, convo: Conversation, f: TextFormatter): Promise<SwiperReply> {
   const storedVideos = convo.storedVideos!;
-  // Ask the user about a media item if they are not all dealt with.
-  if (storedVideos.length > 0 && convo.input) {
+
+  // Perform the user's request regarding torrent deletion.
+  if (convo.input && storedVideos.length > 0) {
     const match = matchUtil.matchYesNo(convo.input);
     if (match) {
       // If yes or no, shift the task to 'complete' it, then remove it from the database.
       const video: TVideo = storedVideos[0];
       const torrent = video.torrents.shift()!;
-      if (video.torrents.length === 0) {
-        storedVideos.shift();
-      }
       if (match === 'yes') {
         await doRemoveTorrent(swiper, video, torrent);
+      }
+      if (video.torrents.length === 0) {
+        storedVideos.shift();
       }
     }
   }
 
-  // If there are still items or the match failed, send a confirm string.
+  // If there are still videos or the match failed, send a confirm string.
   if (storedVideos.length > 0) {
     const video = storedVideos[0];
     const torrent = storedVideos[0].torrents[0];
@@ -108,10 +112,14 @@ async function doRemoveMedia(swiper: Swiper, media: IMedia): Promise<void> {
 async function doRemoveTorrent(swiper: Swiper, video: TVideo, torrent: ITorrent): Promise<void> {
   await swiper.downloadManager.destroyAndDeleteTorrent(torrent.addVideo(video));
   await db.torrents.setStatus(torrent, 'removed');
-  if (video.torrents.length === 0) {
+
+  // Re-add torrents to the video from the storedVideos array to check if there are any left
+  const remainingTorrents = await db.torrents.getForVideo(video.id);
+  if (remainingTorrents.length === 0) {
     await swiper.worker.removeJobs(video.id);
     await db.videos.delete(video.id);
   }
+
   swiper.downloadManager.ping();
 }
 
