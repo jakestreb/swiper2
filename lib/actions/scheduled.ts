@@ -58,12 +58,11 @@ function formatShowRow(show: IShow, f: TextFormatter) {
   const release = next ? next.airDate : (last ? last.airDate : undefined);
   const titleStr = [getIcon(release), `${f.b(show.title)}`].join(' ');
   const episodesStr = f.i(`(${show.episodesToString()})`);
-  const fullStr = [titleStr, `${f.sp(2)}${episodesStr}`].join('\n');
   if (release) {
-    const airedStr = util.getAiredStr(new Date(release));
-    return [fullStr, f.i(airedStr)].join(' ');
+    const airedStr = f.i(util.getAiredStr(new Date(release)));
+    return [titleStr, `${f.sp(2)}${airedStr} ${episodesStr}`].join('\n');
   }
-  return fullStr;
+    return [titleStr, `${f.sp(2)}${episodesStr}`].join('\n');
 }
 
 function getIcon(searchDate?: Date) {
