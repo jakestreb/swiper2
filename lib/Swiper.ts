@@ -137,23 +137,6 @@ export default class Swiper {
     };
   }
 
-  // Fully remove the specified media
-  // Destroy any active downloads of the media
-  // Remove any download files
-  // Remove any DB jobs
-  // Remove any DB torrents
-  public async removeMedia(media: IMedia): Promise<void> {
-    const promises = media.getVideos().map(async video => {
-      const withTorrents = await db.videos.addTorrents(video);
-      await this.downloadManager.destroyAndDeleteVideo(withTorrents);
-      await this.worker.removeJobs(video.id);
-      await db.torrents.delete(...withTorrents.torrents.map(t => t.id));
-    });
-    await Promise.all(promises);
-    await db.media.delete(media);
-    this.downloadManager.ping();
-  }
-
   private getCommandFn(convo: Conversation, command: string): CommandFn|null {
     switch (command) {
       case "download":

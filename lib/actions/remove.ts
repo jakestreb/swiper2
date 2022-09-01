@@ -89,11 +89,9 @@ export async function removeTorrent(swiper: Swiper, convo: Conversation, f: Text
 // Fully remove the specified media
 // Destroy any active downloads of the media
 // Remove any download files
-// Remove any DB jobs
 // Remove any DB torrents
 async function doRemoveMedia(swiper: Swiper, media: IMedia): Promise<void> {
   const promises = media.getVideos().map(async video => {
-    await swiper.worker.removeJobs(video.id);
     const withTorrents = await db.videos.addTorrents(video);
     if (withTorrents.torrents.length > 0) {
       await swiper.downloadManager.destroyAndDeleteVideo(withTorrents);
@@ -116,7 +114,6 @@ async function doRemoveTorrent(swiper: Swiper, video: TVideo, torrent: ITorrent)
   // Re-add torrents to the video from the storedVideos array to check if there are any left
   const remainingTorrents = await db.torrents.getForVideo(video.id);
   if (remainingTorrents.length === 0) {
-    await swiper.worker.removeJobs(video.id);
     await db.videos.delete(video.id);
   }
 

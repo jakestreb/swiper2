@@ -5,7 +5,7 @@ import * as winston from 'winston';
 const DEBUG = Boolean(parseInt(process.env.DEBUG || "0", 10));
 
 const logger = winston.createLogger({
-  level: 'info',
+  level: 'debug',
   format: winston.format.json(),
   defaultMeta: { service: 'user-service' },
   transports: [

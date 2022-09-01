@@ -219,11 +219,10 @@ export default class DownloadManager {
 
     // Mark video as completed and delete in 24 hours
     await db.videos.setStatus(video, 'completed');
-    await this.swiper.worker.removeJobs(video.id);
     await this.swiper.worker.addJob({
       type: 'DeleteVideo',
       videoId: video.id,
-      startAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      startAt: new Date(Date.now() + (24 * 60 * 60 * 1000)),
     });
 
     this.swiper.notifyClient(video.addedBy!, `${video} upload complete`);

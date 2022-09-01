@@ -49,17 +49,15 @@ export default class Jobs extends Base<JobDBRow, IJob> {
   }
 
   public async getNextRun(videoId: number, types: JobType[]): Promise<Date|null> {
-    const jobs: IJob[] = await this.all(
+    const job: IJob|void = await this.get(
       `SELECT * FROM jobs WHERE videoId=? AND status!='done' `
-      + `AND type IN (${types.map(t => '?')})`, [videoId, ...types]
+      + `AND type IN (${types.map(t => '?')}) ORDER BY nextRunAt LIMIT 1`, [videoId, ...types]
     );
-    const nextRuns = jobs.map(job => job.nextRunAt.getTime());
-    return nextRuns.length > 0 ? new Date(Math.min(...nextRuns)) : null;
+    return job ? new Date(job.nextRunAt.getTime()) : null;
   }
 
-  public getNext(avoid: number[] = []): Promise<IJob|void> {
-    return this.get(`SELECT * FROM jobs WHERE status='pending' AND `
-      + `id NOT IN (${avoid.map(e => '?')}) ORDER BY nextRunAt LIMIT 1`, avoid);
+  public getNext(): Promise<IJob|void> {
+    return this.get(`SELECT * FROM jobs WHERE status='pending' ORDER BY nextRunAt LIMIT 1`);
   }
 
   // Note that this should only be called by the worker
@@ -93,9 +91,5 @@ export default class Jobs extends Base<JobDBRow, IJob> {
 
   public async markRunningAsPending(): Promise<void> {
     await this.run('UPDATE jobs SET status=\'pending\' WHERE status=\'running\'');
-  }
-
-  public async deleteForVideo(videoId: number): Promise<void> {
-    await this.run(`DELETE FROM jobs WHERE videoId=?`, [videoId]);
   }
 }
