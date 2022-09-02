@@ -81,20 +81,19 @@ export default class Worker {
     if (job.status === 'done') {
       // Check if the job was since removed
       log.info(`Aborting job ${jobId} run since job was marked done`);
-      return;
-    }
-    if (!await db.videos.getOne(job.videoId)) {
+    } else if (!await db.videos.getOne(job.videoId)) {
       // Check if the video was since removed
       log.info(`Aborting ${job.type} job ${jobId} run since video ${job.videoId} was removed`);
       await db.jobs.markDone(job.id);
-      return;
+    } else {
+      // Run the job
+      this.nextJobId = -1;
+      this.currentTimeout = null;
+      this.doRunJob(job)
+        .catch(err => {
+          log.error(`Failed to run ${job.type} job ${jobId}: ${err}`);
+        });
     }
-    this.nextJobId = -1;
-    this.currentTimeout = null;
-    this.doRunJob(job)
-      .catch(err => {
-        log.error(`Failed to run ${job.type} job ${jobId}: ${err}`);
-      });
     this.start();
   }
 
