@@ -32,6 +32,18 @@ export default class TMDB {
     return this.makeMediaRequest(url, year);
   }
 
+  public static async refreshReleases(movie: IMovie): Promise<IMovie> {
+    log.debug(`TMDB.refreshReleases ${movie}`);
+    const url = this.getTmdbMovieUrl(movie.id);
+    const info = await this.makeRequest<any>(url);
+    if (info.movie_results.length === 0) {
+      throw new Error('No results for movie\'s saved imdbId');
+    }
+    const freshMovie = await this.toMovie(info.movie_results[0]);
+    movie.releases = freshMovie.releases;
+    return movie;
+  }
+
   public static async toMovie(info: TMDBMovie): Promise<IMovie> {
     const imdbId = await this.getImdbId(info);
     const url = this.getMovieReleaseDateUrl(info.id);
@@ -100,6 +112,10 @@ export default class TMDB {
     return `${TMDB.URL_V4}/search/multi?query=${safeTitle}`;
   }
 
+  private static getTmdbMovieUrl(movieId: number): string {
+    return `${TMDB.URL_V3}/find/${getImdbId(movieId)}?api_key=${TMDB.API_KEY}&external_source=imdb_id`;
+  }
+
   private static getMovieReleaseDateUrl(tmdbId: number): string {
     return `${TMDB.URL_V3}/movie/${tmdbId}/release_dates?api_key=${TMDB.API_KEY}`;
   }
@@ -130,6 +146,10 @@ export default class TMDB {
 
 function parseImdbId(imdbId: string): number {
   return parseInt(imdbId.slice(2), 10);
+}
+
+function getImdbId(movieId: number): string {
+  return `tt${movieId}`;
 }
 
 function getYear(tmdbDate: string): string {

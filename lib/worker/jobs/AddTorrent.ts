@@ -5,7 +5,7 @@ import TorrentSearch from '../../apis/TorrentSearch';
 // For 'searching' videos, backoff check for a torrent
 export class AddTorrent extends Base {
 	public static schedule: JobSchedule = 'backoff';
-	public static initDelayS: number = 60 * 5;
+	public static initDelayS: number = 60 * 2;
 
 	public async run(videoId: number): Promise<boolean> {
 		const video = await db.videos.getOne(videoId);

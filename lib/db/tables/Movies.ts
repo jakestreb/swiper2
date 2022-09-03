@@ -73,6 +73,11 @@ export default class Movies extends Base<MovieDBRow, IMovie> {
     return { ...movie, torrents };
   }
 
+  public async updateReleases(movie: IMovie): Promise<void> {
+    await this.run('UPDATE movies SET theatricalRelease = ?, digitalRelease = ? '
+      + 'WHERE id = ?', [movie.releases.theatrical, movie.releases.digital, movie.id]);
+  }
+
   public async insert(arg: MovieInsertArg, options: DBInsertOptions): Promise<void> {
     const { theatrical, digital } = arg.releases;
     const doInsert = () => this.run('INSERT INTO movies '
