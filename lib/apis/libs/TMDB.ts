@@ -2,6 +2,7 @@ import axios from 'axios';
 import * as log from '../../log';
 import * as util from '../../util';
 import Movie from '../../res/Movie';
+import PublicError from '../../util/errors/PublicError';
 
 interface TMDBMovie {
   id: number;
@@ -134,12 +135,12 @@ export default class TMDB {
           (_media as TMDBShow).first_air_date && getYear((_media as TMDBShow).first_air_date) === year);
       }
       if (results.length === 0) {
-        throw new Error(`No results`);
+        throw new PublicError('No results found');
       }
       return results[0];
     } catch (err: any) {
-      log.error(err);
-      throw new Error(`Failed The Movie Database search: ${err}`);
+      log.error(`Failed The Movie Database search: ${err}`);
+      throw err;
     }
   }
 }
