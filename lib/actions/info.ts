@@ -1,8 +1,10 @@
 import Swiper from '../Swiper';
+import TMDB from '../apis/libs/TMDB';
+import TVDB from '../apis/libs/TVDB';
 import * as util from '../util';
 
 const FULL = '\u25A0';
-const HALF = '\u25A4';
+const HALF = '\u25A3';
 const EMPTY = '\u25A1';
 
 const NEXT = '(next)';
@@ -16,9 +18,11 @@ export async function info(this: Swiper, convo: Conversation): Promise<SwiperRep
 
   let data;
   if (media.type === 'movie') {
-    data = formatMovie(media as IMovie, f);
+    const synopsis = await TMDB.getSynopsis(media.id);
+    data = formatMovie(media as IMovie, synopsis, f);
   } else {
-    data = formatShow(media as IShow, f);
+    const synopsis = await TVDB.getSynopsis(media.id);
+    data = formatShow(media as IShow, synopsis, f);
   }
 
   return {
@@ -27,8 +31,8 @@ export async function info(this: Swiper, convo: Conversation): Promise<SwiperRep
   };
 }
 
-function formatMovie(movie: IMovie, f: TextFormatter) {
-  const { title, releases } = movie;
+function formatMovie(movie: IMovie, synopsis: string, f: TextFormatter) {
+  const { title, releases, year } = movie;
   const theatrical = releases.theatrical && new Date(releases.theatrical);
   const digital = releases.digital && new Date(releases.digital);
   const expected = movie.getExpectedRelease();
@@ -41,7 +45,9 @@ function formatMovie(movie: IMovie, f: TextFormatter) {
   }
 
   return [
-    f.u(title),
+    `${f.u(title)} (${year})`,
+    f.i(synopsis),
+    ' ',
     formatMovieDate('Theatrical', theatrical || null, f),
     formatMovieDate('Streaming', digital || null, f),
     formatMovieDate('Expected', isRecent ? movie.getExpectedRelease() : null, f),
@@ -50,8 +56,8 @@ function formatMovie(movie: IMovie, f: TextFormatter) {
   .join('\n');
 }
 
-function formatShow(show: IShow, f: TextFormatter) {
-  const { episodes } = show;
+function formatShow(show: IShow, synopsis: string, f: TextFormatter) {
+  const { title, episodes, year } = show;
 
   const episodesBySeason: { [seasonNum: number]: IEpisode[] } = {};
   episodes.forEach(e => {
@@ -81,7 +87,14 @@ function formatShow(show: IShow, f: TextFormatter) {
       return rows.join('\n');
     });
 
-  return [f.u(show.title), ...contentRows].join('\n');
+  const header = `${f.u(title)} (${year})`;
+  return [
+    header,
+    f.i(synopsis),
+    ' ',
+    ...contentRows
+  ]
+  .join('\n');
 }
 
 function formatSeasonRow(first: IEpisode, last: IEpisode, f: TextFormatter) {
@@ -89,10 +102,12 @@ function formatSeasonRow(first: IEpisode, last: IEpisode, f: TextFormatter) {
   const items = [
     getSeasonIcon(first, last),
     f.b(`S${last.seasonNum}`),
-    oneEpisode ? `(E${first.episodeNum})` : `(E${first.episodeNum}-${last.episodeNum})`
+    oneEpisode ? f.i(`(E${first.episodeNum})`) : f.i(`(E${first.episodeNum}-${last.episodeNum})`)
   ];
-  if (first.airDate && last.airDate) {
-    items.push(util.getMonthRange(new Date(first.airDate), new Date(last.airDate)));
+  if (first.airDate) {
+    items.push(
+      f.i(util.getMonthAndYear(new Date(first.airDate)))
+    );
   }
   return items.join(' ');
 }
@@ -103,10 +118,14 @@ function formatEpisodeRows(episodes: IEpisode[], f: TextFormatter): string {
     .map(e => {
       const items = [getDateIcon(e.airDate), `E${e.episodeNum}`];
       if (e.airDate) {
-        items.push(util.getAiredStr(new Date(e.airDate)))
+        items.push(
+          f.i(util.getAiredStr(new Date(e.airDate)))
+        );
       }
       if (nextToAir && nextToAir.id === e.id) {
-        items.push(f.i(NEXT));
+        items.push(
+          f.i(NEXT)
+        );
       }
       return f.sp(2) + items.join(' ');
     })

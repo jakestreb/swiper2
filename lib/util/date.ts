@@ -35,12 +35,8 @@ export function getMorning(): Date {
   return morn;
 }
 
-export function getMonthRange(from: Date, to: Date): string {
-  const oneMonth = from.getMonth() === to.getMonth()
-    && from.getFullYear() === to.getFullYear();
-  const monthRange = oneMonth ? months[to.getMonth()] :
-    `${months[from.getMonth()]} - ${months[to.getMonth()]}`;
-  return `${monthRange} ${to.getFullYear()}`;
+export function getMonthAndYear(date: Date): string {
+  return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 export function getApproximateDate(estimate: Date): string {

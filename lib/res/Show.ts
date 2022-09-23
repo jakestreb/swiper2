@@ -22,6 +22,14 @@ export default class Show extends Media implements IMedia {
     this.addedBy = values.addedBy;
   }
 
+  public get year(): string {
+    if (this.episodes.length === 0) {
+      return '';
+    }
+    const date = this.episodes[0].airDate;
+    return date ? `${date.getFullYear()}` : '';
+  }
+
   public getNextToAir(): IEpisode|null {
     return util.getNextToAir(this.episodes);
   }

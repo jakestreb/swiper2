@@ -33,14 +33,18 @@ export default class TMDB {
     return this.makeMediaRequest(url, year);
   }
 
+  public static async getSynopsis(movieId: number): Promise<string> {
+    log.debug(`TMDB.getSynopsis ${movieId}`);
+    const tmdbMovie = await this.getTmdbMovie(movieId);
+    const url = await this.getMovieDetailsUrl(tmdbMovie.id);
+    const data = await this.makeRequest<any>(url);
+    return data.overview;
+  }
+
   public static async refreshReleases(movie: IMovie): Promise<IMovie> {
     log.debug(`TMDB.refreshReleases ${movie}`);
-    const url = this.getTmdbMovieUrl(movie.id);
-    const info = await this.makeRequest<any>(url);
-    if (info.movie_results.length === 0) {
-      throw new Error('No results for movie\'s saved imdbId');
-    }
-    const freshMovie = await this.toMovie(info.movie_results[0]);
+    const tmdbMovie = await this.getTmdbMovie(movie.id);
+    const freshMovie = await this.toMovie(tmdbMovie);
     movie.releases = freshMovie.releases;
     return movie;
   }
@@ -94,6 +98,15 @@ export default class TMDB {
     return data.imdb_id;
   }
 
+  private static async getTmdbMovie(movieId: number): Promise<TMDBMovie> {
+    const url = this.getTmdbMovieUrl(movieId);
+    const info = await this.makeRequest<any>(url);
+    if (info.movie_results.length === 0) {
+      throw new Error('No results for movie\'s saved imdbId');
+    }
+    return info.movie_results[0];
+  }
+
   private static async makeRequest<T>(url: string): Promise<T> {
     const response = await axios.get(url, {
       headers: {
@@ -115,6 +128,10 @@ export default class TMDB {
 
   private static getTmdbMovieUrl(movieId: number): string {
     return `${TMDB.URL_V3}/find/${getImdbId(movieId)}?api_key=${TMDB.API_KEY}&external_source=imdb_id`;
+  }
+
+  private static getMovieDetailsUrl(tmdbId: number): string {
+    return `${TMDB.URL_V3}/movie/${tmdbId}?api_key=${TMDB.API_KEY}`;
   }
 
   private static getMovieReleaseDateUrl(tmdbId: number): string {

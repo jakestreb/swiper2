@@ -5,10 +5,12 @@ import Episode from '../../res/Episode';
 
 // Return type of the TVDB database, with only fields we need defined.
 interface TVDBShow {
+  id: number;
   episodes: TVDBEpisode[];
   airsDayOfWeek: string;
   airsTime: string;
   seriesName: string;
+  overview: string;
 }
 
 interface TVDBEpisode {
@@ -30,23 +32,15 @@ export default class TVDB {
   private static tokenTs = 0;
 
   // Helper function to search TVDB and retry with a refreshed API token on error.
-  public static async search(imdbId: string): Promise<TVDBShow> {
-    // Get the TVDB series ID from the imdbID.
-    log.debug(`TVDB.search: Fetching TVDB ID from IMDB ID`);
-    const data = await this.makeRequest<any>(TVDB.SEARCH_URL, { imdbId });
-    const entries = data.data;
-    if (entries.length === 0) {
-      throw new Error('Series not found in TVDB');
-    }
-    const seriesId = entries[0].id;
-
-    // Retrieved the ID, now fetch the series and episodes.
-    log.debug(`TVDB.search: Fetching series`);
-    const seriesUrl = this.getSeriesUrl(seriesId);
-    const seriesData = await this.makeRequest<any>(seriesUrl);
-    const series = seriesData.data;
-    series.episodes = await this.fetchEpisodes(seriesId);
+  public static async getShow(imdbId: string): Promise<TVDBShow> {
+    const series = await this.getTvdbShow(imdbId);
+    series.episodes = await this.fetchEpisodes(series.id);
     return series;
+  }
+
+  public static async getSynopsis(showId: number): Promise<string> {
+    const series = await this.getTvdbShow(getImdbId(showId));
+    return series.overview;
   }
 
   public static async toShow(info: TVDBShow, imdbId: string): Promise<IShow> {
@@ -70,6 +64,24 @@ export default class TVDB {
     }));
     show.sortEpisodes();
     return show;
+  }
+
+  // Does not include episodes
+  private static async getTvdbShow(imdbId: string): Promise<TVDBShow> {
+    // Get the TVDB series ID from the imdbID.
+    log.debug(`TVDB.getShow: Fetching TVDB ID from IMDB ID`);
+    const data = await this.makeRequest<any>(TVDB.SEARCH_URL, { imdbId });
+    const entries = data.data;
+    if (entries.length === 0) {
+      throw new Error('Series not found in TVDB');
+    }
+    const seriesId = entries[0].id;
+
+    // Retrieved the ID, now fetch the series and episodes.
+    log.debug(`TVDB.getShow: Fetching series`);
+    const seriesUrl = this.getSeriesUrl(seriesId);
+    const seriesData = await this.makeRequest<any>(seriesUrl);
+    return seriesData.data;
   }
 
   private static async makeRequest<T>(url: string, params: any = {}): Promise<T> {
@@ -97,7 +109,7 @@ export default class TVDB {
     const day = 24 * 60 * 60 * 1000;
     if (now - TVDB.tokenTs > day) {
       // Needs refresh.
-      log.debug(`TVDB.search: Refreshing token`);
+      log.debug(`Refreshing TVDB token`);
       const response = await axios.post(TVDB.LOGIN_URL, {
         apikey: TVDB.API_KEY,
         pin: TVDB.PIN
@@ -126,6 +138,10 @@ export default class TVDB {
 
 function convertImdbId(imdbId: string): number {
   return parseInt(imdbId.slice(2), 10);
+}
+
+function getImdbId(showId: number): string {
+  return `tt${showId}`;
 }
 
 function hashEpisodeId(showId: number, seasonNum: number, episodeNum: number): number {

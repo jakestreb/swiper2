@@ -13,7 +13,7 @@ export default class MediaSearch {
       return TMDB.toMovie(tmdbMedia);
     }
     const imdbId = await TMDB.getImdbId(tmdbMedia);
-    const tvdbShow = await TVDB.search(imdbId);
+    const tvdbShow = await TVDB.getShow(imdbId);
     return TVDB.toShow(tvdbShow, imdbId);
   }
 }
