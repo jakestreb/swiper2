@@ -16,7 +16,7 @@ const COMMANDS = [{
   ],
 }, {
   name: 'info',
-  description: 'View release dates for a show/movie',
+  description: 'View basic information about a show/movie',
   basics: [
     "info [show or movie]",
     "i [show or movie]",
@@ -27,7 +27,7 @@ const COMMANDS = [{
   ]
 }, {
   name: 'download',
-  description: 'Download a show/movie\nRe-run to add another torrent',
+  description: 'Download a show/movie\nTorrent is automatically selected\nRe-run to download an additional torrent',
   basics: [
     "download [show or movie]",
     "d [show or movie]",
@@ -40,7 +40,7 @@ const COMMANDS = [{
   ]
 }, {
   name: "remove",
-  description: "Cancel download of a show/movie\nRemove a torrent from a single download",
+  description: "Cancel download of a show/movie\nAllows removing a single torrent from an queued download",
   basics: [
     "remove [show or movie]",
     "r [show or movie]",
@@ -59,7 +59,7 @@ const COMMANDS = [{
   ]
 }, {
   name: "search",
-  description: "Show torrents for a show/movie\nRe-run to select an additional torrent",
+  description: "View and select torrent to download for a show/movie\nRe-run to select an additional torrent",
   basics: [
     "search [show or movie]",
   ],
