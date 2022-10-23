@@ -1,10 +1,16 @@
 import TextFormatter from './TextFormatter';
 
 export default class TelegramFormatter extends TextFormatter {
-  public sp(length: number = 1) {
-  	const f = this;
-    return f.m(' '.repeat(length));
-  }
+	public static MSG_SPLIT_STRING = '&NEW_MSG';
+
+	public multiMessage(...messages: string[]) {
+		return messages.join(TelegramFormatter.MSG_SPLIT_STRING);
+	}
+
+	public sp(length: number = 1) {
+		const f = this;
+		return f.m(' '.repeat(length));
+	}
 
 	// Bold
 	public b(text: string) {

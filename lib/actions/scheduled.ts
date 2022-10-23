@@ -30,13 +30,16 @@ export async function scheduled(this: Swiper, convo: Conversation): Promise<Swip
 
   let rows: string[] = [];
   if (shows.length > 0 && movies.length > 0) {
-    rows = [f.u('TV'), ...shows, f.u('Movies'), ...movies];
+    rows = [
+      ['-- TV ------', ...shows].join('\n'),
+      ['-- Movies ------', ...movies].join('\n'),
+    ];
   } else {
     rows = [...shows, ...movies];
   }
 
   return {
-    data: rows.join('\n') || 'No scheduled downloads',
+    data: f.multiMessage(...rows) || 'No scheduled downloads',
     final: true
   };
 }

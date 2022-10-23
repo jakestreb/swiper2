@@ -13,6 +13,10 @@ export default class TextFormatter {
   		.join('\n');
   }
 
+  public multiMessage(...messages: string[]) {
+	return messages.join('\n');
+  }
+
   public sp(length: number = 1) {
     return ' '.repeat(length);
   }

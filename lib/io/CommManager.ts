@@ -56,8 +56,11 @@ export default class CommManager {
       } else {
         log.foreignInputError(msg.err);
       }
-      const msgText = msg.data ? msg.data : msg.err;
-      this.telegramBot.sendMessage(clientId, msgText || '', {parse_mode: 'HTML'});
+      const msgText = (msg.data ? msg.data : msg.err) || '';
+      const messages = msgText.split(TelegramFormatter.MSG_SPLIT_STRING);
+      messages.map(msg => {
+        this.telegramBot.sendMessage(clientId, msg, {parse_mode: 'HTML'});
+      });
     }
   }
 
