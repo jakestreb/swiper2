@@ -9,6 +9,7 @@ interface TMDBMovie {
   media_type: 'movie';
   title: string;
   release_date: string;
+  adult: boolean;
 }
 
 interface TMDBShow {
