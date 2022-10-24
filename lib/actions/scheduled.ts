@@ -31,8 +31,8 @@ export async function scheduled(this: Swiper, convo: Conversation): Promise<Swip
   let rows: string[] = [];
   if (shows.length > 0 && movies.length > 0) {
     rows = [
-      [f.i('M O V I E S'), ...movies].join('\n'),
-      [f.i('T V'), ...shows].join('\n'),
+      [`${f.sp(2)}${f.u('M O V I E S')}`, ...movies].join('\n'),
+      [`${f.sp(2)}${f.u('S H O W S')}`, ...shows].join('\n'),
     ];
   } else {
     rows = [...movies, ...shows];
