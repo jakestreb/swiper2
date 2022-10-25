@@ -162,7 +162,7 @@ function formatCommands(range: number[], total: number, f: TextFormatter): strin
   const spread = [...Array(rangeTotal).keys()]
     .map(n => n + range[0])
     .join('/');
-  return f.commands(f.b(spread), f.b(prev), f.b(next));
+  return f.commands(f.b(spread), f.b(prev), f.b(next), f.b('cancel'));
 }
 
 function compareHashes(a: string, b: string): boolean {

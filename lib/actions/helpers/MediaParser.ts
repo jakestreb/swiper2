@@ -114,19 +114,20 @@ export default class MediaParser {
 }
 
 function formatSpecifyEpisode(f: TextFormatter) {
-  return ['Specify episode, e.g.', f.commands('latest episode', 's1 e2')].join('\n\n');
+  return ['Specify episode, e.g.', f.commands('s1 e2', 'latest episode', 'cancel')].join('\n\n');
 }
 
 function formatSpecifyMultiple(f: TextFormatter) {
   return ['Specify episodes, e.g.',
     f.commands(
-      'latest season',
-      'latest episode',
-      'upcoming',
       's1',
       's1 e2',
       's1 e2-4',
-      's1 e2-4 & 6'
+      's1 e2-4 & 6',
+      'latest season',
+      'latest episode',
+      'upcoming',
+      'cancel',
     ),
   ].join('\n\n');
 }
