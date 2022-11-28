@@ -9,6 +9,7 @@ import PublicError from '../util/errors/PublicError'
 // Typescript doesn't recognize the default export of TSA.
 const TorrentSearchApi = require('torrent-search-api');
 TorrentSearchApi.enablePublicProviders();
+TorrentSearchApi.disableProvider('Torrent9'); // currently not working and breaking library
 
 interface TSAResult {
   title: string;
