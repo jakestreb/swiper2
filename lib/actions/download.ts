@@ -85,7 +85,7 @@ function isReleased(video: IVideo) {
 }
 
 function checkOrAwaitRelease(swiper: Swiper, video: IVideo, delayS: number = 0) {
-  const hasAirDate = video.isEpisode() && video.airDate;
+  const hasAirDate = (video.isEpisode() && video.airDate) || (video.isMovie() && video.releases.digital);
   const hasAired = video.getSearchDate() < new Date();
   return swiper.worker.addJob({
     type: hasAirDate ? 'StartSearching' : 'CheckForRelease',
