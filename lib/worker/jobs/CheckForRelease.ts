@@ -31,7 +31,7 @@ export class CheckForRelease extends Base {
         const updated = await TMDB.refreshReleases(video);
         await db.movies.updateReleases(updated);
       } catch (err) {
-        log.error('Failed to refresh releases for ${video}: ${err}');
+        log.error(`Failed to refresh releases for ${video}: ${err}`);
       }
     }
 
