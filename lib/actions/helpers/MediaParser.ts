@@ -3,6 +3,7 @@ import * as util from '../../util';
 import * as logger from '../../log';
 import TextFormatter from '../../io/formatters/TextFormatter';
 import EpisodeParser from './EpisodeParser';
+import PublicError from '../../util/errors/PublicError';
 
 interface ParserOptions {
   forceEpisodes?: EpisodesDescriptor;
@@ -30,6 +31,10 @@ export default class MediaParser {
         convo.input = ''; // Clear the input since it has already been used.
       } catch (err) {
         logger.error(`Media lookup failed: ${err}`);
+        if ((err as any).response.status === 404) {
+          // Return specific error when media is not found
+          throw new PublicError('Failed to identify media from request');
+        }
         throw err;
       }
     }
