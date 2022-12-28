@@ -28,18 +28,18 @@ export async function scheduled(this: Swiper, convo: Conversation): Promise<Swip
     })
     .map(show => formatShowRow(show as IShow, f));
 
-  let rows: string[] = [];
+  let data: string;
   if (shows.length > 0 && movies.length > 0) {
-    rows = [
+    data = f.multiMessage(
       [`${f.sp(2)}${f.u('M O V I E S')}`, ...movies].join('\n'),
       [`${f.sp(2)}${f.u('S H O W S')}`, ...shows].join('\n'),
-    ];
+    );
   } else {
-    rows = [...movies, ...shows];
+    data = [...movies, ...shows].join('\n');
   }
 
   return {
-    data: f.multiMessage(...rows) || 'No scheduled downloads',
+    data: data || 'No scheduled downloads',
     final: true
   };
 }
