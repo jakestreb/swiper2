@@ -28,13 +28,16 @@ export async function scheduled(this: Swiper, convo: Conversation): Promise<Swip
     })
     .map(show => formatShowRow(show as IShow, f));
 
-  let data: string = f.multiMessage(
-    [`${f.sp(2)}${f.u('M O V I E S')}`, ...movies].join('\n'),
-    [`${f.sp(2)}${f.u('S H O W S')}`, ...shows].join('\n'),
-  );
+  const messages: string[] = [];
+  if (movies.length > 0) {
+    messages.push([`${f.sp(2)}${f.u('M O V I E S')}`, ...movies].join('\n'));
+  }
+  if (shows.length > 0) {
+    messages.push([`${f.sp(2)}${f.u('S H O W S')}`, ...shows].join('\n'));
+  }
 
   return {
-    data: data || 'No scheduled downloads',
+    data: f.multiMessage(...messages) || 'No scheduled downloads',
     final: true
   };
 }
