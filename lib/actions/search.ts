@@ -22,7 +22,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
-    log.info(`Searching for ${video} downloads`);
+    this.notifyClient(convo.id, `Searching for ${video} torrents`);
     const results = await TorrentSearch.search(video);
     convo.torrents = results.filter(t => !active.some(at => compareHashes(t.hash, at.hash)));
     convo.pageNum = 0;

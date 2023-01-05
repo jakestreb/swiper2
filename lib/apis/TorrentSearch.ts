@@ -106,7 +106,7 @@ export default class TorrentSearch {
     };
     const searchPromise = doRetrySearch(TorrentSearch.searchRetryCount);
     const timeoutError = new PublicError('Torrent search timed out');
-    return util.awaitWithTimeout(searchPromise, 30000, timeoutError);
+    return util.awaitWithTimeout(searchPromise, 180000, timeoutError);
   }
 
   private static async doSearch(video: IVideo): Promise<TorrentResult[]> {
