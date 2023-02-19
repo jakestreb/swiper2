@@ -2,7 +2,7 @@ import ResourcePriority from './ResourcePriority';
 import * as util from '../../util';
 
 class ResolutionPriority extends ResourcePriority<string> {
-  public ranks = ['2160p', '1080p', '720p', ''];
+  public ranks = ['1080p', '2160p', '720p', '']; // TODO: Make 4k top priority once pc is upgraded
   public predicate = (v: string, t: PartialTorrent) => t.resolution === v || !v;
   public scale = 1;
 }
