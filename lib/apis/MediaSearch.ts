@@ -9,8 +9,7 @@ export default class MediaSearch {
     log.debug(`MediaSearch.search(${JSON.stringify(info)})`);
     const error = new PublicError('Media search timed out');
     const tmdbMedia = await util.awaitWithTimeout(TMDB.search(info), 20000, error);
-    // At least one time, media_type was missing
-    if (tmdbMedia.media_type === 'movie' || tmdbMedia.hasOwnProperty('adult')) {
+    if (tmdbMedia.media_type === 'movie') {
       return TMDB.toMovie(tmdbMedia as any);
     }
     const imdbId = await TMDB.getImdbId(tmdbMedia);

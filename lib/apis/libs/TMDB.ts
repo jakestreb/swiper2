@@ -25,7 +25,6 @@ export default class TMDB {
   private static AUTH_TOKEN = process.env.TMDB_READ_ACCESS;
 
   private static URL_V3 = 'https://api.themoviedb.org/3';
-  private static URL_V4 = 'https://api.themoviedb.org/4';
 
   public static async search(info: MediaQuery): Promise<TMDBMedia> {
     log.debug(`TMDB.search ${info.title}`);
@@ -122,9 +121,9 @@ export default class TMDB {
     if (type) {
       const yearParam = type === 'movie' ? 'primary_release_year' : 'first_air_date_year';
       const yearQuery = year ? `&${yearParam}=${year}` : '';
-      return `${TMDB.URL_V4}/search/${type}?query=${safeTitle}${yearQuery}`;
+      return `${TMDB.URL_V3}/search/${type}?query=${safeTitle}${yearQuery}`;
     }
-    return `${TMDB.URL_V4}/search/multi?query=${safeTitle}`;
+    return `${TMDB.URL_V3}/search/multi?query=${safeTitle}`;
   }
 
   private static getTmdbMovieUrl(movieId: number): string {
