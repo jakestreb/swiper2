@@ -12,7 +12,7 @@ export async function getFiles(dir: string): Promise<any> {
 
 export async function createSubdirs(existingPath: string, subPath: string): Promise<string> {
   let createdPath = existingPath;
-  const dirs = subPath.split('/');
+  const dirs = subPath.split(path.sep);
   for (const pathElem of dirs) {
     createdPath = path.join(createdPath, pathElem);
     try {

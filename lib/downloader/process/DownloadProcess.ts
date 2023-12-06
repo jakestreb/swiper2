@@ -5,7 +5,7 @@ import * as log from '../../log';
 import * as util from '../../util';
 
 export default class DownloadProcess extends ChildProcess {
-  public static downloadLimitMbps = 40;
+  public static downloadLimitMbps = 200;
   public static uploadLimitMbps = 5;
 
   private client: WebTorrent.Instance;
