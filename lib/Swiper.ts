@@ -13,6 +13,7 @@ import {search} from './actions/search';
 import {scheduled} from './actions/scheduled';
 import {queued} from './actions/queued';
 import {info} from './actions/info';
+import {ip} from './actions/ip';
 import {unknown} from './actions/unknown';
 
 export default class Swiper {
@@ -137,6 +138,11 @@ export default class Swiper {
     };
   }
 
+  public ip(convo: Conversation): Promise<SwiperReply> {
+    log.debug(`Swiper: ip`);
+    return ip.call(this, convo);
+  }
+
   private getCommandFn(convo: Conversation, command: string): CommandFn|null {
     switch (command) {
       case "download":
@@ -163,6 +169,8 @@ export default class Swiper {
       case "info":
       case "i":
         return () => this.info(convo);
+      case "ip":
+	return () => this.ip(convo);
       case "help":
       case "commands":
       case "h":

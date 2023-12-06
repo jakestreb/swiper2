@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "tslint -p tsconfig.json",
     "build": "tsc",
-    "start": "npm run build && node --max-old-space-size=3072 dist/index.js",
+    "start": "node dist/index.js",
     "dev": "ts-node index.ts",
     "reset": "rm records.db & rm -rf downloads/*",
     "update-pi": "scripts/update-pi.sh",
@@ -39,10 +39,10 @@
     "@types/torrent-search-api": "^2.0.0",
     "@types/webtorrent": "^0.109.3",
     "ts-node": "^7.0.1",
-    "typescript": "4.7.2"
+    "typescript": "^5.3.2"
   },
   "dependencies": {
-    "axios": "^0.26.1",
+    "axios": "^1.6.2",
     "check-disk-space": "^3.3.0",
     "dotenv": "^6.2.0",
     "fs-extra": "^10.1.0",
