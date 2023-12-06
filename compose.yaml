@@ -35,4 +35,4 @@ services:
       - ./records.db:/usr/src/app/records.db
       - ./.env:/usr/src/app/.env
       - ./downloads:/usr/src/app/downloads
-
+      - ./media:/usr/src/app/media
