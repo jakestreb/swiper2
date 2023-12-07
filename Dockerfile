@@ -4,7 +4,7 @@
 # If you need more help, visit the Dockerfile reference guide at
 # https://docs.docker.com/go/dockerfile-reference/
 
-ARG NODE_VERSION=14.21.3
+ARG NODE_VERSION=21.4.0
 
 ################################################################################
 # Use node image for base image for all stages.
@@ -51,8 +51,8 @@ FROM base as final
 # Use production node environment by default.
 ENV NODE_ENV production
 
-# Run the application as a non-root user.
-USER node
+# Run the application as a root user.
+USER root
 
 # Copy package.json so that package manager commands can be used.
 COPY package.json .
@@ -61,9 +61,6 @@ COPY package.json .
 # the built application from the build stage into the image.
 COPY --from=deps /usr/src/app/node_modules ./node_modules
 COPY --from=build /usr/src/app/dist ./dist
-
-# Expose the port that the application listens on.
-EXPOSE 8250
 
 # Run the application.
 CMD npm start
