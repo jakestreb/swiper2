@@ -24,6 +24,8 @@ export default class DownloadManager {
   private isStarted: boolean = false;
 
   constructor(public swiper: Swiper) {
+    log.info(`DOWNLOAD_ROOT:${DownloadManager.DOWNLOAD_ROOT}`)
+
     this.downloader = new Downloader(this.downloadRoot);
     this.exportHandler = new ExportHandler(this.downloadRoot);
     this.memoryManager = new MemoryManager(this.downloadRoot);

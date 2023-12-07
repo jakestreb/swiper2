@@ -49,14 +49,20 @@ export default class Swiper {
 
     // Run a new command or an existing command.
     let reply: SwiperReply;
-    if (commandFn) {
-      this.updateConversation(id, {commandFn, input});
-      reply = await commandFn();
-    } else if (existingCommandFn) {
-      this.updateConversation(id, {input: msg});
-      reply = await existingCommandFn();
-    } else {
-      reply = await this.unknown(convo);
+    try {
+      if (commandFn) {
+        this.updateConversation(id, {commandFn, input});
+        reply = await commandFn();
+      } else if (existingCommandFn) {
+        this.updateConversation(id, {input: msg});
+        reply = await existingCommandFn();
+      } else {
+        reply = await this.unknown(convo);
+      }
+    } catch (err) {
+      // Delete conversation on error to avoid getting stuck
+      delete this.conversations[convo.id];
+      throw err;
     }
 
     // If the reply is marked as final, clear the conversation state.

@@ -65,8 +65,8 @@ export default abstract class ProcessManager extends EventEmitter {
 				resolver.resolve(resp.result);
 			}
 		});
-		this.child.on('exit', () => {
-			log.error('Download process exited, restarting');
+		this.child.on('exit', (code, signal) => {
+			log.error(`Download process exited, restarting: ${signal}`);
 			if (this.healthCheckTimeout) {
 				clearTimeout(this.healthCheckTimeout);
 				this.healthCheckFailCount = 0;
@@ -91,7 +91,7 @@ export default abstract class ProcessManager extends EventEmitter {
 	}
 
 	public restart(): void {
-		log.info('Restarting download process');
+		log.info('Manually restarting download process');
 		this.child.kill('SIGINT');
 	}
 
