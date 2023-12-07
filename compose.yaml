@@ -8,6 +8,7 @@
 # database or a cache. For examples, see the Awesome Compose repository:
 # https://github.com/docker/awesome-compose
 
+version: "3"
 services:
   gluetun:
     image: qmcgaw/gluetun
@@ -17,15 +18,13 @@ services:
       - NET_ADMIN
     environment:
       # See https://github.com/qdm12/gluetun-wiki/tree/main/setup#setup
-      - VPN_SERVICE_PROVIDER=nordvpn
+      - VPN_SERVICE_PROVIDER=nordvpnmando
       - VPN_TYPE=wireguard
-      - OPENVPN_USER=abc
-      - OPENVPN_PASSWORD=abc
       - SERVER_COUNTRIES=United States
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - TZ=America/New_York
   server:
-    restart: on-failure
+    # restart: on-failure
     build:
       context: .
     environment:
@@ -35,4 +34,6 @@ services:
       - ./records.db:/usr/src/app/records.db
       - ./.env:/usr/src/app/.env
       - ./downloads:/usr/src/app/downloads
-      - ./media:/usr/src/app/media
+      - type: bind
+        source: ./media
+        target: /usr/src/media
