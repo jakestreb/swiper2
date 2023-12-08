@@ -34,6 +34,4 @@ services:
       - ./records.db:/usr/src/app/records.db
       - ./.env:/usr/src/app/.env
       - ./downloads:/usr/src/app/downloads
-      - type: bind
-        source: ./media
-        target: /usr/src/app/media
+      - ./media:/usr/src/app/media

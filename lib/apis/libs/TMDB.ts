@@ -30,7 +30,21 @@ export default class TMDB {
     log.debug(`TMDB.search ${info.title}`);
     const { title, year, type } = info;
     const url = this.getSearchUrl(title, year, type);
-    return this.makeMediaRequest(url, year);
+    let { results } = await this.makeRequest<any>(url);
+    if (year) {
+      results = results.filter((_media: TMDBMedia) =>
+        (_media as TMDBMovie).release_date && getYear((_media as TMDBMovie).release_date) === year ||
+        (_media as TMDBShow).first_air_date && getYear((_media as TMDBShow).first_air_date) === year);
+    }
+    if (results.length === 0) {
+      throw new PublicError('No results found');
+    }
+    const match: TMDBMedia = results[0];
+    if (type) {
+      // Note that TMDB stopped including the media_type in tv/movie specific searches
+      match.media_type = type;
+    }
+    return match;
   }
 
   public static async getSynopsis(movieId: number): Promise<string> {
@@ -107,15 +121,6 @@ export default class TMDB {
     return info.movie_results[0];
   }
 
-  private static async makeRequest<T>(url: string): Promise<T> {
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${TMDB.AUTH_TOKEN}`,
-      },
-    });
-    return response.data;
-  }
-
   private static getSearchUrl(title: string, year: string|null, type: 'movie'|'tv'|null): string {
     const safeTitle = encodeURIComponent(title);
     if (type) {
@@ -142,21 +147,16 @@ export default class TMDB {
     return `${TMDB.URL_V3}/${type}/${tmdbId}/external_ids?api_key=${TMDB.API_KEY}`;
   }
 
-  private static async makeMediaRequest(url: string, year: string|null): Promise<TMDBMedia> {
+  private static async makeRequest<T>(url: string): Promise<T> {
     try {
-      const data = await this.makeRequest<any>(url);
-      let results = data.results;
-      if (year) {
-        results = results.filter((_media: TMDBMedia) =>
-          (_media as TMDBMovie).release_date && getYear((_media as TMDBMovie).release_date) === year ||
-          (_media as TMDBShow).first_air_date && getYear((_media as TMDBShow).first_air_date) === year);
-      }
-      if (results.length === 0) {
-        throw new PublicError('No results found');
-      }
-      return results[0];
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${TMDB.AUTH_TOKEN}`,
+        },
+      });
+      return response.data;
     } catch (err: any) {
-      log.error(`Failed The Movie Database search: ${err}`);
+      log.error(`Failed The Movie Database request: ${err}`);
       throw err;
     }
   }
