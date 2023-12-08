@@ -24,7 +24,7 @@ services:
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - TZ=America/New_York
   server:
-    restart: on-failure
+    restart: always
     build:
       context: .
     environment:
