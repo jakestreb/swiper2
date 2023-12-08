@@ -34,7 +34,7 @@ export default class DownloadManager {
     this.downloader.start();
 
     this.ping();
-    this.startUploads();
+    this.startExports();
   }
 
   public async addToQueue(video: IVideo): Promise<void> {
@@ -196,15 +196,15 @@ export default class DownloadManager {
     await this.downloader.stopDownload(torrent);
   }
 
-  private async startUploads() {
-    const videos = await db.videos.getWithStatus('uploading');
-    Promise.all(videos.map(v => this.upload(v.id)))
+  private async startExports() {
+    const videos = await db.videos.getWithStatus('exporting');
+    Promise.all(videos.map(v => this.exportVideo(v.id)))
       .catch(err => {
-        log.error(`Upload error: ${err}`);
+        log.error(`Export video error: ${err}`);
       });
   }
 
-  private async upload(videoId: number): Promise<void> {
+  private async exportVideo(videoId: number): Promise<void> {
     const video: IVideo = (await db.videos.getOne(videoId))!;
     const torrents = await db.torrents.getForVideo(video.id);
     const completed = torrents.find(t => t.status === 'completed');
@@ -227,7 +227,7 @@ export default class DownloadManager {
       startAt: new Date(Date.now() + (24 * 60 * 60 * 1000)),
     });
 
-    this.swiper.notifyClient(video.addedBy!, `${video} upload complete`);
+    this.swiper.notifyClient(video.addedBy!, `${video} export complete`);
 
     // Ping since the database changed.
     this.ping();
@@ -269,13 +269,13 @@ export default class DownloadManager {
   private async onDownloadComplete(vt: VTorrent): Promise<void> {
     log.debug(`Torrent ${vt.video} download completed`);
 
-    // On completion, mark the video status as uploading
+    // On completion, mark the video status as exporting
     await db.torrents.setStatus(vt, 'completed');
-    await db.videos.setStatus(vt.video, 'uploading');
+    await db.videos.setStatus(vt.video, 'exporting');
 
-    this.upload(vt.videoId)
+    this.exportVideo(vt.videoId)
       .catch(err => {
-        log.error(`Upload error: ${err}`);
+        log.error(`Export video error: ${err}`);
       });
   }
 }

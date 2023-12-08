@@ -7,12 +7,12 @@ const DOWN_ARROW = '\u2913';
 const HOURGLASS = '\u29D6';
 const X = '\u2A09';
 
-const UPLOADING = '(uploading)';
+const EXPORTING = '(exporting)';
 
 export async function queued(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const f = this.getTextFormatter(convo);
 
-  const downloading = await db.videos.getWithStatus('searching', 'downloading', 'uploading');
+  const downloading = await db.videos.getWithStatus('searching', 'downloading', 'exporting');
   const completed = await db.media.getWithStatus('completed');
   const downloadingWithTorrents = await Promise.all(downloading.map(d => db.videos.addTorrents(d)));
   const sorted = util.sortByPriority(downloadingWithTorrents, getSortPriority);
@@ -30,8 +30,8 @@ export async function queued(this: Swiper, convo: Conversation): Promise<SwiperR
     if (searchTxt) {
       rows.push(`${f.sp(2)}${searchTxt}`);
     }
-    if (video.status === 'uploading') {
-      rows.push(`${f.sp(2)}${UPLOADING}`);
+    if (video.status === 'exporting') {
+      rows.push(`${f.sp(2)}${EXPORTING}`);
     }
     return rows.join('\n');
   }));
@@ -66,8 +66,8 @@ function getIcon(video: TVideo) {
     return '';
   }
   const isDownloading = video.torrents.some(t => t.status === 'downloading');
-  const isUploading = video.status === 'uploading';
-  return isDownloading ? DOWN_ARROW : (isUploading ? UP_ARROW : HOURGLASS);
+  const isExporting = video.status === 'exporting';
+  return isDownloading ? DOWN_ARROW : (isExporting ? UP_ARROW : HOURGLASS);
 }
 
 function getSortPriority(video: IVideo) {
@@ -75,7 +75,7 @@ function getSortPriority(video: IVideo) {
   const season = video.isEpisode() ? video.seasonNum : 0;
   const episode = video.isEpisode() ? video.episodeNum : 0;
   return [
-    video.status === 'uploading',
+    video.status === 'exporting',
     video.status === 'downloading',
     video.status === 'searching',
     queueIndex >= 0,

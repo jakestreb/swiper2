@@ -2,7 +2,7 @@ declare module 'any-date-parser';
 declare module 'get-folder-size';
 declare module 'parse-torrent-name';
 
-declare type Status = 'identified'|'unreleased'|'searching'|'downloading'|'uploading'|'completed';
+declare type Status = 'identified'|'unreleased'|'searching'|'downloading'|'exporting'|'completed';
 
 // Note torrents should only have status 'removed' if they were singularly removed
 declare type TorrentStatus = 'pending'|'downloading'|'slow'|'paused'|'completed'|'removed';

@@ -91,7 +91,7 @@ export default class Movies extends Base<MovieDBRow, IMovie> {
       if (err.code !== 'SQLITE_CONSTRAINT') {
         throw err;
       }
-      const busyStatuses: Status[] = ['downloading', 'uploading'];
+      const busyStatuses: Status[] = ['downloading', 'exporting'];
       const duplicate = await this.getOne(arg.id);
       if (!duplicate || duplicate && busyStatuses.includes(duplicate.status)) {
         throw err;
