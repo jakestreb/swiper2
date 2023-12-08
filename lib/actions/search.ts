@@ -1,9 +1,9 @@
 import db from '../db';
 import * as matchUtil from './helpers/matchUtil';
-import * as log from '../log';
+import * as log from '../util/log';
 import * as util from '../util';
 import Swiper from '../Swiper';
-import TorrentSearch from '../apis/TorrentSearch';
+import TorrentSearch from '../functions/search/TorrentSearch';
 
 // Number of torrents to show per page
 const PER_PAGE = 3;

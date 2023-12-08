@@ -1,4 +1,4 @@
-import Episode from '../../res/Episode';
+import Episode from '../models/Episode';
 import Base from './Base';
 
 interface EpisodeDBRow {

@@ -1,6 +1,6 @@
 import db from '../../db';
 import Base from './Base';
-import * as log from '../../log';
+import * as log from '../../util/log';
 
 // For 'completed' videos, delete after some time has passed for cleanup
 export class DeleteVideo extends Base {

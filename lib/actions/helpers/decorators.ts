@@ -1,5 +1,5 @@
-import TextFormatter from '../../io/formatters/TextFormatter';
-import MediaParser from './MediaParser';
+import TextFormatter from '../../functions/message/formatters/TextFormatter';
+import MediaParser from '../../functions/identify/MediaParser';
 import Swiper from '../../Swiper';
 
 type ActionFn = (convo: Conversation, f: TextFormatter) => Promise<SwiperReply|void>;

@@ -1,7 +1,7 @@
 import axios from 'axios';
-import * as log from '../../log';
-import Show from '../../res/Show';
-import Episode from '../../res/Episode';
+import * as log from '../../../util/log';
+import Show from '../../../db/models/Show';
+import Episode from '../../../db/models/Episode';
 
 // Return type of the TVDB database, with only fields we need defined.
 interface TVDBShow {

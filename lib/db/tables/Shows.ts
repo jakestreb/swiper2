@@ -1,4 +1,4 @@
-import Show from '../../res/Show';
+import Show from '../models/Show';
 import Base from './Base';
 
 interface ShowInsertArg {

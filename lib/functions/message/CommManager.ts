@@ -1,9 +1,9 @@
 import TelegramBot from 'node-telegram-bot-api';
 import * as readline from 'readline';
-import * as log from '../log';
+import * as log from '../../util/log';
 import TextFormatter from './formatters/TextFormatter';
 import TelegramFormatter from './formatters/TelegramFormatter';
-import PublicError from '../util/errors/PublicError'
+import PublicError from '../../util/errors/PublicError'
 
 type CommType = 'cli'|'telegram';
 type SwiperMsgHandler = (id: number, msg?: string) => Promise<void>

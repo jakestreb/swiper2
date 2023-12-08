@@ -1,7 +1,7 @@
-import MediaSearch from '../../apis/MediaSearch';
+import MediaSearch from './MediaSearch';
 import * as util from '../../util';
-import * as logger from '../../log';
-import TextFormatter from '../../io/formatters/TextFormatter';
+import * as logger from '../../util/log';
+import TextFormatter from '../message/formatters/TextFormatter';
 import EpisodeParser from './EpisodeParser';
 import PublicError from '../../util/errors/PublicError';
 

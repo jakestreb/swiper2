@@ -1,5 +1,5 @@
 import ResourcePriority from './ResourcePriority';
-import * as util from '../../util';
+import * as util from '../../../util';
 
 class ResolutionPriority extends ResourcePriority<string> {
   public ranks = ['1080p', '2160p', '720p', '']; // TODO: Make 4k top priority once pc is upgraded

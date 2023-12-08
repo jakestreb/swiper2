@@ -31,7 +31,7 @@ services:
       NODE_ENV: production
     network_mode: service:gluetun
     volumes:
-      - ./records.db:/usr/src/app/records.db
+      - ./lib/db/records.db:/usr/src/app/records.db
       - ./.env:/usr/src/app/.env
       - ./downloads:/usr/src/app/downloads
       - ./media:/usr/src/app/media

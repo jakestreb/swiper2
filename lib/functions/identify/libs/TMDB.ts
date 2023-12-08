@@ -1,8 +1,8 @@
 import axios from 'axios';
-import * as log from '../../log';
-import * as util from '../../util';
-import Movie from '../../res/Movie';
-import PublicError from '../../util/errors/PublicError';
+import * as log from '../../../util/log';
+import * as util from '../../../util';
+import Movie from '../../../db/models/Movie';
+import PublicError from '../../../util/errors/PublicError';
 
 interface TMDBMovie {
   id: number;

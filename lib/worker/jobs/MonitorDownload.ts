@@ -1,7 +1,7 @@
 import * as util from '../../util';
 import db from '../../db';
 import Base from './Base';
-import * as log from '../../log';
+import * as log from '../../util/log';
 
 const SLOW_SPEED_MBS = 0.02;
 

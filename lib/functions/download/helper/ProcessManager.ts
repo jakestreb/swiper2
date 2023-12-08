@@ -1,6 +1,6 @@
 import * as child from 'child_process';
-import * as log from '../../log';
-import * as util from '../../util';
+import * as log from '../../../util/log';
+import * as util from '../../../util';
 import EventEmitter from 'events';
 
 interface Request {

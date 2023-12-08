@@ -1,8 +1,8 @@
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
 import ChildProcess from './ChildProcess';
-import * as log from '../../log';
-import * as util from '../../util';
+import * as log from '../../../util/log';
+import * as util from '../../../util';
 
 export default class DownloadProcess extends ChildProcess {
   public static downloadLimitMbps = 200;

@@ -1,8 +1,8 @@
 import TMDB from './libs/TMDB';
 import TVDB from './libs/TVDB';
-import * as log from '../log';
-import * as util from '../util';
-import PublicError from '../util/errors/PublicError'
+import * as log from '../../util/log';
+import * as util from '../../util';
+import PublicError from '../../util/errors/PublicError'
 
 export default class MediaSearch {
   public static async search(info: MediaQuery): Promise<IMedia> {

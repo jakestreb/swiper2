@@ -1,9 +1,9 @@
-import * as log from './log';
+import * as log from './util/log';
 import * as util from './util';
 import db from './db';
 import Worker from './worker';
-import CommManager from './io/CommManager';
-import DownloadManager from './DownloadManager';
+import CommManager from './functions/message/CommManager';
+import DownloadManager from './functions/download/DownloadManager';
 
 import {reqMediaQuery, reqMedia, reqVideo, reqFullMedia} from './actions/helpers/decorators';
 import {download} from './actions/download';

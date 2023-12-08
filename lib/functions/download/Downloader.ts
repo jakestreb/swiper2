@@ -1,5 +1,5 @@
 import ProcessManager from './helper/ProcessManager';
-import * as log from '../log';
+import * as log from '../../util/log';
 
 export default class Downloader extends ProcessManager {
   public activeDownloads: {[hash: string]: VTorrent} = {};
@@ -21,7 +21,7 @@ export default class Downloader extends ProcessManager {
 	}
 
 	public get processPath() {
-		return './dist/lib/downloader/process/runner';
+		return './dist/lib/functions/download/process/runner';
 	}
 
   public async download(vt: VTorrent): Promise<void> {

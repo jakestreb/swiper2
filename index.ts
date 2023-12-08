@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import * as log from './lib/log';
+import * as log from './lib/util/log';
 import Swiper from './lib/Swiper';
 import * as process from 'process'
 

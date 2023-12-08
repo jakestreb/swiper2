@@ -1,4 +1,4 @@
-import Movie from '../../res/Movie';
+import Movie from '../models/Movie';
 import Base from './Base';
 
 interface MovieInsertArg {

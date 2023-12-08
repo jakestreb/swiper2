@@ -1,4 +1,4 @@
-import Torrent from '../../res/Torrent';
+import Torrent from '../models/Torrent';
 import Base from './Base';
 
 interface TorrentInsertArg {

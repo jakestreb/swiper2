@@ -5,7 +5,7 @@ import Torrents from './tables/Torrents';
 import Jobs from './tables/Jobs';
 import Media from './helpers/Media';
 import Videos from './helpers/Videos';
-import * as log from '../log';
+import * as log from '../util/log';
 import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 

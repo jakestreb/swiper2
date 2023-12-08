@@ -1,8 +1,8 @@
 import db from '../../db';
 import Base from './Base';
-import TorrentSearch from '../../apis/TorrentSearch';
-import TMDB from '../../apis/libs/TMDB';
-import * as log from '../../log';
+import TorrentSearch from '../../functions/search/TorrentSearch';
+import TMDB from '../../functions/identify/libs/TMDB';
+import * as log from '../../util/log';
 
 // For 'unreleased' movies without a clear release date, repeatedly search and set
 // directly to 'downloading' when a torrent is found

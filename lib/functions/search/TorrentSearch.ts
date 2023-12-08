@@ -1,10 +1,10 @@
 import ptn from 'parse-torrent-name';
-import * as util from '../util';
-import * as log from '../log';
+import * as util from '../../util';
+import * as log from '../../util/log';
 import ConcurrencyLock from './helpers/ConcurrencyLock';
 import TorrentRanker from './helpers/TorrentRanker';
-import db from '../db';
-import PublicError from '../util/errors/PublicError'
+import db from '../../db';
+import PublicError from '../../util/errors/PublicError'
 
 // Typescript doesn't recognize the default export of TSA.
 const TorrentSearchApi = require('torrent-search-api');

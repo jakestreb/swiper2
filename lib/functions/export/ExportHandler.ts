@@ -3,8 +3,8 @@ import Client from 'ftp';
 import * as path from 'path';
 import sanitize from 'sanitize-filename';
 
-import * as log from './log';
-import * as util from './util';
+import * as log from '../../util/log';
+import * as util from '../../util';
 
 const useFtp = Boolean(parseInt(process.env.USE_FTP || "0", 10));
 const defaultExport = useFtp ? '.' : path.resolve(__dirname, '../../media');

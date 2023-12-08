@@ -1,4 +1,4 @@
-import TextFormatter from '../io/formatters/TextFormatter';
+import TextFormatter from '../../functions/message/formatters/TextFormatter';
 import * as path from 'path';
 
 interface BuildArg {

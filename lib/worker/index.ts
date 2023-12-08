@@ -1,5 +1,5 @@
 import db from '../db';
-import * as log from '../log';
+import * as log from '../util/log';
 import BaseJob from './jobs/Base';
 import * as jobs from './jobs';
 import Swiper from '../Swiper';

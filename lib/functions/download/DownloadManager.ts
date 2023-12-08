@@ -1,12 +1,12 @@
 import rmfr from 'rmfr';
 import * as path from 'path';
-import db from './db';
-import * as log from './log';
-import * as util from './util';
-import ExportHandler from './ExportHandler';
+import db from '../../db';
+import * as log from '../../util/log';
+import * as util from '../../util';
+import ExportHandler from '../export/ExportHandler';
 import MemoryManager from './MemoryManager';
-import Downloader from './downloader/Downloader';
-import Swiper from './Swiper';
+import Downloader from './Downloader';
+import Swiper from '../../Swiper';
 
 export default class DownloadManager {
 

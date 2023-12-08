@@ -1,6 +1,6 @@
 import Swiper from '../Swiper';
-import TMDB from '../apis/libs/TMDB';
-import TVDB from '../apis/libs/TVDB';
+import TMDB from '../functions/identify/libs/TMDB';
+import TVDB from '../functions/identify/libs/TVDB';
 import * as util from '../util';
 
 const FULL = '\u25A0';
