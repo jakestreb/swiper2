@@ -114,7 +114,10 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   await this.downloadManager.addToQueue(video);
 
   return {
-    data: `Queued ${video.format(f)} for download`,
+    data: [
+      `Queued ${video.format(f)} for download`,
+      f.commands('q to view progress')
+    ].join('\n\n'),
     final: true
   };
 }

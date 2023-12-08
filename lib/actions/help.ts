@@ -31,12 +31,13 @@ const COMMANDS = [{
   basics: [
     "download [show or movie]",
     "d [show or movie]",
+    "d [type] [show or movie] [year]"
   ],
   examples: [
     "download the lion king",
-    "d batman 1989",
     "d stranger things s2",
-    "d the office s1 e2-4 & e6"
+    "d batman 1989",
+    "d tv fargo"
   ]
 }, {
   name: "remove",
@@ -62,10 +63,12 @@ const COMMANDS = [{
   description: "View and select torrent to download for a show/movie\nRe-run to select an additional torrent",
   basics: [
     "search [show or movie]",
+    "search [type] [show or movie] [year]"
   ],
   examples: [
-    "search old yeller",
     "search game of thrones s1 e2",
+    "search home alone 1990",
+    "search old yeller",
   ]
 }, {
   name: "reboot",
@@ -81,19 +84,19 @@ export function help(this: Swiper, convo: Conversation): SwiperReply {
   if (!convo.input) {
     const basics = [
       f.commands(
-        'download [show or movie]',
+        'download/d [show or movie]',
         'search [show or movie]',
-        'remove [show or movie]',
+        'remove/rm [show or movie]',
       ),
       f.commands(
-        'queued',
-        'scheduled',
-        'info [show or movie]',
+        'queue/q',
+        'scheduled/s',
+        'info/i [show or movie]',
       ),
       f.commands(
-        'help [command]',
+        'help/h [command]',
         'reboot',
-        'cancel to end any conversation',
+        'cancel/c to end any conversation',
       ),
     ].join('\n\n');
 

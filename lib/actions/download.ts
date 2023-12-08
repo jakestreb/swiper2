@@ -61,8 +61,12 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
       await checkOrAwaitRelease(this, e, i * 10);
     }));
   }
+
   return {
-    data: `${isAnyReleased ? 'Queued' : 'Scheduled'} ${media.format(f)} for download`,
+    data: [
+      `${isAnyReleased ? 'Queued' : 'Scheduled'} ${media.format(f)} for download`,
+      isAnyReleased ? f.commands('q to view progress') : f.commands('s to view scheduled')
+    ].join('\n\n'),
     final: true
   };
 }
