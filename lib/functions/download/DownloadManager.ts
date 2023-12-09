@@ -5,7 +5,7 @@ import * as log from '../../util/log';
 import * as util from '../../util';
 import ExportHandler from '../export/ExportHandler';
 import MemoryManager from './MemoryManager';
-import Downloader from './Downloader';
+import DownloadProcessCaller from './process/DownloadProcessCaller';
 import Swiper from '../../Swiper';
 
 export default class DownloadManager {
@@ -15,7 +15,7 @@ export default class DownloadManager {
 
   public downloadRoot = DownloadManager.DOWNLOAD_ROOT;
 
-  public downloader: Downloader;
+  public downloader: DownloadProcessCaller;
   private exportHandler: ExportHandler;
   public memoryManager: MemoryManager;
 
@@ -26,7 +26,7 @@ export default class DownloadManager {
   constructor(public swiper: Swiper) {
     log.info(`DOWNLOAD_ROOT:${DownloadManager.DOWNLOAD_ROOT}`)
 
-    this.downloader = new Downloader(this.downloadRoot);
+    this.downloader = new DownloadProcessCaller(this.downloadRoot);
     this.exportHandler = new ExportHandler(this.downloadRoot);
     this.memoryManager = new MemoryManager(this.downloadRoot);
 

@@ -1,6 +1,6 @@
 import * as child from 'child_process';
-import * as log from '../../../util/log';
-import * as util from '../../../util';
+import * as log from '../log';
+import * as util from '..';
 import EventEmitter from 'events';
 
 interface Request {
@@ -20,7 +20,7 @@ interface Resolver {
 	reject: (reason?: any) => void;
 }
 
-export default abstract class ProcessManager extends EventEmitter {
+export default abstract class ProcessCaller extends EventEmitter {
 	public static HEALTH_CHECK_INTERVAL_S = 20;
 	public static HEALTH_CHECK_TIMEOUT_S = 8;
 	public static FAIL_HEALTH_CHECK_AFTER = 6;
@@ -66,7 +66,7 @@ export default abstract class ProcessManager extends EventEmitter {
 			}
 		});
 		this.child.on('exit', (code, signal) => {
-			log.error(`Download process exited, restarting: ${signal}`);
+			log.error(`Child process exited, restarting: ${signal}`);
 			if (this.healthCheckTimeout) {
 				clearTimeout(this.healthCheckTimeout);
 				this.healthCheckFailCount = 0;
@@ -78,7 +78,7 @@ export default abstract class ProcessManager extends EventEmitter {
 			this.start();
 		});
 		this.child.on('error', (err) => {
-			log.error(`Download process fatal error: ${err}`);
+			log.error(`Child process fatal error: ${err}`);
 		});
 		this.child.send({
 			id: 0,
@@ -91,7 +91,7 @@ export default abstract class ProcessManager extends EventEmitter {
 	}
 
 	public restart(): void {
-		log.info('Manually restarting download process');
+		log.info('Manually restarting child process');
 		this.child.kill('SIGINT');
 	}
 
@@ -112,7 +112,7 @@ export default abstract class ProcessManager extends EventEmitter {
 	}
 
 	public async healthCheck(): Promise<void> {
-		const timeoutMs = ProcessManager.HEALTH_CHECK_TIMEOUT_S * 1000;
+		const timeoutMs = ProcessCaller.HEALTH_CHECK_TIMEOUT_S * 1000;
 		return this.callWithTimeout('healthCheck', timeoutMs);
 	}
 
@@ -127,7 +127,7 @@ export default abstract class ProcessManager extends EventEmitter {
 			} catch (err) {
 				log.error(`ProcessManager health check failed: ${err}`);
 				this.healthCheckFailCount += 1;
-				if (this.healthCheckFailCount >= ProcessManager.FAIL_HEALTH_CHECK_AFTER) {
+				if (this.healthCheckFailCount >= ProcessCaller.FAIL_HEALTH_CHECK_AFTER) {
 					this.healthCheckFailCount = 0;
 					log.error(`Restarting download process: too many health checks failed`);
 					this.restart();
@@ -135,6 +135,6 @@ export default abstract class ProcessManager extends EventEmitter {
 				}
 			}
 			this.runHealthChecks();
-		}, ProcessManager.HEALTH_CHECK_INTERVAL_S * 1000)
+		}, ProcessCaller.HEALTH_CHECK_INTERVAL_S * 1000)
 	}
 }

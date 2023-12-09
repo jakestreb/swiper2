@@ -1,10 +1,10 @@
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
-import ChildProcess from './ChildProcess';
+import { Process, runProcess } from '../../../util/process/Process';
 import * as log from '../../../util/log';
 import * as util from '../../../util';
 
-export default class DownloadProcess extends ChildProcess {
+class DownloadProcess extends Process {
   public static downloadLimitMbps = 200;
   public static uploadLimitMbps = 5;
 
@@ -79,3 +79,5 @@ export default class DownloadProcess extends ChildProcess {
     });
   }
 }
+
+runProcess(DownloadProcess);

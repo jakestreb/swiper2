@@ -1,7 +1,8 @@
-import ProcessManager from './helper/ProcessManager';
-import * as log from '../../util/log';
+import * as path from 'path';
+import ProcessCaller from '../../../util/process/ProcessCaller';
+import * as log from '../../../util/log';
 
-export default class Downloader extends ProcessManager {
+export default class DownloadProcessCaller extends ProcessCaller {
   public activeDownloads: {[hash: string]: VTorrent} = {};
 
 	constructor(downloadRoot: string) {
@@ -20,9 +21,9 @@ export default class Downloader extends ProcessManager {
     });
 	}
 
-	public get processPath() {
-		return './dist/lib/functions/download/process/runner';
-	}
+  public get processPath(): string {
+    return path.join(__dirname, 'DownloadProcess');  
+  }
 
   public async download(vt: VTorrent): Promise<void> {
     log.debug(`DownloadClient: download(${vt.video})`);
