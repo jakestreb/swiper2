@@ -11,6 +11,7 @@
 version: "3"
 services:
   gluetun:
+    restart: always
     image: qmcgaw/gluetun
     container_name: gluetun
     # See https://github.com/qdm12/gluetun-wiki/blob/main/setup/connect-a-container-to-gluetun.md#external-container-to-gluetun
@@ -24,6 +25,8 @@ services:
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - TZ=America/New_York
   server:
+    depends_on:
+      - gluetun
     restart: always
     build:
       context: .
