@@ -8,6 +8,7 @@
     "lint": "tslint -p tsconfig.json",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start docker": "docker compose up --build",
     "dev": "ts-node index.ts",
     "reset": "rm records.db & rm -rf downloads/*",
     "update-pi": "scripts/update-pi.sh",
