@@ -55,7 +55,8 @@ export function awaitWithTimeout<T>(promise: Promise<T>, timeoutMs: number, errM
         const timeout = setTimeout(() => {
           reject(errMsg || `Promise timed out after ${timeoutMs}ms`);
         }, timeoutMs);
-        promise.then(() => clearTimeout(timeout));
+        // Promise will already throw errors in race, so don't throw again here
+        promise.catch(() => {}).finally(() => clearTimeout(timeout));
       });
       return Promise.race([promise, timeoutPromise]);
     }

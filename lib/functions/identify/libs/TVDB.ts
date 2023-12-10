@@ -1,7 +1,9 @@
 import axios from 'axios';
-import * as log from '../../../util/log';
+import get from 'lodash/get';
+import logger from '../../../util/logger';
 import Show from '../../../db/models/Show';
 import Episode from '../../../db/models/Episode';
+import PublicError from '../../../util/errors/PublicError';
 
 // Return type of the TVDB database, with only fields we need defined.
 interface TVDBShow {
@@ -38,8 +40,10 @@ export default class TVDB {
     return series;
   }
 
-  public static async getSynopsis(showId: number): Promise<string> {
-    const series = await this.getTvdbShow(getImdbId(showId));
+  public static async getSynopsis(show: IShow): Promise<string> {
+    // TODO: This is wasteful since this was just called to identify the show
+    // Use sequelize and differentiate DB models from fetched media interfaces to keep overview in the object
+    const series = await this.getTvdbShow(getImdbId(show.id));
     return series.overview;
   }
 
@@ -69,7 +73,7 @@ export default class TVDB {
   // Does not include episodes
   private static async getTvdbShow(imdbId: string): Promise<TVDBShow> {
     // Get the TVDB series ID from the imdbID.
-    log.debug(`TVDB.getShow: Fetching TVDB ID from IMDB ID`);
+    logger.debug(`TVDB.getShow: Fetching TVDB ID from IMDB ID`);
     const data = await this.makeRequest<any>(TVDB.SEARCH_URL, { imdbId });
     const entries = data.data;
     if (entries.length === 0) {
@@ -78,7 +82,7 @@ export default class TVDB {
     const seriesId = entries[0].id;
 
     // Retrieved the ID, now fetch the series and episodes.
-    log.debug(`TVDB.getShow: Fetching series`);
+    logger.debug(`TVDB.getShow: Fetching series`);
     const seriesUrl = this.getSeriesUrl(seriesId);
     const seriesData = await this.makeRequest<any>(seriesUrl);
     return seriesData.data;
@@ -86,13 +90,23 @@ export default class TVDB {
 
   private static async makeRequest<T>(url: string, params: any = {}): Promise<T> {
     await this.refreshToken();
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${TVDB.token}`,
-      },
-      params,
-    });
-    return response.data;
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${TVDB.token}`,
+        },
+        params,
+      });
+      return response.data;
+    } catch (err: any) {
+      const status = get(err, 'response.status');
+      const code = get(err, 'response.code');
+      logger.error('TVDB request error', { err: err.message, url, status, code });
+      if (status === 404) {
+        throw new PublicError('Media not found in TVDB');
+      }
+      throw new PublicError('Error searching TVDB');
+    }
   }
 
   private static getSeriesUrl(seriesId: number): string {
@@ -109,7 +123,7 @@ export default class TVDB {
     const day = 24 * 60 * 60 * 1000;
     if (now - TVDB.tokenTs > day) {
       // Needs refresh.
-      log.debug(`Refreshing TVDB token`);
+      logger.debug(`Refreshing TVDB token`);
       const response = await axios.post(TVDB.LOGIN_URL, {
         apikey: TVDB.API_KEY,
         pin: TVDB.PIN
@@ -120,7 +134,7 @@ export default class TVDB {
   }
 
   private static async fetchEpisodes(seriesId: number): Promise<TVDBEpisode[]> {
-    log.debug(`_searchTVDB: Fetching episodes`);
+    logger.debug(`_searchTVDB: Fetching episodes`);
     const url = this.getEpisodesUrl(seriesId);
     const doFetch = async (pageNum: number) => this.makeRequest<any>(url, { page: pageNum });
     const firstResult = await doFetch(1);
@@ -141,7 +155,10 @@ function convertImdbId(imdbId: string): number {
 }
 
 function getImdbId(showId: number): string {
-  return `tt${showId}`;
+  const minLength = 7;
+  const idLength = Math.max(`${showId}`.length, minLength);
+  const sevenDigit = `0000000${showId}`.slice(-idLength);
+  return `tt${sevenDigit}`;
 }
 
 function hashEpisodeId(showId: number, seasonNum: number, episodeNum: number): number {

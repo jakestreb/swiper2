@@ -1,9 +1,7 @@
 import MediaSearch from './MediaSearch';
 import * as util from '../../util';
-import * as logger from '../../util/log';
 import TextFormatter from '../message/formatters/TextFormatter';
 import EpisodeParser from './EpisodeParser';
-import PublicError from '../../util/errors/PublicError';
 
 interface ParserOptions {
   forceEpisodes?: EpisodesDescriptor;
@@ -26,17 +24,8 @@ export default class MediaParser {
 
     // If media has not been found yet, find it.
     if (!convo.media) {
-      try {
-        convo.media = await MediaSearch.search(mediaQuery);
-        convo.input = ''; // Clear the input since it has already been used.
-      } catch (err) {
-        logger.error(`Media lookup failed: ${err}`);
-        if ((err as any).response.status === 404) {
-          // Return specific error when media is not found
-          throw new PublicError('Failed to identify media from request');
-        }
-        throw err;
-      }
+      convo.media = await MediaSearch.search(mediaQuery);
+      convo.input = ''; // Clear the input since it has already been used.
     }
 
     // If the media isn't a single video and the episodes weren't specified, ask about them.

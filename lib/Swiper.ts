@@ -1,4 +1,4 @@
-import * as log from './util/log';
+import logger from './util/logger';
 import * as util from './util';
 import db from './db';
 import Worker from './worker';
@@ -85,50 +85,50 @@ export default class Swiper {
 
   @reqMedia
   public async download(convo: Conversation): Promise<SwiperReply> {
-    log.debug(`Swiper: download`);
+    logger.debug(`Swiper: download`);
     return download.call(this, convo);
   }
 
   @reqVideo
   public async search(convo: Conversation): Promise<SwiperReply> {
-    log.debug(`Swiper: search`);
+    logger.debug(`Swiper: search`);
     return search.call(this, convo);
   }
 
   @reqMediaQuery
   public async remove(convo: Conversation): Promise<SwiperReply> {
-    log.debug(`Swiper: remove`);
+    logger.debug(`Swiper: remove`);
     return remove.call(this, convo);
   }
 
   public async queued(convo: Conversation): Promise<SwiperReply> {
-    log.debug(`Swiper: queued`);
+    logger.debug(`Swiper: queued`);
     return queued.call(this, convo);
   }
 
   public async scheduled(convo: Conversation): Promise<SwiperReply> {
-    log.debug(`Swiper: scheduled`);
+    logger.debug(`Swiper: scheduled`);
     return scheduled.call(this, convo);
   }
 
   @reqFullMedia
   public async info(convo: Conversation): Promise<SwiperReply> {
-    log.debug(`Swiper: info`);
+    logger.debug(`Swiper: info`);
     return info.call(this, convo);
   }
 
   public help(convo: Conversation): SwiperReply {
-    log.debug(`Swiper: help`);
+    logger.debug(`Swiper: help`);
     return help.call(this, convo);
   }
 
   public unknown(convo: Conversation): SwiperReply {
-    log.debug(`Swiper: unknown`);
+    logger.debug(`Swiper: unknown`);
     return unknown.call(this, convo);
   }
 
   public cancel(convo: Conversation): SwiperReply {
-    log.debug(`Swiper: cancel`);
+    logger.debug(`Swiper: cancel`);
     return {
       data: 'Ok',
       final: true
@@ -136,7 +136,7 @@ export default class Swiper {
   }
 
   public reboot(convo: Conversation): SwiperReply {
-    log.debug(`Swiper: reboot`);
+    logger.debug(`Swiper: reboot`);
     setTimeout(() => process.kill(process.pid, 'SIGINT'), 2000);
     return {
       data: 'Rebooting',
@@ -145,7 +145,7 @@ export default class Swiper {
   }
 
   public ip(convo: Conversation): Promise<SwiperReply> {
-    log.debug(`Swiper: ip`);
+    logger.debug(`Swiper: ip`);
     return ip.call(this, convo);
   }
 

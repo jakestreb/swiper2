@@ -2,7 +2,7 @@ import db from '../../db';
 import Base from './Base';
 import TorrentSearch from '../../functions/search/TorrentSearch';
 import TMDB from '../../functions/identify/libs/TMDB';
-import * as log from '../../util/log';
+import logger from '../../util/logger';
 
 // For 'unreleased' movies without a clear release date, repeatedly search and set
 // directly to 'downloading' when a torrent is found
@@ -26,12 +26,12 @@ export class CheckForRelease extends Base {
     const isUpdateRun = (runCount % CheckForRelease.UPDATE_INFO_EVERY_N_RUNS) === 0;
     if (video.isMovie() && isUpdateRun) {
       try {
-        log.info(`Updating release info for ${video}`);
+        logger.info(`Updating release info for ${video}`);
         // Fetch updated release date info
         const updated = await TMDB.refreshReleases(video);
         await db.movies.updateReleases(updated);
       } catch (err) {
-        log.error(`Failed to refresh releases for ${video}: ${err}`);
+        logger.error(`Failed to refresh releases for ${video}: ${err}`);
       }
     }
 

@@ -1,6 +1,8 @@
 import TextFormatter from '../../functions/message/formatters/TextFormatter';
 import MediaParser from '../../functions/identify/MediaParser';
 import Swiper from '../../Swiper';
+import PublicError from '../../util/errors/PublicError';
+import logger from '../../util/logger';
 
 type ActionFn = (convo: Conversation, f: TextFormatter) => Promise<SwiperReply|void>;
 
@@ -41,7 +43,16 @@ function createDecorator(
   const origFn = descriptor.value;
   descriptor.value = async function(convo: Conversation, ...args: any) {
     const f = (this as Swiper).getTextFormatter(convo);
-    const reply = await modifier(convo, f);
+    let reply;
+    try {
+      reply = await modifier(convo, f);
+    } catch (err) {
+      logger.error('Decorator error', { err });
+      reply = {
+        err: err instanceof PublicError ? err.message : 'Media lookup failed',
+        final: true
+      };
+    }
     if (reply) {
       return reply;
     }

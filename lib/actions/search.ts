@@ -1,6 +1,6 @@
 import db from '../db';
 import * as matchUtil from './helpers/matchUtil';
-import * as log from '../util/log';
+import logger from '../util/logger';
 import * as util from '../util';
 import Swiper from '../Swiper';
 import TorrentSearch from '../functions/search/TorrentSearch';
@@ -13,7 +13,7 @@ const STAR = '\u2605';
 const REMOVED = '(removed)';
 
 export async function search(this: Swiper, convo: Conversation): Promise<SwiperReply> {
-  log.debug(`Swiper: search`);
+  logger.debug(`Swiper: search`);
   const f = this.getTextFormatter(convo);
 
   const media = convo.media as IMedia;
@@ -22,7 +22,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 
   // Perform the search and add the torrents to the conversation.
   if (!convo.torrents) {
-    this.notifyClient(convo.id, `Searching for ${video} torrents`);
+    await this.notifyClient(convo.id, `Searching for ${video} torrents`);
     const results = await TorrentSearch.search(video);
     convo.torrents = results.filter(t => !active.some(at => compareHashes(t.hash, at.hash)));
     convo.pageNum = 0;
@@ -128,7 +128,7 @@ async function formatSelection(
   pageNum: number,
   f: TextFormatter,
 ): Promise<string> {
-  log.debug('search: Formatting page');
+  logger.debug('search: Formatting page');
   const removed = await db.torrents.getWithStatus('removed');
   const startIndex = PER_PAGE * pageNum;
   const endIndex = startIndex + PER_PAGE - 1;

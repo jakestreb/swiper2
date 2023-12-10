@@ -74,7 +74,7 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
 function getDefinitiveRelease(video: IVideo): Date|undefined {
   const releases = (video as IMovie).releases;
   let definitive = releases ? releases.digital : (video as IEpisode).airDate;
-  let expected = video.isMovie() && video.getExpectedRelease();
+  const expected = video.isMovie() && video.getExpectedRelease();
   if (!definitive && expected) {
     // If there's no definitive release, but it's 4 months after expected, assume its released
     expected.setDate(expected.getDate() + 120);

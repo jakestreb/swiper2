@@ -1,6 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import * as readline from 'readline';
-import * as log from '../../util/log';
+import logger from '../../util/logger';
 import TextFormatter from './formatters/TextFormatter';
 import TelegramFormatter from './formatters/TelegramFormatter';
 import PublicError from '../../util/errors/PublicError'
@@ -45,22 +45,19 @@ export default class CommManager {
     const commType = this.clientCommTypes[clientId];
     if (commType === 'cli') {
       if (msg.data) {
-        log.info(msg.data);
+        logger.info(msg.data);
       } else {
-        log.inputError(msg.err);
+        logger.error(msg.err);
       }
-      log.prompt();
+      // Prompt input
+      console.log('> ')
     } else {
-      if (msg.data) {
-        log.foreignResponse(msg.data);
-      } else {
-        log.foreignInputError(msg.err);
-      }
-      const msgText = (msg.data ? msg.data : msg.err) || '';
+      const msgText = msg.data || msg.err || '';
+      logger.info('Responding to client', { data: msgText });
       const messages = msgText.split(TelegramFormatter.MSG_SPLIT_STRING);
-      messages.map(msg => {
-        this.telegramBot.sendMessage(clientId, msg, {parse_mode: 'HTML'});
-      });
+      Promise.all(messages.map(msg =>
+        this.telegramBot.sendMessage(clientId, msg, { parse_mode: 'HTML' })
+      ));
     }
   }
 
@@ -79,12 +76,12 @@ export default class CommManager {
   }
 
   private addTelegramListener() {
-    this.telegramBot.on("text", (message: any) => {
-      log.debug(`Received telegram message: ${message.text} (${new Date(message.date * 1000)})`);
-      this.handleClientMsg('telegram', message.chat.id, message.text);
+    this.telegramBot.on("text", async (message: any) => {
+      logger.debug('Received telegram message', { data: message.text, date: new Date(message.date * 1000) });
+      await this.handleClientMsg('telegram', message.chat.id, message.text);
     });
 
-    this.telegramBot.on("polling_error", (message: any) => log.error(`Telegram error: ${message}`));
+    this.telegramBot.on("polling_error", (message: any) => logger.error(`Telegram error: ${message}`));
   }
 
   private async handleClientMsg(commType: CommType, id: number, msg?: string) {
@@ -94,12 +91,12 @@ export default class CommManager {
     try {
       await this.msgHandler(id, msg);
     } catch (err) {
-      log.error(`Error handling ${commType} request "${msg}": ${err}`);
       let reply = 'Something went wrong';
       if (err instanceof PublicError) {
         reply = err.message;
       }
-      this.replyToClient(id, {err: reply});
+      logger.error(`Error handling ${commType} request "${msg}"`, { err, reply });
+      this.replyToClient(id, { err: reply });
     }
   }
 }

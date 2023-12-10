@@ -1,7 +1,7 @@
 import rmfr from 'rmfr';
 import * as path from 'path';
 import db from '../../db';
-import * as log from '../../util/log';
+import logger from '../../util/logger';
 import * as util from '../../util';
 import ExportHandler from '../export/ExportHandler';
 import MemoryManager from './MemoryManager';
@@ -24,7 +24,7 @@ export default class DownloadManager {
   private isStarted: boolean = false;
 
   constructor(public swiper: Swiper) {
-    log.info(`DOWNLOAD_ROOT:${DownloadManager.DOWNLOAD_ROOT}`)
+    logger.info(`DOWNLOAD_ROOT:${DownloadManager.DOWNLOAD_ROOT}`)
 
     this.downloader = new DownloadProcessCaller(this.downloadRoot);
     this.exportHandler = new ExportHandler(this.downloadRoot);
@@ -52,7 +52,7 @@ export default class DownloadManager {
   // A non-async public wrapper is used to prevent accidental waiting on the ping function.
   public ping(): void {
     this._ping().catch(err => {
-      log.subProcessError(`DownloadManager _ping failed with error: ${err}`);
+      logger.error(`DownloadManager _ping failed with error: ${err}`);
     });
   }
 
@@ -72,7 +72,7 @@ export default class DownloadManager {
 
   // This function should generally not be awaited.
   private async _ping(): Promise<void> {
-    log.debug(`DownloadManager: _ping()`);
+    logger.debug(`DownloadManager: _ping()`);
     await this.managingPromise;
     // If after waiting, the downloads are already being managed again, the goal of the ping
     // is already being accomplished, so this ping can return.
@@ -90,7 +90,7 @@ export default class DownloadManager {
   // - a download completes
   // - a torrent download is marked/unmarked as 'slow'
   private async manageDownloads(): Promise<void> {
-    log.debug(`DownloadManager: manageDownloads()`);
+    logger.debug(`DownloadManager: manageDownloads()`);
 
     const downloads: IVideo[] = await db.videos.getWithStatus('downloading');
     const withTorrents = await Promise.all(downloads.map(d => db.videos.addTorrents(d)));
@@ -142,7 +142,7 @@ export default class DownloadManager {
         allocateMb,
         progressMb,
       });
-      log.debug(`${spaceLeft && spotsLeft ? '' : 'Not '}Queuing ${vt.video}: ${info}`);
+      logger.debug(`${spaceLeft && spotsLeft ? '' : 'Not '}Queuing ${vt.video}: ${info}`);
 
       if (spaceLeft && spotsLeft) {
         // Allocate
@@ -156,19 +156,19 @@ export default class DownloadManager {
       }
     }, Promise.resolve());
 
-    log.debug(`DownloadManager: manageDownloads() starting ${toStart.length}`);
-    log.debug(`DownloadManager: manageDownloads() stopping ${toPause.length}`);
+    logger.debug(`DownloadManager: manageDownloads() starting ${toStart.length}`);
+    logger.debug(`DownloadManager: manageDownloads() stopping ${toPause.length}`);
 
     toStart.forEach(vt => {
       this.startDownload(vt)
         .catch(err => {
-          log.error(`Downloading ${vt.video} failed: ${err}`);
+          logger.error(`Downloading ${vt.video} failed: ${err}`);
         });
     });
     toPause.forEach(vt => {
       this.stopDownload(vt)
         .catch(err => {
-          log.error(`Stopping download ${vt.video} failed: ${err}`);
+          logger.error(`Stopping download ${vt.video} failed: ${err}`);
         });
     });
 
@@ -177,14 +177,14 @@ export default class DownloadManager {
       db.videos.setQueueOrder(sorted),
       db.torrents.setQueueOrder(sortedTorrents)
     ]).catch(err => {
-      log.error(`Failed to set queue order: ${err}`);
+      logger.error(`Failed to set queue order: ${err}`);
     })
 
     this.isStarted = true;
   }
 
   private async startDownload(torrent: VTorrent): Promise<void> {
-    log.debug(`DownloadManager: startDownload(${torrent.video})`);
+    logger.debug(`DownloadManager: startDownload(${torrent.video})`);
 
     // Run the download
     await db.torrents.setStatus(torrent, 'downloading');
@@ -200,7 +200,7 @@ export default class DownloadManager {
     const videos = await db.videos.getWithStatus('exporting');
     Promise.all(videos.map(v => this.exportVideo(v.id)))
       .catch(err => {
-        log.error(`Export video error: ${err}`);
+        logger.error(`Export video error: ${err}`);
       });
   }
 
@@ -254,7 +254,7 @@ export default class DownloadManager {
     try {
       await rmfr(path.join(this.downloadRoot, video.getDownloadPath()));
     } catch (err) {
-      log.subProcessError(`Error deleting video files: ${err}`);
+      logger.error(`Error deleting video files: ${err}`);
     }
   }
 
@@ -262,12 +262,12 @@ export default class DownloadManager {
     try {
       await rmfr(path.join(this.downloadRoot, torrent.getDownloadPath()));
     } catch (err) {
-      log.subProcessError(`Error deleting torrent files: ${err}`);
+      logger.error(`Error deleting torrent files: ${err}`);
     }
   }
 
   private async onDownloadComplete(vt: VTorrent): Promise<void> {
-    log.debug(`Torrent ${vt.video} download completed`);
+    logger.debug(`Torrent ${vt.video} download completed`);
 
     // On completion, mark the video status as exporting
     await db.torrents.setStatus(vt, 'completed');
@@ -275,7 +275,7 @@ export default class DownloadManager {
 
     this.exportVideo(vt.videoId)
       .catch(err => {
-        log.error(`Export video error: ${err}`);
+        logger.error(`Export video error: ${err}`);
       });
   }
 }

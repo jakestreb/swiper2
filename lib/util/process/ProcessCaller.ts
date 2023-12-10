@@ -1,5 +1,5 @@
 import * as child from 'child_process';
-import * as log from '../log';
+import logger from '../logger';
 import * as util from '..';
 import EventEmitter from 'events';
 
@@ -66,7 +66,7 @@ export default abstract class ProcessCaller extends EventEmitter {
 			}
 		});
 		this.child.on('exit', (code, signal) => {
-			log.error(`Child process exited, restarting: ${signal}`);
+			logger.error(`Child process exited, restarting: ${signal}`);
 			if (this.healthCheckTimeout) {
 				clearTimeout(this.healthCheckTimeout);
 				this.healthCheckFailCount = 0;
@@ -78,7 +78,7 @@ export default abstract class ProcessCaller extends EventEmitter {
 			this.start();
 		});
 		this.child.on('error', (err) => {
-			log.error(`Child process fatal error: ${err}`);
+			logger.error(`Child process fatal error: ${err}`);
 		});
 		this.child.send({
 			id: 0,
@@ -91,7 +91,7 @@ export default abstract class ProcessCaller extends EventEmitter {
 	}
 
 	public restart(): void {
-		log.info('Manually restarting child process');
+		logger.info('Manually restarting child process');
 		this.child.kill('SIGINT');
 	}
 
@@ -125,11 +125,11 @@ export default abstract class ProcessCaller extends EventEmitter {
 				await this.healthCheck();
 				this.healthCheckFailCount = 0;
 			} catch (err) {
-				log.error(`ProcessManager health check failed: ${err}`);
+				logger.error(`ProcessManager health check failed: ${err}`);
 				this.healthCheckFailCount += 1;
 				if (this.healthCheckFailCount >= ProcessCaller.FAIL_HEALTH_CHECK_AFTER) {
 					this.healthCheckFailCount = 0;
-					log.error(`Restarting download process: too many health checks failed`);
+					logger.error(`Restarting download process: too many health checks failed`);
 					this.restart();
 					return;
 				}

@@ -1,7 +1,7 @@
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
 import { Process, runProcess } from '../../../util/process/Process';
-import * as log from '../../../util/log';
+import logger from '../../../util/logger';
 import * as util from '../../../util';
 
 class DownloadProcess extends Process {
@@ -55,7 +55,7 @@ class DownloadProcess extends Process {
     const toDestroy = this.client.torrents.find(ct => ct.path === torrentPath);
     if (!toDestroy) {
       // Assume Swiper was reset after download and torrent is already destroyed
-      log.subProcessError('Torrent already destroyed');
+      logger.error('Torrent already destroyed');
       return;
     }
     return new Promise((resolve, reject) => {
@@ -74,7 +74,7 @@ class DownloadProcess extends Process {
     const uploadLimit = (DownloadProcess.uploadLimitMbps * 1024 * 1024) / 8;
     this.client = new WebTorrent({downloadLimit, uploadLimit} as any);
     this.client.on('error', (err) => {
-      log.subProcessError(`WebTorrent fatal error: ${err}`);
+      logger.error(`WebTorrent fatal error: ${err}`);
       this.startClient(); // Restart webtorrent on error
     });
   }

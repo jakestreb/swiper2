@@ -18,10 +18,10 @@ export async function info(this: Swiper, convo: Conversation): Promise<SwiperRep
 
   let data;
   if (media.type === 'movie') {
-    const synopsis = await TMDB.getSynopsis(media.id);
+    const synopsis = await TMDB.getSynopsis(media as IMovie);
     data = formatMovie(media as IMovie, synopsis, f);
   } else {
-    const synopsis = await TVDB.getSynopsis(media.id);
+    const synopsis = await TVDB.getSynopsis(media as IShow);
     data = formatShow(media as IShow, synopsis, f);
   }
 

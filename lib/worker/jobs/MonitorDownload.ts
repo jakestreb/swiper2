@@ -1,7 +1,7 @@
 import * as util from '../../util';
 import db from '../../db';
 import Base from './Base';
-import * as log from '../../util/log';
+import logger from '../../util/logger';
 
 const SLOW_SPEED_MBS = 0.02;
 
@@ -51,7 +51,7 @@ export class MonitorDownload extends Base {
 		const count = allTorrents.length;
 
 		if (!isSearching && downloading.every(t => isStuck(t)) && count < maxCount) {
-    	log.info(`MonitorDownload: adding torrent #${count + 1} for stuck video ${video}`);
+		logger.info(`MonitorDownload: adding torrent #${count + 1} for stuck video ${video}`);
 		  await this.swiper.worker.addJob({
 		    type: 'AddTorrent',
 		    videoId: video.id,

@@ -1,6 +1,6 @@
 import ptn from 'parse-torrent-name';
 import * as util from '../../util';
-import * as log from '../../util/log';
+import logger from '../../util/logger';
 import ConcurrencyLock from './helpers/ConcurrencyLock';
 import TorrentRanker from './helpers/TorrentRanker';
 import db from '../../db';
@@ -35,7 +35,7 @@ export default class TorrentSearch {
   public static lock = new ConcurrencyLock(TorrentSearch.searchConcurrency);
 
   public static search(video: IVideo): Promise<TorrentResult[]> {
-    log.debug(`TorrentSearch.search ${video}`);
+    logger.debug(`TorrentSearch.search ${video}`);
     return this.lock.acquire(() => this.doRetrySearch(video));
   }
 
@@ -43,10 +43,10 @@ export default class TorrentSearch {
     const torrents = await this.search(video);
     const best = await this.getBestTorrent(video, torrents, minRating);
     if (!best) {
-      log.debug(`TorrentSearch: getBestTorrent(${video}, ${minRating}) failed (no torrent found)`);
+      logger.debug(`TorrentSearch: getBestTorrent(${video}, ${minRating}) failed (no torrent found)`);
       return false;
     }
-    log.debug(`TorrentSearch: getBestTorrent(${video}) succeeded`);
+    logger.debug(`TorrentSearch: getBestTorrent(${video}) succeeded`);
     const torrent = {
       ...best,
       status: 'pending' as TorrentStatus,
@@ -58,7 +58,7 @@ export default class TorrentSearch {
   }
 
   public static async getBestTorrent(video: IVideo, torrents: TorrentResult[], minRating: number = 1): Promise<TorrentResult|null> {
-    log.debug(`TorrentSearch: getBestTorrent(${video})`);
+    logger.debug(`TorrentSearch: getBestTorrent(${video})`);
     const ranker = new TorrentRanker(video);
 
     const selected = await db.torrents.getForVideo(video.id);
@@ -86,7 +86,7 @@ export default class TorrentSearch {
 
   private static doRetrySearch(video: IVideo): Promise<TorrentResult[]> {
     const doRetrySearch: (retries: number) => Promise<TorrentResult[]> = async retries => {
-      log.debug(`TorrentSearch: performing search for ${video}`);
+      logger.debug(`TorrentSearch: performing search for ${video}`);
       let results;
       try {
         results = await this.doSearch(video);
@@ -95,10 +95,10 @@ export default class TorrentSearch {
         }
         return results;
       } catch (err) {
-        log.error(`TorrentSearch search failed: ${err}`);
+        logger.error(`TorrentSearch search failed: ${err}`);
         if (retries > 0) {
           await util.delay(100);
-          log.debug(`TorrentSearch: retrying search ${video}`);
+          logger.debug(`TorrentSearch: retrying search ${video}`);
           return doRetrySearch(retries - 1);
         }
         throw err;
@@ -129,14 +129,14 @@ export default class TorrentSearch {
     if (!result.magnet && !result.link) {
       fetchedMagnet = await TorrentSearchApi.getMagnet(result);
       if (!fetchedMagnet) {
-        log.debug(`Failed to fetch magnet for torrent result: ${result.title}`);
+        logger.debug(`Failed to fetch magnet for torrent result: ${result.title}`);
         return null;
       }
     }
     const uri = result.magnet || result.link || fetchedMagnet!;
     const matches = uri.match(TorrentSearch.hashRegex);
     if (!matches) {
-      log.error(`No hash match for torrent: ${uri}`);
+      logger.error(`No hash match for torrent: ${uri}`);
       return null;
     }
     result.hash = matches[1].toUpperCase();

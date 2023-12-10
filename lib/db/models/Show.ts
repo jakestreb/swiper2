@@ -23,11 +23,11 @@ export default class Show extends Media implements IMedia {
   }
 
   public get year(): string {
-    if (this.episodes.length === 0) {
+    const first = this.episodes.find(ep => ep.seasonNum === 1 && ep.episodeNum === 1);
+    if (!first) {
       return '';
     }
-    const date = this.episodes[0].airDate;
-    return date ? `${date.getFullYear()}` : '';
+    return first.airDate ? `${first.airDate.getFullYear()}` : '';
   }
 
   public getNextToAir(): IEpisode|null {

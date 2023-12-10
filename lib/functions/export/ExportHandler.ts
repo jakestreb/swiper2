@@ -3,7 +3,7 @@ import Client from 'ftp';
 import * as path from 'path';
 import sanitize from 'sanitize-filename';
 
-import * as log from '../../util/log';
+import logger from '../../util/logger';
 import * as util from '../../util';
 
 const useFtp = Boolean(parseInt(process.env.USE_FTP || "0", 10));
@@ -21,7 +21,7 @@ export default class ExportHandler {
 
   // Save a video in the correct directory, adding any necessary directories.
   public async export(vt: VTorrent): Promise<void> {
-    log.debug(`ExportHandler.export(${vt.video})`);
+    logger.debug(`ExportHandler.export(${vt.video})`);
     const exportRoot = ExportHandler.EXPORT_ROOT;
     const useFtp = ExportHandler.USE_FTP;
 
@@ -36,13 +36,13 @@ export default class ExportHandler {
     if (!useFtp) {
       // The FTP copy process creates any folders needed in the FTP directory, but the
       // normal copy process does not.
-      log.debug(`ExportHandler: Creating missing folders in export directory`);
+      logger.debug(`ExportHandler: Creating missing folders in export directory`);
       await util.createSubdirs(exportRoot, dirs);
     }
     const exportPath = path.join(exportRoot, dirs);
 
     // Move the files to the final directory.
-    log.debug(`ExportHandler: Copying videos to ${exportPath}${useFtp ? 'via ftp' : ''}`);
+    logger.debug(`ExportHandler: Copying videos to ${exportPath}${useFtp ? 'via ftp' : ''}`);
     const torrentPath = path.join(this.downloadRoot, vt.getDownloadPath());
     const files = await util.getFiles(torrentPath);
     const copyActions = files.map((filePath: string) => {
@@ -52,7 +52,7 @@ export default class ExportHandler {
         const fileName = sanitize(path.basename(filePath));
         to = path.join(exportPath, fileName);
       } catch (err) {
-        log.error(`Copy failed from ${from} to ${to}`);
+        logger.error(`Copy failed from ${from} to ${to}`);
         throw err;
       }
       return useFtp ? this.ftpCopy(from, to) : fs.copy(from, to);
@@ -64,7 +64,7 @@ export default class ExportHandler {
   }
 
   private ftpCopy(src: string, dst: string): Promise<void> {
-    log.debug(`ExportHandler: ftpCopy(${src}, ${dst})`);
+    logger.debug(`ExportHandler: ftpCopy(${src}, ${dst})`);
     const hostIp = ExportHandler.FTP_HOST_IP;
     const c = new Client();
     const directory = path.dirname(dst);

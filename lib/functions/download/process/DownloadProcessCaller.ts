@@ -1,6 +1,6 @@
 import * as path from 'path';
 import ProcessCaller from '../../../util/process/ProcessCaller';
-import * as log from '../../../util/log';
+import logger from '../../../util/logger';
 
 export default class DownloadProcessCaller extends ProcessCaller {
   public activeDownloads: {[hash: string]: VTorrent} = {};
@@ -14,7 +14,7 @@ export default class DownloadProcessCaller extends ProcessCaller {
         Object.keys(this.activeDownloads)
         .map(hash => this.activeDownloads[hash])
         .map(t => {
-          log.info(`Restarting download: ${t}`);
+          logger.info(`Restarting download: ${t}`);
           this.download(t);
         })
       );
@@ -26,7 +26,7 @@ export default class DownloadProcessCaller extends ProcessCaller {
   }
 
   public async download(vt: VTorrent): Promise<void> {
-    log.debug(`DownloadClient: download(${vt.video})`);
+    logger.debug(`DownloadClient: download(${vt.video})`);
     this.activeDownloads[vt.hash] = vt;
     await this.call('download', vt.hash, vt.getDownloadPath());
     this.emit('downloadComplete', vt);
@@ -34,11 +34,11 @@ export default class DownloadProcessCaller extends ProcessCaller {
   }
 
   public async getProgress(torrent: ITorrent, timeoutMs?: number): Promise<DownloadProgress> {
-    log.debug(`DownloadClient: getProgress(${torrent.id})`);
+    logger.debug(`DownloadClient: getProgress(${torrent.id})`);
     try {
       return await this.callWithTimeout('getProgress', timeoutMs || 0, torrent.hash);
     } catch (err) {
-      log.error(`DownloadClient: getProgress(${torrent.id}) failed`);
+      logger.error(`DownloadClient: getProgress(${torrent.id}) failed`);
       return {};
     }
   }

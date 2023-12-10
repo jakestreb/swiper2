@@ -1,5 +1,6 @@
 import axios from 'axios';
-import * as log from '../../../util/log';
+import get from 'lodash/get';
+import logger from '../../../util/logger';
 import * as util from '../../../util';
 import Movie from '../../../db/models/Movie';
 import PublicError from '../../../util/errors/PublicError';
@@ -27,10 +28,12 @@ export default class TMDB {
   private static URL_V3 = 'https://api.themoviedb.org/3';
 
   public static async search(info: MediaQuery): Promise<TMDBMedia> {
-    log.debug(`TMDB.search ${info.title}`);
+    logger.debug(`TMDB.search ${info.title}`);
     const { title, year, type } = info;
     const url = this.getSearchUrl(title, year, type);
+
     let { results } = await this.makeRequest<any>(url);
+
     if (year) {
       results = results.filter((_media: TMDBMedia) =>
         (_media as TMDBMovie).release_date && getYear((_media as TMDBMovie).release_date) === year ||
@@ -47,16 +50,15 @@ export default class TMDB {
     return match;
   }
 
-  public static async getSynopsis(movieId: number): Promise<string> {
-    log.debug(`TMDB.getSynopsis ${movieId}`);
-    const tmdbMovie = await this.getTmdbMovie(movieId);
-    const url = await this.getMovieDetailsUrl(tmdbMovie.id);
+  public static async getSynopsis(movie: IMovie): Promise<string> {
+    logger.debug('TMDB.getSynopsis', { movie });
+    const url = await this.getMovieDetailsUrl(movie.id);
     const data = await this.makeRequest<any>(url);
     return data.overview;
   }
 
   public static async refreshReleases(movie: IMovie): Promise<IMovie> {
-    log.debug(`TMDB.refreshReleases ${movie}`);
+    logger.debug(`TMDB.refreshReleases ${movie}`);
     const tmdbMovie = await this.getTmdbMovie(movie.id);
     const freshMovie = await this.toMovie(tmdbMovie);
     movie.releases = freshMovie.releases;
@@ -87,7 +89,7 @@ export default class TMDB {
       }
       digitalRelease = relevant[0].release_date;
     } catch (err) {
-      log.debug(`TMDB.toMovie fetching release date failed: ${err}`);
+      logger.debug(`TMDB.toMovie fetching release date failed: ${err}`);
     }
 
     const releases = {
@@ -149,6 +151,7 @@ export default class TMDB {
 
   private static async makeRequest<T>(url: string): Promise<T> {
     try {
+      logger.info('Making TMDB request', { url });
       const response = await axios.get(url, {
         headers: {
           Authorization: `Bearer ${TMDB.AUTH_TOKEN}`,
@@ -156,8 +159,13 @@ export default class TMDB {
       });
       return response.data;
     } catch (err: any) {
-      log.error(`Failed The Movie Database request: ${err}`);
-      throw err;
+      const status = get(err, 'response.status');
+      const code = get(err, 'response.code');
+      logger.error('TMDB request error', { err, url, status, code });
+      if (status === 404) {
+        throw new PublicError('Media not found in TMDB');
+      }
+      throw new PublicError('Error searching TMDB');
     }
   }
 }
