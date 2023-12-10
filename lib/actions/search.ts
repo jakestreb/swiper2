@@ -9,6 +9,7 @@ import TorrentSearch from '../functions/search/TorrentSearch';
 const PER_PAGE = 3;
 
 const STAR = '\u2605';
+const DOWN_ARROW = '\u2193';
 
 const REMOVED = '(removed)';
 
@@ -114,10 +115,10 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
   await this.downloadManager.addToQueue(video);
 
   return {
-    data: [
+    data: f.multiMessage(
       `Queued ${video.format(f)} for download`,
-      f.commands('q to view progress')
-    ].join('\n\n'),
+      f.commands('queue')
+    ),
     final: true
   };
 }
@@ -135,37 +136,40 @@ async function formatSelection(
   const pageTorrents = torrents.slice(startIndex, startIndex + PER_PAGE);
   const torrentRows = pageTorrents.map((t, i) => {
     const isRemoved = removed.some(r => compareHashes(t.hash, r.hash));
-    const numberRow = [f.b(`${startIndex + i + 1}`)];
-    if (isRemoved) {
-      numberRow.push(REMOVED);
-    }
-    return [numberRow.join(f.sp(1)), formatTorrent(t, f)].join('\n');
+    return [f.m(`${startIndex + i + 1} - `), formatTorrent(t, isRemoved, f)].join('');
   });
   const commands = formatCommands([startIndex + 1, endIndex + 1], torrents.length, f);
-  return [torrentRows.join('\n\n'), commands].join('\n\n');
+  return f.multiMessage(torrentRows.join('\n\n'), commands);
 }
 
-function formatTorrent(torrent: TorrentResult, f: TextFormatter): string {
-  const peers = `${torrent.seeders} peers`;
+function formatTorrent(torrent: TorrentResult, isRemoved: boolean, f: TextFormatter): string {
+  const peers = `${torrent.seeders || 0}${DOWN_ARROW}`;
   const size = util.formatSize(torrent.sizeMb);
   const parsedDate = util.parseDate(torrent.uploadTime);
   const date = parsedDate ? util.formatDateSimple(parsedDate) : torrent.uploadTime;
   const rating = STAR.repeat(torrent.starRating);
 
-  const data = f.dataRow(rating, peers, size, date);
+  const data = f.dataRow(peers, size, rating);
   const title = torrent.title.replace(/\./g, ' ');
+  const torrentRows = [data, f.i(title)];
 
-  return [data, title].join('\n');
+  if (isRemoved) {
+    torrentRows.push(REMOVED);
+  }
+
+  torrentRows.push(f.i(date));
+
+  return torrentRows.join('\n');
 }
 
 function formatCommands(range: number[], total: number, f: TextFormatter): string {
-  const prev = range[0] === 0 ? '' : 'prev';
-  const next = range[1] === total - 1 ? '' : 'next';
-  const rangeTotal = (range[1] - range[0]) + 1;
+  const prev = range[0] === 1 ? '' : 'prev';
+  const next = range[1] >= total ? '' : 'next';
+  const rangeTotal = (Math.min(range[1], total) - range[0]) + 1;
   const spread = [...Array(rangeTotal).keys()]
     .map(n => n + range[0])
     .join('/');
-  return f.commands(f.b(spread), f.b(prev), f.b(next), f.b('cancel'));
+  return f.commands(spread, prev, next, 'cancel');
 }
 
 function compareHashes(a: string, b: string): boolean {

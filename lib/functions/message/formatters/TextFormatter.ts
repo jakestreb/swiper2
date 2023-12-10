@@ -2,7 +2,7 @@ export default class TextFormatter {
   public dataRow(...items: Array<string|null>) {
   	return items
   		.filter(x => x)
-  		.join(' | ');
+  		.join(this.m(' | '));
   }
 
   public commands(...rows: string[]) {

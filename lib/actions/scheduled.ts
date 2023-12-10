@@ -30,10 +30,10 @@ export async function scheduled(this: Swiper, convo: Conversation): Promise<Swip
 
   const messages: string[] = [];
   if (movies.length > 0) {
-    messages.push([`${f.sp(2)}${f.u('M O V I E S')}`, ...movies].join('\n'));
+    messages.push(movies.join('\n'));
   }
   if (shows.length > 0) {
-    messages.push([`${f.sp(2)}${f.u('S H O W S')}`, ...shows].join('\n'));
+    messages.push(shows.join('\n'));
   }
 
   return {

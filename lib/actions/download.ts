@@ -63,10 +63,10 @@ export async function download(this: Swiper, convo: Conversation): Promise<Swipe
   }
 
   return {
-    data: [
+    data: f.multiMessage(
       `${isAnyReleased ? 'Queued' : 'Scheduled'} ${media.format(f)} for download`,
-      isAnyReleased ? f.commands('q to view progress') : f.commands('s to view scheduled')
-    ].join('\n\n'),
+      isAnyReleased ? f.commands('queue') : f.commands('scheduled')
+    ),
     final: true
   };
 }

@@ -41,7 +41,7 @@ export default class CommManager {
     this.replyToClient(clientId, { data: msg });
   }
 
-  public replyToClient(clientId: number, msg: SwiperReply): void {
+  public async replyToClient(clientId: number, msg: SwiperReply): Promise<void> {
     const commType = this.clientCommTypes[clientId];
     if (commType === 'cli') {
       if (msg.data) {
@@ -55,9 +55,9 @@ export default class CommManager {
       const msgText = msg.data || msg.err || '';
       logger.info('Responding to client', { data: msgText });
       const messages = msgText.split(TelegramFormatter.MSG_SPLIT_STRING);
-      Promise.all(messages.map(msg =>
-        this.telegramBot.sendMessage(clientId, msg, { parse_mode: 'HTML' })
-      ));
+      for (const msg of messages) {
+        await this.telegramBot.sendMessage(clientId, msg, { parse_mode: 'HTML' });
+      }
     }
   }
 

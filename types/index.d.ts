@@ -31,6 +31,7 @@ declare interface MediaQuery {
 }
 
 declare interface TextFormatter {
+  multiMessage(...items: string[]): string;
   dataRow(...items: Array<string|null>): string;
   commands(...rows: string[]): string;
 
