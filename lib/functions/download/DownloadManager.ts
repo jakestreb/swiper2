@@ -227,7 +227,7 @@ export default class DownloadManager {
       startAt: new Date(Date.now() + (24 * 60 * 60 * 1000)),
     });
 
-    this.swiper.notifyClient(video.addedBy!, `${video} export complete`);
+    this.swiper.notifyClient(video.addedBy!, `${video} download complete`);
 
     // Ping since the database changed.
     this.ping();
