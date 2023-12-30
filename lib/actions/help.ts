@@ -1,10 +1,10 @@
 import Swiper from '../Swiper';
 
 const COMMANDS = [{
-  name: 'queued',
+  name: 'queue',
   description: 'View current downloads',
   basics: [
-    'queued',
+    'queue',
     'q'
   ],
 }, {
@@ -84,19 +84,19 @@ export function help(this: Swiper, convo: Conversation): SwiperReply {
   if (!convo.input) {
     const basics = [
       f.commands(
-        'download/d [show or movie]',
+        'download [show or movie]',
         'search [show or movie]',
-        'remove/rm [show or movie]',
+        'remove [show or movie]',
       ),
       f.commands(
-        'queue/q',
-        'scheduled/s',
-        'info/i [show or movie]',
+        'queue',
+        'scheduled',
+        'info [show or movie]',
       ),
       f.commands(
-        'help/h [command]',
+        'help [command]',
         'reboot',
-        'cancel/c to end any conversation',
+        'cancel to end any conversation',
       ),
     ].join('\n\n');
 
