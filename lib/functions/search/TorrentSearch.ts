@@ -166,14 +166,19 @@ export default class TorrentSearch {
 
 function getSearchTerm(video: IVideo): string {
   if (video.isMovie()) {
-    const cleanTitle = video.title.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
-    return `${cleanTitle} ${video.year}`;
+    return `${getSearchTitle(video.title)} ${video.year}`;
   } else if (video.isEpisode()) {
-    const cleanTitle = video.showTitle.replace(/\'/g, "").replace(/[^a-zA-Z ]+/g, " ");
-    return `${cleanTitle} s${padZeros(video.seasonNum)}e${padZeros(video.episodeNum)}`;
+    return `${getSearchTitle(video.showTitle)} s${padZeros(video.seasonNum)}e${padZeros(video.episodeNum)}`;
   } else {
     throw new Error(`getSearchTerm error: invalid video`);
   }
+}
+
+function getSearchTitle(title: string): string {
+  return title
+    .replace(/\'/g, "")
+    .replace(/\s&\s/g, " and ")
+    .replace(/[^a-zA-Z ]+/g, " ");
 }
 
 // Expects a string which starts with a decimal number and either GiB, MiB, or kiB
