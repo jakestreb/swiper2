@@ -54,7 +54,13 @@ export default class Shows extends Base<ShowDBRow, IShow> {
   }
 
   public search(input: string): Promise<IShow[]> {
-    return this.all('SELECT * FROM shows WHERE title LIKE ?', [`%${input}%`]);
+    const searchTerms = this.getSearchTerms(input);
+
+    const ors = searchTerms
+      .map(() => 'title LIKE ?')
+      .join(' OR ');
+
+    return this.all(`SELECT * FROM shows WHERE ${ors}`, searchTerms);
   }
 
   public async insert(arg: ShowInsertArg, options: DBInsertOptions): Promise<void> {

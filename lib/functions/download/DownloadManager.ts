@@ -40,11 +40,13 @@ export default class DownloadManager {
   public async addToQueue(video: IVideo): Promise<void> {
     if (video.status !== 'downloading') {
       await db.videos.setStatus(video, 'downloading');
+      await db.jobs.markDoneForVideo(video.id, ['AddTorrent', 'CheckForRelease']);
       await this.swiper.worker.addJob({
         type: 'MonitorDownload',
         videoId: video.id,
         startAt: new Date(Date.now() + 60 * 1000),
       });
+
       this.ping();
     }
   }

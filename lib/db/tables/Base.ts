@@ -29,4 +29,10 @@ export default abstract class Base<Row, Result> {
   public async run(sql: string, params: any[] = []): Promise<void> {
     return this.db.run(sql, params);
   }
+
+  public getSearchTerms(input: string): string[] {
+    return input
+      .split('')
+      .map((_, i: number) => `%${input.slice(0, i)}%${input.slice(i + 1)}%`);
+  }
 }

@@ -53,7 +53,13 @@ export default class Movies extends Base<MovieDBRow, IMovie> {
   }
 
   public search(input: string): Promise<IMovie[]> {
-    return this.all(`SELECT * FROM movies WHERE title LIKE ?`, [`%${input}%`]);
+    const searchTerms = this.getSearchTerms(input);
+
+    const ors = searchTerms
+      .map(() => 'title LIKE ?')
+      .join(' OR ');
+
+    return this.all(`SELECT * FROM movies WHERE ${ors}`, searchTerms);
   }
 
   public getWithStatus(...statuses: Status[]): Promise<IMovie[]> {

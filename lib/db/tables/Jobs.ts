@@ -89,6 +89,10 @@ export default class Jobs extends Base<JobDBRow, IJob> {
     await this.run('UPDATE jobs SET status=\'done\' WHERE id=?', [jobId]);
   }
 
+  public async markDoneForVideo(videoId: number, type: JobType[]): Promise<void> {
+    await this.run(`UPDATE jobs SET status=\'done\' WHERE videoId=? AND type IN (${type.map(e => '?')})`, [videoId, ...type]);
+  }
+
   public async markRunningAsPending(): Promise<void> {
     await this.run('UPDATE jobs SET status=\'pending\' WHERE status=\'running\'');
   }

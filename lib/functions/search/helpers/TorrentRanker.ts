@@ -1,5 +1,6 @@
 import ResourcePriority from './ResourcePriority';
 import * as util from '../../../util';
+import logger from '../../../util/logger';
 
 class ResolutionPriority extends ResourcePriority<string> {
   public ranks = ['1080p', '2160p', '720p', '']; // TODO: Make 4k top priority once pc is upgraded
@@ -24,10 +25,13 @@ class TitlePriority extends ResourcePriority<boolean> {
   public ranks = [true];
   public predicate = (v: boolean, t: PartialTorrent) => {
     const title = this.video.getFileSafeTitle();
-    let regex = title.split(/\s/).join('[\\W]+'); // Allow any word separators parsed
+    let regex = util.normalizeTitle(title).split(/\s/).join('[\\W]+'); // Allow any word separators parsed
     regex = `(?<![a-z].*)${regex}(?!.*[a-z])`; // Allow no extra words in parsed
-    const { parsedTitle } = t;
-    return !!parsedTitle.match(new RegExp(regex, 'i'));
+    let { parsedTitle } = t;
+    parsedTitle = util.normalizeTitle(parsedTitle);
+    const isMatch = !!parsedTitle.match(new RegExp(regex, 'i'));
+    logger.info(`Is expected title: ${parsedTitle} - ${isMatch}`)
+    return isMatch;
   }
   public scale = 0;
 }

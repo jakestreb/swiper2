@@ -1,3 +1,11 @@
+export function normalizeTitle(title: string) {
+  return title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\'/g, "")
+    .replace(/\s&\s/g, " and ")
+    .replace(/[^a-zA-Z ]+/g, " ");
+}
 
 export function sum(array: number[]): number {
   return array.reduce((a, b) => a + b, 0);
