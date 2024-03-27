@@ -9,7 +9,6 @@ import PublicError from '../../util/errors/PublicError'
 // Typescript doesn't recognize the default export of TSA.
 const TorrentSearchApi = require('torrent-search-api');
 TorrentSearchApi.enablePublicProviders();
-TorrentSearchApi.disableProvider('Torrent9'); // currently not working and breaking library
 
 interface TSAResult {
   title: string;
@@ -111,7 +110,9 @@ export default class TorrentSearch {
 
   private static async doSearch(video: IVideo): Promise<TorrentResult[]> {
     const searchTerm = getSearchTerm(video);
+    logger.info(`Using search term: ${searchTerm}`);
     const results: TSAResult[] = await TorrentSearchApi.search(searchTerm);
+    logger.info(`Search result count: ${results.length}`);
     const filtered: TSAResult[] = results.filter((res: TSAResult) => res.title && res.size);
     const filteredWithHash: (TSAResultWithHash|null)[] = await Promise.all(
       filtered.map((res: TSAResult) => this.addHash(res))
@@ -176,6 +177,8 @@ function getSearchTerm(video: IVideo): string {
 
 function getSearchTitle(title: string): string {
   return title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\'/g, "")
     .replace(/\s&\s/g, " and ")
     .replace(/[^a-zA-Z ]+/g, " ");
