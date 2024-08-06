@@ -1,6 +1,6 @@
-import db from '../../db';
-import Base from './Base';
-import TorrentSearch from '../../functions/search/TorrentSearch';
+import db from '../../db/index.js';
+import Base from './Base.js';
+import TorrentSearch from '../../functions/search/TorrentSearch.js';
 
 // For 'searching' videos, backoff check for a torrent
 export class AddTorrent extends Base {

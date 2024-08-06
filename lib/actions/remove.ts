@@ -1,6 +1,6 @@
-import * as matchUtil from './helpers/matchUtil';
-import db from '../db';
-import Swiper from '../Swiper';
+import * as matchUtil from './helpers/matchUtil.js';
+import db from '../db/index.js';
+import Swiper from '../Swiper.js';
 
 export async function remove(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const f = this.getTextFormatter(convo);

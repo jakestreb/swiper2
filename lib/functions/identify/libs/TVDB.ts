@@ -1,9 +1,9 @@
 import axios from 'axios';
-import get from 'lodash/get';
-import logger from '../../../util/logger';
-import Show from '../../../db/models/Show';
-import Episode from '../../../db/models/Episode';
-import PublicError from '../../../util/errors/PublicError';
+import get from 'lodash/get.js';
+import logger from '../../../util/logger.js';
+import Show from '../../../db/models/Show.js';
+import Episode from '../../../db/models/Episode.js';
+import PublicError from '../../../util/errors/PublicError.js';
 
 // Return type of the TVDB database, with only fields we need defined.
 interface TVDBShow {

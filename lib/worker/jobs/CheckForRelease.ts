@@ -1,8 +1,8 @@
-import db from '../../db';
-import Base from './Base';
-import TorrentSearch from '../../functions/search/TorrentSearch';
-import TMDB from '../../functions/identify/libs/TMDB';
-import logger from '../../util/logger';
+import db from '../../db/index.js';
+import Base from './Base.js';
+import TorrentSearch from '../../functions/search/TorrentSearch.js';
+import TMDB from '../../functions/identify/libs/TMDB.js';
+import logger from '../../util/logger.js';
 
 // For 'unreleased' movies without a clear release date, repeatedly search and set
 // directly to 'downloading' when a torrent is found

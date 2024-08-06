@@ -1,6 +1,6 @@
-import TextFormatter from '../../functions/message/formatters/TextFormatter';
-import Media from './Media';
-import * as util from '../../util';
+import TextFormatter from '../../functions/message/formatters/TextFormatter.js';
+import Media from './Media.js';
+import * as util from '../../util/index.js';
 
 interface BuildArg {
   id: number;

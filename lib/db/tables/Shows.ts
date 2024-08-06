@@ -1,5 +1,5 @@
-import Show from '../models/Show';
-import Base from './Base';
+import Show from '../models/Show.js';
+import Base from './Base.js';
 
 interface ShowInsertArg {
   id: number;

@@ -1,13 +1,14 @@
-import Episodes from './tables/Episodes';
-import Movies from './tables/Movies';
-import Shows from './tables/Shows';
-import Torrents from './tables/Torrents';
-import Jobs from './tables/Jobs';
-import Media from './helpers/Media';
-import Videos from './helpers/Videos';
-import logger from '../util/logger';
+import Episodes from './tables/Episodes.js';
+import Movies from './tables/Movies.js';
+import Shows from './tables/Shows.js';
+import Torrents from './tables/Torrents.js';
+import Jobs from './tables/Jobs.js';
+import Media from './helpers/Media.js';
+import Videos from './helpers/Videos.js';
+import logger from '../util/logger.js';
 import * as path from 'path';
-import * as sqlite3 from 'sqlite3';
+import sqlite3 from 'sqlite3';
+import { fileURLToPath } from 'url';
 
 export class DBManager {
 
@@ -23,7 +24,9 @@ export class DBManager {
   private _db: sqlite3.Database;
 
   public async init(): Promise<void> {
-    const dbPath = path.resolve(__dirname, '../../../records.db');
+    const filename = fileURLToPath(import.meta.url);
+    const dirname = path.dirname(filename);
+    const dbPath = path.resolve(dirname, '../../../records.db');
     this._db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
 
     this.episodes = await new Episodes(this).init();

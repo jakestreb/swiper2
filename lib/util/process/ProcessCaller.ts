@@ -1,6 +1,6 @@
 import * as child from 'child_process';
-import logger from '../logger';
-import * as util from '..';
+import logger from '../logger.js';
+import * as util from '../index.js';
 import EventEmitter from 'events';
 
 interface Request {

@@ -1,8 +1,8 @@
-import db from '../db';
-import logger from '../util/logger';
-import BaseJob from './jobs/Base';
-import * as jobs from './jobs';
-import Swiper from '../Swiper';
+import db from '../db/index.js';
+import logger from '../util/logger.js';
+import BaseJob from './jobs/Base.js';
+import * as jobs from './jobs/index.js';
+import Swiper from '../Swiper.js';
 
 const oneDay = 24 * 60 * 60 * 1000;
 

@@ -1,6 +1,6 @@
-import db from '../../db';
-import Base from './Base';
-import logger from '../../util/logger';
+import db from '../../db/index.js';
+import Base from './Base.js';
+import logger from '../../util/logger.js';
 
 // For 'completed' videos, delete after some time has passed for cleanup
 export class DeleteVideo extends Base {

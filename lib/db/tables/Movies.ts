@@ -1,5 +1,5 @@
-import Movie from '../models/Movie';
-import Base from './Base';
+import Movie from '../models/Movie.js';
+import Base from './Base.js';
 
 interface MovieInsertArg {
   id: number;

@@ -1,8 +1,8 @@
-import TextFormatter from '../../functions/message/formatters/TextFormatter';
-import MediaParser from '../../functions/identify/MediaParser';
-import Swiper from '../../Swiper';
-import PublicError from '../../util/errors/PublicError';
-import logger from '../../util/logger';
+import TextFormatter from '../../functions/message/formatters/TextFormatter.js';
+import MediaParser from '../../functions/identify/MediaParser.js';
+import Swiper from '../../Swiper.js';
+import PublicError from '../../util/errors/PublicError.js';
+import logger from '../../util/logger.js';
 
 type ActionFn = (convo: Conversation, f: TextFormatter) => Promise<SwiperReply|void>;
 

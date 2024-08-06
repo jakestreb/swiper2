@@ -1,5 +1,5 @@
-import db from '../db';
-import Swiper from '../Swiper';
+import db from '../db/index.js';
+import Swiper from '../Swiper.js';
 
 export async function download(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   const f = this.getTextFormatter(convo);

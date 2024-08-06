@@ -2,9 +2,12 @@ import * as fs from 'fs-extra';
 import Client from 'ftp';
 import * as path from 'path';
 import sanitize from 'sanitize-filename';
+import { fileURLToPath } from 'url';
+import logger from '../../util/logger.js';
+import * as util from '../../util/index.js';
 
-import logger from '../../util/logger';
-import * as util from '../../util';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const useFtp = Boolean(parseInt(process.env.USE_FTP || "0", 10));
 const defaultExport = useFtp ? '.' : path.resolve(__dirname, '../../media');

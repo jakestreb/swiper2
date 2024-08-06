@@ -1,9 +1,9 @@
 import TelegramBot from 'node-telegram-bot-api';
 import * as readline from 'readline';
-import logger from '../../util/logger';
-import TextFormatter from './formatters/TextFormatter';
-import TelegramFormatter from './formatters/TelegramFormatter';
-import PublicError from '../../util/errors/PublicError'
+import logger from '../../util/logger.js';
+import TextFormatter from './formatters/TextFormatter.js';
+import TelegramFormatter from './formatters/TelegramFormatter.js';
+import PublicError from '../../util/errors/PublicError.js'
 
 type CommType = 'cli'|'telegram';
 type SwiperMsgHandler = (id: number, msg?: string) => Promise<void>
@@ -76,6 +76,7 @@ export default class CommManager {
   }
 
   private addTelegramListener() {
+    logger.debug('Adding telegram listener');
     this.telegramBot.on("text", async (message: any) => {
       logger.debug('Received telegram message', { data: message.text, date: new Date(message.date * 1000) });
       await this.handleClientMsg('telegram', message.chat.id, message.text);

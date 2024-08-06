@@ -1,7 +1,7 @@
-import * as util from '../../util';
-import db from '../../db';
-import Base from './Base';
-import logger from '../../util/logger';
+import * as util from '../../util/index.js';
+import db from '../../db/index.js';
+import Base from './Base.js';
+import logger from '../../util/logger.js';
 
 const SLOW_SPEED_MBS = 0.02;
 

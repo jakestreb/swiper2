@@ -1,16 +1,20 @@
 import rmfr from 'rmfr';
 import * as path from 'path';
-import db from '../../db';
-import logger from '../../util/logger';
-import * as util from '../../util';
-import ExportHandler from '../export/ExportHandler';
-import MemoryManager from './MemoryManager';
-import DownloadProcessCaller from './process/DownloadProcessCaller';
-import Swiper from '../../Swiper';
+import { fileURLToPath } from 'url';
+import db from '../../db/index.js';
+import logger from '../../util/logger.js';
+import * as util from '../../util/index.js';
+import ExportHandler from '../export/ExportHandler.js';
+import MemoryManager from './MemoryManager.js';
+import DownloadProcessCaller from './process/DownloadProcessCaller.js';
+import Swiper from '../../Swiper.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default class DownloadManager {
 
-  private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../downloads');
+  private static DOWNLOAD_ROOT = process.env.DOWNLOAD_ROOT || path.resolve(__dirname, '../../../../downloads');
   private static MAX_DOWNLOADS = parseInt(process.env.MAX_DOWNLOADS || '1', 10);
 
   public downloadRoot = DownloadManager.DOWNLOAD_ROOT;

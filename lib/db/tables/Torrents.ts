@@ -1,5 +1,5 @@
-import Torrent from '../models/Torrent';
-import Base from './Base';
+import Torrent from '../models/Torrent.js';
+import Base from './Base.js';
 
 interface TorrentInsertArg {
   hash: string;

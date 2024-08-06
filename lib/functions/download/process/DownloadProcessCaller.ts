@@ -1,6 +1,7 @@
 import * as path from 'path';
-import ProcessCaller from '../../../util/process/ProcessCaller';
-import logger from '../../../util/logger';
+import { fileURLToPath } from 'url';
+import ProcessCaller from '../../../util/process/ProcessCaller.js';
+import logger from '../../../util/logger.js';
 
 export default class DownloadProcessCaller extends ProcessCaller {
   public activeDownloads: {[hash: string]: VTorrent} = {};
@@ -22,7 +23,9 @@ export default class DownloadProcessCaller extends ProcessCaller {
 	}
 
   public get processPath(): string {
-    return path.join(__dirname, 'DownloadProcess');  
+    const filename = fileURLToPath(import.meta.url);
+    const dirname = path.dirname(filename);
+    return path.join(dirname, 'DownloadProcess');  
   }
 
   public async download(vt: VTorrent): Promise<void> {

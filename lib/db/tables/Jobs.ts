@@ -1,4 +1,4 @@
-import Base from './Base';
+import Base from './Base.js';
 
 type JobInsertArg = JobDescription & {
   schedule: JobSchedule;

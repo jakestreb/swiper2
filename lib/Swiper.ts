@@ -1,20 +1,20 @@
-import logger from './util/logger';
-import * as util from './util';
-import db from './db';
-import Worker from './worker';
-import CommManager from './functions/message/CommManager';
-import DownloadManager from './functions/download/DownloadManager';
+import logger from './util/logger.js';
+import * as util from './util/index.js';
+import db from './db/index.js';
+import Worker from './worker/index.js';
+import CommManager from './functions/message/CommManager.js';
+import DownloadManager from './functions/download/DownloadManager.js';
 
-import {reqMediaQuery, reqMedia, reqVideo, reqFullMedia} from './actions/helpers/decorators';
-import {download} from './actions/download';
-import {help} from './actions/help';
-import {remove} from './actions/remove';
-import {search} from './actions/search';
-import {scheduled} from './actions/scheduled';
-import {queued} from './actions/queued';
-import {info} from './actions/info';
-import {ip} from './actions/ip';
-import {unknown} from './actions/unknown';
+import {reqMediaQuery, reqMedia, reqVideo, reqFullMedia} from './actions/helpers/decorators.js';
+import {download} from './actions/download.js';
+import {help} from './actions/help.js';
+import {remove} from './actions/remove.js';
+import {search} from './actions/search.js';
+import {scheduled} from './actions/scheduled.js';
+import {queued} from './actions/queued.js';
+import {info} from './actions/info.js';
+import {ip} from './actions/ip.js';
+import {unknown} from './actions/unknown.js';
 
 export default class Swiper {
 

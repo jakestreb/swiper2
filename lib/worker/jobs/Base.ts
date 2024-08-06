@@ -1,4 +1,4 @@
-import Swiper from '../../Swiper';
+import Swiper from '../../Swiper.js';
 import Worker from '../';
 
 export default class Base {

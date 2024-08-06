@@ -1,4 +1,4 @@
-import range from 'lodash/range';
+import range from 'lodash/range.js';
 
 export default class EpisodeParser {
   // Takes a human-entered input of seasons and episodes of the following form:

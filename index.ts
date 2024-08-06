@@ -1,12 +1,10 @@
-import * as dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config.js';
 
 import * as sourceMapSupport from 'source-map-support';
 sourceMapSupport.install();
 
-import logger from './lib/util/logger';
-import Swiper from './lib/Swiper';
-import * as process from 'process'
+import logger from './lib/util/logger.js';
+import Swiper from './lib/Swiper.js';
 
 Swiper.create()
 .catch(err => {

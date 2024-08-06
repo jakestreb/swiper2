@@ -1,4 +1,4 @@
-import Swiper from '../Swiper';
+import Swiper from '../Swiper.js';
 import axios from 'axios';
 
 export async function ip(this: Swiper, convo: Conversation): Promise<SwiperReply> {

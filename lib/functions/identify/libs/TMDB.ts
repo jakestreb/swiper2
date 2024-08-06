@@ -1,9 +1,9 @@
 import axios from 'axios';
-import get from 'lodash/get';
-import logger from '../../../util/logger';
-import * as util from '../../../util';
-import Movie from '../../../db/models/Movie';
-import PublicError from '../../../util/errors/PublicError';
+import get from 'lodash/get.js';
+import logger from '../../../util/logger.js';
+import * as util from '../../../util/index.js';
+import Movie from '../../../db/models/Movie.js';
+import PublicError from '../../../util/errors/PublicError.js';
 
 interface TMDBMovie {
   id: number;

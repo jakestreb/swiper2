@@ -1,5 +1,5 @@
-import Episode from '../models/Episode';
-import Base from './Base';
+import Episode from '../models/Episode.js';
+import Base from './Base.js';
 
 interface EpisodeDBRow {
   id: number;

@@ -1,9 +1,9 @@
-import db from '../db';
-import * as matchUtil from './helpers/matchUtil';
-import logger from '../util/logger';
-import * as util from '../util';
-import Swiper from '../Swiper';
-import TorrentSearch from '../functions/search/TorrentSearch';
+import db from '../db/index.js';
+import * as matchUtil from './helpers/matchUtil.js';
+import logger from '../util/logger.js';
+import * as util from '../util/index.js';
+import Swiper from '../Swiper.js';
+import TorrentSearch from '../functions/search/TorrentSearch.js';
 
 // Number of torrents to show per page
 const PER_PAGE = 3;

@@ -1,7 +1,7 @@
-import Swiper from '../Swiper';
-import TMDB from '../functions/identify/libs/TMDB';
-import TVDB from '../functions/identify/libs/TVDB';
-import * as util from '../util';
+import Swiper from '../Swiper.js';
+import TMDB from '../functions/identify/libs/TMDB.js';
+import TVDB from '../functions/identify/libs/TVDB.js';
+import * as util from '../util/index.js';
 
 const FULL = '\u25A0';
 const HALF = '\u25A3';

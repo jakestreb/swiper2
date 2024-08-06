@@ -1,7 +1,7 @@
-import MediaSearch from './MediaSearch';
-import * as util from '../../util';
-import TextFormatter from '../message/formatters/TextFormatter';
-import EpisodeParser from './EpisodeParser';
+import MediaSearch from './MediaSearch.js';
+import * as util from '../../util/index.js';
+import TextFormatter from '../message/formatters/TextFormatter.js';
+import EpisodeParser from './EpisodeParser.js';
 
 interface ParserOptions {
   forceEpisodes?: EpisodesDescriptor;

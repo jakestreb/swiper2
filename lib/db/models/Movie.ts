@@ -1,5 +1,5 @@
-import TextFormatter from '../../functions/message/formatters/TextFormatter';
-import Video from './Video';
+import TextFormatter from '../../functions/message/formatters/TextFormatter.js';
+import Video from './Video.js';
 
 interface BuildArg {
   id: number;

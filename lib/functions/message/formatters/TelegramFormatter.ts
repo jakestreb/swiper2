@@ -1,4 +1,4 @@
-import TextFormatter from './TextFormatter';
+import TextFormatter from './TextFormatter.js';
 
 export default class TelegramFormatter extends TextFormatter {
 	public static MSG_SPLIT_STRING = '&NEW_MSG';

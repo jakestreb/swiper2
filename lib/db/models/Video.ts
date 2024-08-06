@@ -1,4 +1,4 @@
-import TextFormatter from '../../functions/message/formatters/TextFormatter';
+import TextFormatter from '../../functions/message/formatters/TextFormatter.js';
 
 interface BuildArg {
   id: number;

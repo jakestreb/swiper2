@@ -1,4 +1,4 @@
-import TextFormatter from '../../functions/message/formatters/TextFormatter';
+import TextFormatter from '../../functions/message/formatters/TextFormatter.js';
 import * as path from 'path';
 
 interface BuildArg {

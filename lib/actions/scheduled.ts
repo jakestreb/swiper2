@@ -1,6 +1,6 @@
-import db from '../db';
-import * as util from '../util';
-import Swiper from '../Swiper';
+import db from '../db/index.js';
+import * as util from '../util/index.js';
+import Swiper from '../Swiper.js';
 
 const CIRCLE_ARROW = '\u21BB'
 const HOURGLASS = '\u29D6';

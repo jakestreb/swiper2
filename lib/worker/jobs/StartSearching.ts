@@ -1,5 +1,5 @@
-import db from '../../db';
-import Base from './Base';
+import db from '../../db/index.js';
+import Base from './Base.js';
 
 // For 'unreleased' videos, a one-time event on release to begin searching for
 // a torrent

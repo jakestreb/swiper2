@@ -1,8 +1,8 @@
 import * as path from 'path';
 import WebTorrent from 'webtorrent';
-import { Process, runProcess } from '../../../util/process/Process';
-import logger from '../../../util/logger';
-import * as util from '../../../util';
+import { Process, runProcess } from '../../../util/process/Process.js';
+import logger from '../../../util/logger.js';
+import * as util from '../../../util/index.js';
 
 class DownloadProcess extends Process {
   public static downloadLimitMbps = 200;
@@ -18,15 +18,18 @@ class DownloadProcess extends Process {
   public async download(hash: string, subPath: string): Promise<void> {
     const downloadPath = await util.createSubdirs(this.downloadRoot, subPath);
     return new Promise((resolve, reject) => {
+      console.warn('ADDING TO CLIENT', { client: this.client, hash });
       this.client.add(hash, { path: downloadPath }, wtTorrent => {
+        console.warn('WT TORRENT', { wtTorrent });
         wtTorrent.on('done', () => resolve());
         wtTorrent.on('error', (err) => reject(`Torrent download error: ${err}`));
       });
     });
   }
 
-  public getProgress(hash: string): DownloadProgress {
-    const wtTorrent = this.client.get(hash);
+  public async getProgress(hash: string): Promise<DownloadProgress> {
+    const wtTorrent = await this.client.get(hash);
+    console.warn('PROGRESS', { wtTorrent });
     if (!wtTorrent) {
       return {};
     }

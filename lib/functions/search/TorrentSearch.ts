@@ -1,14 +1,13 @@
 import ptn from 'parse-torrent-name';
-import * as util from '../../util';
-import logger from '../../util/logger';
-import ConcurrencyLock from './helpers/ConcurrencyLock';
-import TorrentRanker from './helpers/TorrentRanker';
-import db from '../../db';
-import PublicError from '../../util/errors/PublicError'
+import * as util from '../../util/index.js';
+import logger from '../../util/logger.js';
+import ConcurrencyLock from './helpers/ConcurrencyLock.js';
+import TorrentRanker from './helpers/TorrentRanker.js';
+import db from '../../db/index.js';
+import PublicError from '../../util/errors/PublicError.js'
 
-// Typescript doesn't recognize the default export of TSA.
-const TorrentSearchApi = require('torrent-search-api');
-TorrentSearchApi.enablePublicProviders();
+import TorrentSearchApi from 'torrent-search-api';
+TorrentSearchApi.enableProvider('ThePirateBay');
 
 interface TSAResult {
   title: string;
@@ -111,7 +110,7 @@ export default class TorrentSearch {
   private static async doSearch(video: IVideo): Promise<TorrentResult[]> {
     const searchTerm = getSearchTerm(video);
     logger.info(`Using search term: ${searchTerm}`);
-    const results: TSAResult[] = await TorrentSearchApi.search(searchTerm);
+    const results: TSAResult[] = await (TorrentSearchApi as any).search(searchTerm);
     logger.info(`Search result count: ${results.length}`);
     const filtered: TSAResult[] = results.filter((res: TSAResult) => res.title && res.size);
     const filteredWithHash: (TSAResultWithHash|null)[] = await Promise.all(
@@ -128,7 +127,7 @@ export default class TorrentSearch {
   private static async addHash(result: TSAResult): Promise<TSAResultWithHash|null> {
     let fetchedMagnet: string;
     if (!result.magnet && !result.link) {
-      fetchedMagnet = await TorrentSearchApi.getMagnet(result);
+      fetchedMagnet = await TorrentSearchApi.getMagnet(result as any);
       if (!fetchedMagnet) {
         logger.debug(`Failed to fetch magnet for torrent result: ${result.title}`);
         return null;
