@@ -3,7 +3,8 @@
     "files": true
   },
   "compilerOptions": {
-    "target": "esnext",
+    "target": "es5",
+    "lib": ["esnext"],
     "module": "commonjs",
     "strict": true,
     "strictPropertyInitialization": false,
