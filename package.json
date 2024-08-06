@@ -58,7 +58,7 @@
     "source-map-support": "^0.5.21",
     "sqlite3": "^5.0.2",
     "torrent-search-api": "^2.1.4",
-    "webtorrent": "^1.8.19",
+    "webtorrent": "^2.5.0",
     "winston": "^3.2.1"
   }
 }
