@@ -18,9 +18,7 @@ class DownloadProcess extends Process {
   public async download(hash: string, subPath: string): Promise<void> {
     const downloadPath = await util.createSubdirs(this.downloadRoot, subPath);
     return new Promise((resolve, reject) => {
-      console.warn('ADDING TO CLIENT', { client: this.client, hash });
       this.client.add(hash, { path: downloadPath }, wtTorrent => {
-        console.warn('WT TORRENT', { wtTorrent });
         wtTorrent.on('done', () => resolve());
         wtTorrent.on('error', (err) => reject(`Torrent download error: ${err}`));
       });
@@ -29,7 +27,6 @@ class DownloadProcess extends Process {
 
   public async getProgress(hash: string): Promise<DownloadProgress> {
     const wtTorrent = await this.client.get(hash);
-    console.warn('PROGRESS', { wtTorrent });
     if (!wtTorrent) {
       return {};
     }

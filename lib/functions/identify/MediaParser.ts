@@ -2,6 +2,7 @@ import MediaSearch from './MediaSearch.js';
 import * as util from '../../util/index.js';
 import TextFormatter from '../message/formatters/TextFormatter.js';
 import EpisodeParser from './EpisodeParser.js';
+import logger from '../../util/logger.js';
 
 interface ParserOptions {
   forceEpisodes?: EpisodesDescriptor;
@@ -61,6 +62,7 @@ export default class MediaParser {
   public async addMediaQuery(convo: Conversation, f: TextFormatter): Promise<SwiperReply|void> {
     if (!convo.mediaQuery) {
       let input = convo.input || '';
+      logger.info('Creating media query from input', { input });
       const titleFinder = /^([\w \'\"\-\:\,\&\/]+?)(?: (?:s(?:eason)? ?\d{1,2}.*)|(?:\d{4}\b.*))?$/gi;
       const yearFinder = /\b(\d{4})\b/gi;
       const splitStr = input.split(' ');

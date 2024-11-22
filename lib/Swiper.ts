@@ -15,6 +15,7 @@ import {queued} from './actions/queued.js';
 import {info} from './actions/info.js';
 import {ip} from './actions/ip.js';
 import {unknown} from './actions/unknown.js';
+import HealthCheckServer from './functions/healthcheck/server.js';
 
 export default class Swiper {
 
@@ -26,6 +27,7 @@ export default class Swiper {
 
   public commManager: CommManager;
   public downloadManager: DownloadManager;
+  public healthCheckServer: HealthCheckServer;
   public worker: Worker;
 
   private conversations: {[clientId: number]: Conversation} = {};
@@ -33,10 +35,15 @@ export default class Swiper {
   // Should NOT be called publicly - use Swiper.create
   constructor() {
     this.downloadManager = new DownloadManager(this);
+    
     this.worker = new Worker(this);
     this.worker.start();
+    
     this.commManager = new CommManager(this.handleMsg.bind(this));
     this.commManager.start();
+    
+    this.healthCheckServer = new HealthCheckServer()
+    this.healthCheckServer.start();
   }
 
   public async handleMsg(id: number, msg?: string): Promise<void> {
