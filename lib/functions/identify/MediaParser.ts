@@ -62,6 +62,7 @@ export default class MediaParser {
   public async addMediaQuery(convo: Conversation, f: TextFormatter): Promise<SwiperReply|void> {
     if (!convo.mediaQuery) {
       let input = convo.input || '';
+      input = input.replace("'", ""); // Apostrophes just won't work
       logger.info('Creating media query from input', { input });
       const titleFinder = /^([\w \`\’\‘\'\"\-\:\,\&\/]+?)(?: (?:s(?:eason)? ?\d{1,2}.*)|(?:\d{4}\b.*))?$/gi;
       const yearFinder = /\b(\d{4})\b/gi;
