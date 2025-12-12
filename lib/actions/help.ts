@@ -98,6 +98,7 @@ export function help(this: Swiper, convo: Conversation): SwiperReply {
       f.commands(
         'download [show or movie]',
         'search [show or movie]',
+        'manual search [search term]',
         'remove [show or movie]',
       ),
       f.commands(
