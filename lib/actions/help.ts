@@ -71,6 +71,18 @@ const COMMANDS = [{
     "search old yeller",
   ]
 }, {
+  name: "manual search",
+  description: "Manually search for torrents using a custom search term\nUseful when automatic name matching doesn't work",
+  basics: [
+    "manual search [search term]",
+    "manualsearch [search term]",
+    "ms [search term]"
+  ],
+  examples: [
+    "manual search the office s01e07",
+    "ms the office s01e07",
+  ]
+}, {
   name: "reboot",
   description: "Reboot Swiper process",
   basics: [

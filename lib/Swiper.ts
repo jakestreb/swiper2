@@ -10,6 +10,7 @@ import {download} from './actions/download.js';
 import {help} from './actions/help.js';
 import {remove} from './actions/remove.js';
 import {search} from './actions/search.js';
+import {manualSearch} from './actions/manualSearch.js';
 import {scheduled} from './actions/scheduled.js';
 import {queued} from './actions/queued.js';
 import {info} from './actions/info.js';
@@ -102,6 +103,11 @@ export default class Swiper {
     return search.call(this, convo);
   }
 
+  public async manualSearch(convo: Conversation): Promise<SwiperReply> {
+    logger.debug(`Swiper: manualSearch`);
+    return manualSearch.call(this, convo);
+  }
+
   @reqMediaQuery
   public async remove(convo: Conversation): Promise<SwiperReply> {
     logger.debug(`Swiper: remove`);
@@ -165,6 +171,10 @@ export default class Swiper {
         return () => this.download(convo);
       case "search":
         return () => this.search(convo);
+      case "manual":
+      case "manualsearch":
+      case "ms":
+        return () => this.manualSearch(convo);
       case "remove":
       case "delete":
       case "del":

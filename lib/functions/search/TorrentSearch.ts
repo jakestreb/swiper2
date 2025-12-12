@@ -37,6 +37,11 @@ export default class TorrentSearch {
     return this.lock.acquire(() => this.doRetrySearch(video));
   }
 
+  public static searchByTerm(searchTerm: string): Promise<TorrentResult[]> {
+    logger.debug(`TorrentSearch.searchByTerm ${searchTerm}`);
+    return this.lock.acquire(() => this.doRetrySearchByTerm(searchTerm));
+  }
+
   public static async addBestTorrent(video: IVideo, minRating: number = 1): Promise<boolean> {
     const torrents = await this.search(video);
     const best = await this.getBestTorrent(video, torrents, minRating);
@@ -107,6 +112,31 @@ export default class TorrentSearch {
     return util.awaitWithTimeout(searchPromise, 180000, timeoutError);
   }
 
+  private static doRetrySearchByTerm(searchTerm: string): Promise<TorrentResult[]> {
+    const doRetrySearch: (retries: number) => Promise<TorrentResult[]> = async retries => {
+      logger.debug(`TorrentSearch: performing manual search for "${searchTerm}"`);
+      let results;
+      try {
+        results = await this.doSearchByTerm(searchTerm);
+        if (results.length === 0 && retries > 0) {
+          throw new Error('No torrents found with retries remaining');
+        }
+        return results;
+      } catch (err) {
+        logger.error(`TorrentSearch manual search failed: ${err}`);
+        if (retries > 0) {
+          await util.delay(100);
+          logger.debug(`TorrentSearch: retrying manual search "${searchTerm}"`);
+          return doRetrySearch(retries - 1);
+        }
+        throw err;
+      }
+    };
+    const searchPromise = doRetrySearch(TorrentSearch.searchRetryCount);
+    const timeoutError = new PublicError('Torrent search timed out');
+    return util.awaitWithTimeout(searchPromise, 180000, timeoutError);
+  }
+
   private static async doSearch(video: IVideo): Promise<TorrentResult[]> {
     const searchTerm = getSearchTerm(video);
     logger.info(`Using search term: ${searchTerm}`);
@@ -122,6 +152,44 @@ export default class TorrentSearch {
     // Sort by peers desc
     torrents.sort((a, b) => b.score - a.score || b.seeders - a.seeders);
     return torrents;
+  }
+
+  private static async doSearchByTerm(searchTerm: string): Promise<TorrentResult[]> {
+    logger.info(`Using manual search term: ${searchTerm}`);
+    const results: TSAResult[] = await (TorrentSearchApi as any).search(searchTerm);
+    logger.info(`Manual search result count: ${results.length}`);
+    const filtered: TSAResult[] = results.filter((res: TSAResult) => res.title && res.size);
+    const filteredWithHash: (TSAResultWithHash|null)[] = await Promise.all(
+      filtered.map((res: TSAResult) => this.addHash(res))
+    );
+    const torrents = filteredWithHash.filter(notNull)
+      .map((res: TSAResultWithHash) => this.createTorrentFromResult(res))
+      .filter((torrent: TorrentResult) => torrent.sizeMb > -1);
+    // Sort by seeders desc (since we don't have a real video for scoring)
+    torrents.sort((a, b) => b.seeders - a.seeders);
+    return torrents;
+  }
+
+  private static createTorrentFromResult(result: TSAResultWithHash): TorrentResult {
+    const parsed = ptn(result.title);
+    const seeders = result.seeds || 0;
+    // Simple scoring based on seeders for manual search (no video to match against)
+    const score = seeders;
+    // Simple star rating based on seeders: 0-5 stars
+    const starRating: 0|1|2|3|4|5 = seeders >= 50 ? 5 : seeders >= 30 ? 4 : seeders >= 20 ? 3 : seeders >= 10 ? 2 : seeders >= 5 ? 1 : 0;
+    return {
+      title: result.title,
+      parsedTitle: parsed.title,
+      sizeMb: getSizeInMb(result.size) || -1,
+      seeders: seeders,
+      leechers: result.peers || 0,
+      uploadTime: result.time,
+      hash: result.hash,
+      quality: parsed.quality || '',
+      resolution: parsed.resolution || '',
+      score: score,
+      starRating: starRating,
+    };
   }
 
   private static async addHash(result: TSAResult): Promise<TSAResultWithHash|null> {

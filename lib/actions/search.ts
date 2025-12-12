@@ -6,7 +6,7 @@ import Swiper from '../Swiper.js';
 import TorrentSearch from '../functions/search/TorrentSearch.js';
 
 // Number of torrents to show per page
-const PER_PAGE = 3;
+export const PER_PAGE = 3;
 
 const STAR = '\u2605';
 const DOWN_ARROW = '\u2193';
@@ -124,7 +124,7 @@ export async function search(this: Swiper, convo: Conversation): Promise<SwiperR
 }
 
 // Show a subset of the torrents decided by the pageNum.
-async function formatSelection(
+export async function formatSelection(
   torrents: TorrentResult[],
   pageNum: number,
   f: TextFormatter,
@@ -142,7 +142,7 @@ async function formatSelection(
   return f.multiMessage(torrentRows.join('\n\n'), commands);
 }
 
-function formatTorrent(torrent: TorrentResult, isRemoved: boolean, f: TextFormatter): string {
+export function formatTorrent(torrent: TorrentResult, isRemoved: boolean, f: TextFormatter): string {
   const peers = `${torrent.seeders || 0}${DOWN_ARROW}`;
   const size = util.formatSize(torrent.sizeMb);
   const parsedDate = util.parseDate(torrent.uploadTime);
@@ -162,7 +162,7 @@ function formatTorrent(torrent: TorrentResult, isRemoved: boolean, f: TextFormat
   return torrentRows.join('\n');
 }
 
-function formatCommands(range: number[], total: number, f: TextFormatter): string {
+export function formatCommands(range: number[], total: number, f: TextFormatter): string {
   const prev = range[0] === 1 ? '' : 'prev';
   const next = range[1] >= total ? '' : 'next';
   const rangeTotal = (Math.min(range[1], total) - range[0]) + 1;
@@ -172,6 +172,6 @@ function formatCommands(range: number[], total: number, f: TextFormatter): strin
   return f.commands(spread, prev, next, 'cancel');
 }
 
-function compareHashes(a: string, b: string): boolean {
+export function compareHashes(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();
 }
