@@ -1,11 +1,14 @@
 import ptn from 'parse-torrent-name';
+import * as crypto from 'crypto';
 import db from '../db/index.js';
 import * as matchUtil from './helpers/matchUtil.js';
 import logger from '../util/logger.js';
 import Swiper from '../Swiper.js';
 import TorrentSearch from '../functions/search/TorrentSearch.js';
 import { formatSelection, compareHashes, PER_PAGE } from './search.js';
-import MediaParser from '../functions/identify/MediaParser.js';
+import Movie from '../db/models/Movie.js';
+import Episode from '../db/models/Episode.js';
+import Show from '../db/models/Show.js';
 
 export async function manualSearch(this: Swiper, convo: Conversation): Promise<SwiperReply> {
   logger.debug(`Swiper: manualSearch`);
@@ -83,24 +86,11 @@ export async function manualSearch(this: Swiper, convo: Conversation): Promise<S
   const episode = parsed.episode;
   const year = parsed.year ? String(parsed.year) : null;
 
-  // Create media query from parsed torrent (but don't search TMDB/TVDB)
+  // Create minimal media object directly from parsed torrent (no TMDB/TVDB lookup)
   const episodes: EpisodesDescriptor | null = (season && episode) ? { [season]: [episode] } : null;
   const type: 'movie'|'tv'|null = episodes ? 'tv' : 'movie';
-  convo.mediaQuery = { title, type, episodes, year };
-  convo.input = '';
-
-  // Use MediaParser to create media object (this will still try TMDB, but we'll handle failures)
-  const parser = new MediaParser({ requireVideo: true });
-  const mediaReply = await parser.addMedia(convo, f);
-  if (mediaReply) {
-    // If media identification failed, we can't proceed without a video object
-    return {
-      data: 'Unable to identify media. Please use regular search command to identify the show/movie first, then use manual search.',
-      final: true
-    };
-  }
-
-  const media = convo.media as IMedia;
+  const media = createMinimalMedia(title, type, season, episode, year);
+  convo.media = media;
   const video = media.isShow() ? media.episodes[0] : media as IMovie;
   const active = await db.torrents.getForVideo(video.id);
 
@@ -156,4 +146,58 @@ export async function manualSearch(this: Swiper, convo: Conversation): Promise<S
     ),
     final: true
   };
+}
+
+// Create a minimal media object from parsed torrent title (when TMDB/TVDB lookup fails)
+function createMinimalMedia(
+  title: string,
+  type: 'movie'|'tv'|null,
+  season: number|undefined,
+  episode: number|undefined,
+  year: string|null
+): IMedia {
+  if (type === 'tv' && season && episode) {
+    // Create a minimal show/episode
+    const showId = hashTitleToId(title);
+    const episodeId = (showId * 1000 * 1000) + (season * 1000) + episode;
+    const episodeObj = new Episode({
+      id: episodeId,
+      seasonNum: season,
+      episodeNum: episode,
+      showId: showId,
+      showTitle: title,
+      airDate: undefined,
+      status: 'identified',
+      queueIndex: -1,
+    });
+    const show = new Show({
+      id: showId,
+      title: title,
+      episodes: [episodeObj],
+    });
+    return show;
+  } else {
+    // Create a minimal movie
+    const movieId = hashTitleToId(title + (year || ''));
+    const movie = new Movie({
+      id: movieId,
+      title: title,
+      year: year || new Date().getFullYear().toString(),
+      releases: {},
+      status: 'identified',
+      queueIndex: -1,
+    });
+    return movie;
+  }
+}
+
+// Generate a unique numeric ID from a title string (for manual entries when TMDB/TVDB fails)
+function hashTitleToId(title: string): number {
+  const hash = crypto.createHash('md5').update(title.toLowerCase().trim()).digest('hex');
+  // Convert first 8 hex chars to a number, ensuring it's positive and reasonably sized
+  // Use a large base number to avoid collisions with real IMDB IDs (which are typically 7-8 digits)
+  const num = parseInt(hash.substring(0, 8), 16);
+  // Let's use a high range to avoid conflicts - IMDB IDs are typically < 10^8
+  // So we'll use numbers starting from 10^9 (1 billion)
+  return 1000000000 + (num % 1000000000);
 }
